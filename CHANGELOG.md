@@ -7,6 +7,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-14
+
 ### Changed
 
 - Moved GitHub Actions write permissions to job scope and kept Scorecard
