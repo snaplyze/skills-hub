@@ -7,6 +7,11 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Changed
+
+- Restrict GitHub Actions to GitHub-owned and verified actions with an explicit
+  Scorecard allowlist, and require approval for all external fork workflows.
+
 ## [1.0.1] - 2026-11-14
 
 ### Changed
