@@ -22,6 +22,10 @@ The first skill is **Frontend Design** for **OpenCode**. Support for Claude Code
 
 ## Skills
 
+| Skill | Purpose | Harness |
+|---|---|---|
+| [`frontend-design`](skills/frontend-design/SKILL.md) | Distinctive, accessible web interface design and frontend quality | OpenCode |
+
 ### `frontend-design`
 
 A complete design and frontend-quality skill for building, redesigning, and reviewing web interfaces. It combines aesthetic direction with design systems, UX states, accessibility, responsive behavior, motion, implementation guidance, and a pre-delivery audit.
@@ -63,7 +67,13 @@ cd skills-hub
 ./install/opencode.sh --list
 ```
 
-Use `--force` to replace an existing installation. Start a new OpenCode session or run `/reload` after installing.
+Use `--force` to replace an existing installation. It recursively removes
+`<target>/<skill>` before installing, so it can delete a customized or
+unrelated directory with the same name. Back up local changes first. Symlink
+installs follow the clone and break if it moves or is deleted; copy installs
+snapshot content but do not auto-update. To update, re-run the installer; to
+uninstall, remove the installed skill directory or symlink. Start a new
+OpenCode session or run `/reload` after installing.
 
 Manual installation is equivalent:
 
@@ -82,32 +92,33 @@ The skill is written in plain Markdown with relative references, so the content 
 
 ```text
 skills-hub/
+├── AGENTS.md                    # project facts for agents
 ├── README.md
+├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+├── SECURITY.md
+├── GOVERNANCE.md
+├── CHANGELOG.md
 ├── LICENSE
 ├── THIRD_PARTY_NOTICES.md
+├── Makefile                     # local validation entry points
+├── pyproject.toml               # Ruff configuration
+├── requirements-dev.txt         # validation dependencies
+├── .github/                     # CI, security, issue/PR templates
+├── docs/
+│   └── plan.md                  # audit and remediation registry
 ├── install/
-│   └── opencode.sh
+│   └── opencode.sh              # global OpenCode installer
+├── scripts/
+│   └── validate.py              # repository-wide validation
 └── skills/
     └── frontend-design/
-        ├── SKILL.md                 # workflow, principles, hard rules
-        ├── LICENSE                  # MIT for the portable skill
-        ├── references/
-        │   ├── design-direction.md  # aesthetic direction, type, color, layout
-        │   ├── design-system.md     # tokens, components, themes, handoff
-        │   ├── ux-patterns.md       # flows, forms, states, copy, research-lite
-        │   ├── accessibility.md     # WCAG 2.2 AA, keyboard, ARIA, testing
-        │   ├── responsive-mobile.md # mobile-first, touch, safe areas
-        │   ├── motion.md            # choreography, timing, performance
-        │   ├── implementation.md    # modern CSS, React/Next, Tailwind, perf
-        │   ├── quality-gates.md     # pre-delivery audit and definition of done
-        │   └── sources.md           # standards, licenses, attribution
-        ├── assets/
-        │   ├── tokens.css           # starter light/dark token sheet
-        │   ├── token-contrast-pairs.json # 64 audited light/dark pairs
-        │   ├── design-brief.md      # brief, direction, and critique template
-        │   └── audit-report.md      # severity-based audit template
+        ├── SKILL.md             # workflow, principles, hard rules
+        ├── LICENSE              # MIT for the portable skill
+        ├── references/          # design, UX, accessibility, implementation
+        ├── assets/              # tokens, contrast pairs, templates
         └── scripts/
-            └── contrast.py          # dependency-free WCAG contrast checker
+            └── contrast.py      # dependency-free WCAG contrast checker
 ```
 
 ## Using the skill
@@ -148,6 +159,9 @@ It supports hex, `rgb()`, `hsl()`, alpha compositing, text/large-text/UI thresho
 
 ## Validation
 
+Prerequisites: Python 3.9+, Bash, and Node.js 22+ for the `npx`-based
+Markdown and CSS checks. OpenCode is only needed to test installation.
+
 One command runs the full local suite:
 
 ```bash
@@ -158,14 +172,15 @@ make check
 Or run individual checks:
 
 ```bash
-make validate   # frontmatter, references, links, anchors, installer syntax
-make lint       # ruff + markdownlint
+make validate   # frontmatter, references, links, anchors, contrast, installer syntax
+make lint       # ruff + markdownlint (Node)
 make test       # contrast self-test + 64-pair fixture
-make check      # everything CI runs
+make check      # full local suite; CI adds ShellCheck and separate workflows
 ```
 
-CI runs the same checks, plus ShellCheck, CSS parsing, CodeQL, dependency
-review, and OpenSSF Scorecard.
+CI runs the local validation steps plus ShellCheck. CodeQL, Dependency Review,
+and OpenSSF Scorecard run as separate workflows; Scorecard is scheduled, not
+run on every pull request.
 
 ## Repository protections
 
@@ -179,7 +194,10 @@ This is a public repository. `main` is protected by a repository ruleset:
 - CodeQL code scanning must not report error-level or high/critical security
   alerts.
 
-Tags matching `v*` are protected from deletion and force updates.
+Tags matching `v*` block deletion and force updates. Tag creation itself is not
+gated, and there is no ancestry/check-run gate after tag creation;
+`--verify-tag` only checks that the tag exists. The release-gate gap is tracked
+in [docs/plan.md](docs/plan.md) (AUD-01).
 
 Security features enabled:
 
@@ -193,7 +211,9 @@ Security features enabled:
   external fork contributors.
 
 See [GOVERNANCE.md](GOVERNANCE.md) for the decision and review model, and
-[SECURITY.md](SECURITY.md) for private reporting.
+[SECURITY.md](SECURITY.md) for private reporting. Agent-facing project facts
+live in [AGENTS.md](AGENTS.md); audit and remediation tasks live in
+[docs/plan.md](docs/plan.md).
 
 ## Adding a skill
 
@@ -201,7 +221,7 @@ See [GOVERNANCE.md](GOVERNANCE.md) for the decision and review model, and
 2. Keep the description trigger-rich and scoped: what it does and when to use it.
 3. Put detailed material in `references/`, templates in `assets/`, deterministic helpers in `scripts/`.
 4. Use relative paths from the skill directory.
-5. Add the skill to the README table.
+5. Document the skill in the README Skills section; update the harness status table if it adds a new client.
 6. Validate links, scripts, and the installer.
 
 ## Contributing
@@ -221,4 +241,4 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT for this repository. See [LICENSE](LICENSE). Third-party sources and licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in `skills/frontend-design/references/sources.md`.
+MIT for this repository. See [LICENSE](LICENSE). Third-party sources are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in `skills/frontend-design/references/sources.md`; available licenses are recorded there, and two community sources are explicitly marked for upstream verification.

@@ -48,9 +48,13 @@ granted by the current maintainer and reviewed periodically.
 - Versions follow [Semantic Versioning](https://semver.org/).
 - User-facing changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 - Releases are tagged `vX.Y.Z` from `main`.
-- Tag protection blocks deletion and force updates of release tags.
-- Release notes are generated from the changelog categories and curated before
-  publishing.
+- Tag protection blocks deletion and force updates of release tags; tag
+  creation is not gated. There is no ancestry/check-run gate after tag
+  creation; the release-gate gap is tracked in `docs/plan.md` (AUD-01).
+- Release notes are generated from merged pull request labels via
+  `.github/release.yml`; the workflow currently publishes immediately, so
+  draft/curation gating is tracked in the plan. `CHANGELOG.md` remains the
+  user-facing change record.
 
 ## Changes to governance
 
