@@ -210,9 +210,9 @@ participating, you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Security
 
-Report vulnerabilities privately through the repository's Security tab. Do not
-open a public issue. See [SECURITY.md](SECURITY.md) for scope and response
-expectations.
+[Report a vulnerability privately](https://github.com/snaplyze/skills-hub/security/advisories/new).
+Do not open a public issue. See [SECURITY.md](SECURITY.md) for scope, response
+expectations, and the repository's security controls.
 
 ## Changelog
 
