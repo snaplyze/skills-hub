@@ -73,4 +73,6 @@ If you are unsure whether a test is acceptable, ask first.
 - OpenSSF Scorecard runs weekly.
 - `main` requires pull requests, passing checks, resolved conversations, linear
   history, and blocks force pushes and deletions.
-- GitHub Actions use least-privilege permissions and pinned action commits.
+- GitHub Actions use least-privilege permissions, pinned action commits, and a
+  GitHub-owned/verified action allowlist.
+- Workflows from external forks require maintainer approval.

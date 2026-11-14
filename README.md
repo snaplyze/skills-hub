@@ -188,8 +188,9 @@ Security features enabled:
 - private vulnerability reporting;
 - CodeQL code scanning on `main` and pull requests;
 - OpenSSF Scorecard on a weekly schedule;
-- GitHub Actions with a read-only default token, pinned action commits, and
-  approval required for first-time fork contributors.
+- GitHub Actions with a read-only default token, pinned action commits,
+  a GitHub-owned/verified action allowlist, and approval required for all
+  external fork contributors.
 
 See [GOVERNANCE.md](GOVERNANCE.md) for the decision and review model, and
 [SECURITY.md](SECURITY.md) for private reporting.
