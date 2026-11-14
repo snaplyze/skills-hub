@@ -73,6 +73,17 @@ Rules:
 - Use English for skill content so it stays portable across harnesses.
 - Do not include secrets, private URLs, personal data, or generated credentials.
 
+## GitHub Actions
+
+- Pin every action to a full commit SHA with a version comment, for example
+  `actions/checkout@<40-char-sha> # v7.0.1`.
+- Use GitHub-owned or verified actions. The repository restricts Actions to
+  that allowlist, with an explicit exception for OpenSSF Scorecard.
+- Keep `permissions` least-privilege and prefer job-level permissions over
+  workflow-level write permissions.
+- Do not add a workflow that requires repository secrets for fork pull
+  requests. External fork workflows require maintainer approval.
+
 ## Commit messages
 
 Use Conventional Commits where practical:
