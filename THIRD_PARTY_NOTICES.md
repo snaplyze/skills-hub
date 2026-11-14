@@ -11,9 +11,9 @@ This repository contains original skill text synthesized from public sources and
 | Alireza Rezvani — ux-researcher-designer | https://github.com/alirezarezvani/claude-skills/tree/main/product-team/skills/ux-researcher-designer | MIT |
 | Alireza Rezvani — ui-design-system | https://github.com/alirezarezvani/claude-skills/tree/main/product-team/skills/ui-design-system | MIT |
 | Alireza Rezvani — senior-frontend | https://github.com/alirezarezvani/claude-skills/tree/main/engineering-team/skills/senior-frontend | MIT |
-| sickn33 — mobile-design | https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/mobile-design | See upstream repository |
+| sickn33 — mobile-design | https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/mobile-design | Upstream terms — verify before redistribution |
 | addyosmani — frontend-ui-engineering | https://github.com/addyosmani/agent-skills/tree/main/skills/frontend-ui-engineering | MIT |
-| Leonxlnx — taste-skill | https://github.com/Leonxlnx/taste-skill | See upstream repository |
+| Leonxlnx — taste-skill | https://github.com/Leonxlnx/taste-skill | Upstream terms — verify before redistribution |
 
 ## Standards and references
 

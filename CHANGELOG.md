@@ -7,8 +7,19 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+
+- Add `AGENTS.md` with project information for agents and a skills table in
+  the README.
+
 ### Changed
 
+- Use the public clone URL in the README.
+- Audit the project and add `docs/plan.md` with prioritized remediation tasks.
+- Clarify that Dependency Review still has a workflow-level `pull-requests:
+  write`; moving it to job scope is tracked in `docs/plan.md` (AUD-20).
+- Correct README, CONTRIBUTING, and GOVERNANCE claims about local versus CI
+  checks, repository layout, prerequisites, and release-note generation.
 - Restrict GitHub Actions to GitHub-owned and verified actions with an explicit
   Scorecard allowlist, and require approval for all external fork workflows.
 - Document the pinned-action, least-privilege, and allowlist requirements in

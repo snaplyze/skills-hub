@@ -11,9 +11,9 @@ This skill is an original synthesis. It distills ideas, heuristics, and standard
 | [Alireza Rezvani — ux-researcher-designer](https://github.com/alirezarezvani/claude-skills/tree/main/product-team/skills/ux-researcher-designer) | Research-lite methods: personas, journey maps, usability tests, synthesis, severity | MIT |
 | [Alireza Rezvani — ui-design-system](https://github.com/alirezarezvani/claude-skills/tree/main/product-team/skills/ui-design-system) | Token architecture, type scales, spacing systems, component contracts, responsive tokens, handoff | MIT |
 | [Alireza Rezvani — senior-frontend](https://github.com/alirezarezvani/claude-skills/tree/main/engineering-team/skills/senior-frontend) | Performance budgets, rendering profiles, bundle discipline, accessibility and framework review | MIT |
-| [sickn33 — mobile-design](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/mobile-design) | Mobile-first constraints, touch psychology, platform conventions, mobile performance, release checklist | See repository |
+| [sickn33 — mobile-design](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/mobile-design) | Mobile-first constraints, touch psychology, platform conventions, mobile performance, release checklist | Upstream terms — verify before redistribution |
 | [addyosmani — frontend-ui-engineering](https://github.com/addyosmani/agent-skills/tree/main/skills/frontend-ui-engineering) | Production UI engineering, AI-aesthetic avoidance, component architecture, state and verification | MIT |
-| [Leonxlnx — taste-skill](https://github.com/Leonxlnx/taste-skill) | Anti-generic layout and typography constraints, motion and density dials, performance guardrails | See repository |
+| [Leonxlnx — taste-skill](https://github.com/Leonxlnx/taste-skill) | Anti-generic layout and typography constraints, motion and density dials, performance guardrails | Upstream terms — verify before redistribution |
 
 ## Standards and canonical references
 

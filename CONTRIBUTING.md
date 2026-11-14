@@ -22,7 +22,8 @@ Requirements:
 
 - Python 3.9 or newer;
 - Bash;
-- Node.js (only for the optional CSS parser check);
+- Node.js 22+ for the `npx`-based Markdown and CSS checks; `make validate`
+  and `make test` do not need Node;
 - OpenCode (only if you want to test discovery locally).
 
 ```bash
@@ -35,8 +36,12 @@ python3 -m pip install -r requirements-dev.txt
 make validate   # frontmatter, links, anchors, contrast, installer syntax
 make lint       # ruff + markdownlint
 make test       # contrast self-test + 64-pair fixture
-make check      # everything CI runs
+make check      # full local suite; CI adds ShellCheck and separate workflows
 ```
+
+CI runs the local validation steps plus ShellCheck. CodeQL, Dependency Review,
+and OpenSSF Scorecard run as separate workflows; Scorecard is scheduled, not
+run on every pull request.
 
 Or run the commands individually:
 
@@ -65,7 +70,7 @@ Rules:
 
 - The directory name is the skill ID: lowercase kebab-case, 1–64 characters.
 - `SKILL.md` starts with YAML frontmatter containing `name`, `description`, and `license`.
-- The description must explain what the skill does and when to use it. It is the only text the model sees before loading the skill.
+- The description must explain what the skill does and when to use it. It is the primary trigger; OpenCode also lists the skill ID and name before loading the skill.
 - Keep `SKILL.md` focused on the workflow. Put depth in `references/` and tell the model when to read each file.
 - Use relative paths such as `references/design-direction.md`.
 - Use real, tested scripts for measurable checks; do not fake deterministic results.
