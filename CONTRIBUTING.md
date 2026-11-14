@@ -1,0 +1,110 @@
+# Contributing
+
+Thanks for helping improve Skills Hub. This repository collects portable, high-craft skills for AI coding agents. Contributions are welcome when they are specific, tested, and respectful of the project's scope.
+
+By participating, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## What belongs here
+
+Good contributions:
+
+- fix a real bug in a skill, installer, or validation script;
+- add a well-scoped skill with clear triggers and references;
+- improve accessibility, correctness, or clarity;
+- add deterministic checks that catch a real class of mistakes;
+- update documentation, examples, or attribution.
+
+Please open an issue or a discussion before a large new skill so the scope can be agreed on. Do not add a skill that duplicates an existing one without explaining the difference.
+
+## Development setup
+
+Requirements:
+
+- Python 3.9 or newer;
+- Bash;
+- Node.js (only for the optional CSS parser check);
+- OpenCode (only if you want to test discovery locally).
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+```
+
+## Validate before opening a pull request
+
+```bash
+make validate   # frontmatter, links, anchors, contrast, installer syntax
+make lint       # ruff + markdownlint
+make test       # contrast self-test + 64-pair fixture
+make check      # everything CI runs
+```
+
+Or run the commands individually:
+
+```bash
+python3 scripts/validate.py
+ruff check .
+python3 skills/frontend-design/scripts/contrast.py --self-test
+python3 skills/frontend-design/scripts/contrast.py \
+  --pairs skills/frontend-design/assets/token-contrast-pairs.json --check
+bash -n install/opencode.sh
+./install/opencode.sh --dry-run --target /tmp/skills-hub-check
+```
+
+## Skill structure
+
+```text
+skills/<skill-id>/
+├── SKILL.md          # frontmatter + core workflow
+├── LICENSE           # usually MIT
+├── references/       # detailed material, loaded on demand
+├── assets/           # templates, tokens, fixtures
+└── scripts/          # deterministic helpers
+```
+
+Rules:
+
+- The directory name is the skill ID: lowercase kebab-case, 1–64 characters.
+- `SKILL.md` starts with YAML frontmatter containing `name`, `description`, and `license`.
+- The description must explain what the skill does and when to use it. It is the only text the model sees before loading the skill.
+- Keep `SKILL.md` focused on the workflow. Put depth in `references/` and tell the model when to read each file.
+- Use relative paths such as `references/design-direction.md`.
+- Use real, tested scripts for measurable checks; do not fake deterministic results.
+- Write original text. If you adapt material, add the source and license to `THIRD_PARTY_NOTICES.md` and the skill's `references/sources.md`.
+- Use English for skill content so it stays portable across harnesses.
+- Do not include secrets, private URLs, personal data, or generated credentials.
+
+## Commit messages
+
+Use Conventional Commits where practical:
+
+```text
+feat: add mobile-design skill
+fix: correct WCAG target-size guidance
+docs: clarify OpenCode installation
+chore: update pinned actions
+```
+
+Keep commits focused. Squash merge is the only enabled merge method.
+
+## Pull requests
+
+1. Fork the repository and create a branch from `main`.
+2. Make the change and run `make check`.
+3. Open a pull request with a clear summary and test evidence.
+4. Address review comments and keep the branch up to date.
+5. A maintainer merges with squash.
+
+`main` is protected: pull requests are required, required checks must pass, conversations must be resolved, history is linear, and force pushes/deletions are blocked. Direct pushes to `main` are not part of the normal workflow.
+
+## Review criteria
+
+- Does the change solve a real problem?
+- Is the skill trigger description accurate and scoped?
+- Does the skill load references progressively instead of dumping everything?
+- Are accessibility, performance, and responsive claims accurate?
+- Are sources and licenses recorded?
+- Do the checks pass, and is the evidence real?
+
+## License
+
+By contributing, you agree that your contributions are licensed under the repository's [MIT License](LICENSE).

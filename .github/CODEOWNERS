@@ -1,0 +1,9 @@
+# Default owner for all files.
+* @snaplyze
+
+# Skill content
+/skills/ @snaplyze
+
+# Installers and repository automation
+/install/ @snaplyze
+/.github/ @snaplyze

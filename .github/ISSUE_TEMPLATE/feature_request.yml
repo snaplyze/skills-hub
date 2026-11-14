@@ -1,0 +1,73 @@
+name: Feature request
+description: Propose a new skill, improvement, or repository capability.
+title: "[feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the problem before the solution. Large new skills should be discussed before implementation.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - New skill
+        - Improvement to an existing skill
+        - Installer or harness support
+        - Validation, CI, or security
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this solve? Who experiences it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should be added or changed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and maintenance
+      description: What is in scope, what is not, and who will maintain it?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Examples, references, or prior art. Do not include secrets or private data.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I searched existing issues and discussions.
+          required: true
+        - label: This request is about the repository, not a general support question.
+          required: true

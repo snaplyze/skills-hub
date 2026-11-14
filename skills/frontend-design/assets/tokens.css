@@ -1,0 +1,421 @@
+/*
+ * Frontend Design — starter tokens
+ *
+ * This is a reference sheet, not a finished brand. Replace the brand hue,
+ * neutrals, and type families with values that fit the subject. Keep the
+ * semantic layer stable so components do not need to change.
+ *
+ * Structure:
+ *   1. Primitive tokens
+ *   2. Semantic tokens (light)
+ *   3. Typography
+ *   4. Space and layout
+ *   5. Radius, border, elevation, layers
+ *   6. Motion
+ *   7. Semantic tokens (dark)
+ *   8. Base layer
+ *
+ * Validate text/background pairs with scripts/contrast.py before shipping.
+ */
+
+@layer tokens, base;
+
+@layer tokens {
+  :root {
+    color-scheme: light;
+
+    /* ------------------------------------------------------------------
+     * 1. Primitive tokens
+     * ------------------------------------------------------------------ */
+
+    /* Warm neutrals. Swap the hue if the subject calls for cool or green-gray. */
+    --neutral-0: #ffffff;
+    --neutral-50: #f7f6f2;
+    --neutral-100: #efede7;
+    --neutral-200: #ddd9cf;
+    --neutral-300: #c2bdb0;
+    --neutral-400: #9b9587;
+    --neutral-450: #8a8478;
+    --neutral-500: #6f695e;
+    --neutral-600: #5a554b;
+    --neutral-700: #433f37;
+    --neutral-800: #2c2924;
+    --neutral-850: #24211d;
+    --neutral-900: #1b1916;
+    --neutral-950: #11100e;
+    --neutral-975: #0b0a09;
+
+    /* Brand: deep teal. Replace with the subject's own material color. */
+    --brand-50: #eef8f5;
+    --brand-100: #d7efe8;
+    --brand-200: #b0dfd3;
+    --brand-300: #7fc9b8;
+    --brand-400: #4eae9b;
+    --brand-500: #2f8f7f;
+    --brand-600: #237366;
+    --brand-700: #1d5c53;
+    --brand-800: #194a43;
+    --brand-900: #163e38;
+    --brand-950: #0b2421;
+
+    /* Semantic state colors.
+     * --color-*-ink is text on the solid --color-* background.
+     * --color-*-surface is a subtle callout background, paired with
+     * --color-text or the state color for icons.
+     * Always pair state color with text or an icon, never color alone.
+     */
+    --green-600: #2f6b4f;
+    --green-300: #6fcf97;
+    --green-100: #d9eee1;
+    --green-950: #163a29;
+    --amber-500: #8f5500;
+    --amber-300: #f5c26b;
+    --amber-100: #f8e3b8;
+    --amber-950: #3d2a0a;
+    --red-600: #b42318;
+    --red-300: #ff8a80;
+    --red-100: #fbe0dd;
+    --red-950: #3d1512;
+    --blue-600: #1d5c8a;
+    --blue-300: #8ec5ff;
+    --blue-100: #dcecf8;
+    --blue-950: #122b40;
+
+    /* Overlays */
+    --overlay-light: rgb(17 16 14 / 0.55);
+    --overlay-dark: rgb(0 0 0 / 0.72);
+
+    /* ------------------------------------------------------------------
+     * 2. Semantic tokens — light
+     * ------------------------------------------------------------------ */
+
+    --color-canvas: var(--neutral-50);
+    --color-surface: var(--neutral-0);
+    --color-surface-raised: var(--neutral-0);
+    --color-surface-sunken: var(--neutral-100);
+
+    --color-text: var(--neutral-900);
+    --color-text-muted: var(--neutral-600);
+    --color-text-subtle: var(--neutral-500);
+
+    /* Decorative borders and dividers. Use border-strong for 3:1 boundaries. */
+    --color-border: var(--neutral-200);
+    --color-border-strong: var(--neutral-450);
+
+    --color-accent: var(--brand-600);
+    --color-accent-hover: var(--brand-700);
+    --color-accent-active: var(--brand-800);
+    --color-accent-ink: var(--neutral-0);
+    --color-accent-subtle: var(--brand-50);
+
+    --color-focus: var(--brand-500);
+
+    --color-success: var(--green-600);
+    --color-success-surface: var(--green-100);
+    --color-success-ink: var(--neutral-0);
+
+    --color-warning: var(--amber-500);
+    --color-warning-surface: var(--amber-100);
+    --color-warning-ink: var(--neutral-0);
+
+    --color-danger: var(--red-600);
+    --color-danger-surface: var(--red-100);
+    --color-danger-ink: var(--neutral-0);
+
+    --color-info: var(--blue-600);
+    --color-info-surface: var(--blue-100);
+    --color-info-ink: var(--neutral-0);
+
+    --color-overlay: var(--overlay-light);
+    --color-selection: var(--brand-100);
+
+    /* ------------------------------------------------------------------
+     * 3. Typography
+     * ------------------------------------------------------------------ */
+
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: clamp(1.125rem, 1.05rem + 0.35vw, 1.25rem);
+    --text-xl: clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem);
+    --text-2xl: clamp(1.5rem, 1.25rem + 1.2vw, 2rem);
+    --text-3xl: clamp(1.875rem, 1.4rem + 2.2vw, 2.75rem);
+    --text-display: clamp(2.5rem, 1.6rem + 4.5vw, 6rem);
+
+    --leading-tight: 1.1;
+    --leading-snug: 1.25;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.65;
+
+    --tracking-tight: -0.02em;
+    --tracking-normal: 0;
+    --tracking-wide: 0.06em;
+
+    --measure: 65ch;
+    --measure-narrow: 45ch;
+
+    /* ------------------------------------------------------------------
+     * 4. Space and layout
+     * ------------------------------------------------------------------ */
+
+    --space-0: 0;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    --space-20: 5rem;
+    --space-24: 6rem;
+
+    --container-sm: 40rem;
+    --container-md: 48rem;
+    --container-lg: 64rem;
+    --container-xl: 80rem;
+    --container-2xl: 90rem;
+
+    --gutter: clamp(1rem, 4vw, 2.5rem);
+    --section-space: clamp(3rem, 8vw, 7rem);
+    --header-height: 4rem;
+
+    /* Breakpoints (cannot be used in media queries):
+     *   30rem / 480px
+     *   48rem / 768px
+     *   64rem / 1024px
+     *   80rem / 1280px
+     *   96rem / 1536px
+     */
+
+    /* ------------------------------------------------------------------
+     * 5. Radius, border, elevation, layers
+     * ------------------------------------------------------------------ */
+
+    --radius-none: 0;
+    --radius-xs: 0.125rem;
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.5rem;
+    --radius-full: 9999px;
+
+    --border-width: 1px;
+    --border-width-strong: 2px;
+
+    --shadow-1: 0 1px 2px rgb(27 25 22 / 0.06), 0 1px 3px rgb(27 25 22 / 0.10);
+    --shadow-2: 0 4px 8px rgb(27 25 22 / 0.06), 0 8px 24px rgb(27 25 22 / 0.08);
+    --shadow-3: 0 12px 32px rgb(27 25 22 / 0.12), 0 2px 8px rgb(27 25 22 / 0.08);
+
+    --z-base: 0;
+    --z-raised: 10;
+    --z-sticky: 100;
+    --z-dropdown: 200;
+    --z-overlay: 300;
+    --z-modal: 400;
+    --z-toast: 500;
+    --z-tooltip: 600;
+
+    /* ------------------------------------------------------------------
+     * 6. Motion
+     * ------------------------------------------------------------------ */
+
+    --duration-instant: 80ms;
+    --duration-fast: 150ms;
+    --duration-normal: 220ms;
+    --duration-slow: 320ms;
+    --duration-slower: 480ms;
+
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* ------------------------------------------------------------------
+   * 7. Semantic tokens — dark
+   *
+   * Dark mode is applied with [data-theme="dark"]. Set that attribute from
+   * your theme provider, or with a small inline script that follows
+   * prefers-color-scheme when the user has no explicit preference.
+   * ------------------------------------------------------------------ */
+
+  [data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-canvas: var(--neutral-950);
+    --color-surface: var(--neutral-900);
+    --color-surface-raised: var(--neutral-850);
+    --color-surface-sunken: var(--neutral-975);
+
+    --color-text: var(--neutral-50);
+    --color-text-muted: var(--neutral-300);
+    --color-text-subtle: var(--neutral-400);
+
+    --color-border: var(--neutral-700);
+    --color-border-strong: var(--neutral-400);
+
+    --color-accent: var(--brand-300);
+    --color-accent-hover: var(--brand-200);
+    --color-accent-active: var(--brand-100);
+    --color-accent-ink: var(--neutral-950);
+    --color-accent-subtle: var(--brand-950);
+
+    --color-focus: var(--brand-300);
+
+    --color-success: var(--green-300);
+    --color-success-surface: var(--green-950);
+    --color-success-ink: var(--neutral-950);
+
+    --color-warning: var(--amber-300);
+    --color-warning-surface: var(--amber-950);
+    --color-warning-ink: var(--neutral-950);
+
+    --color-danger: var(--red-300);
+    --color-danger-surface: var(--red-950);
+    --color-danger-ink: var(--neutral-950);
+
+    --color-info: var(--blue-300);
+    --color-info-surface: var(--blue-950);
+    --color-info-ink: var(--neutral-950);
+
+    --color-overlay: var(--overlay-dark);
+    --color-selection: var(--brand-900);
+
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.40);
+    --shadow-2: 0 4px 12px rgb(0 0 0 / 0.48);
+    --shadow-3: 0 16px 40px rgb(0 0 0 / 0.56);
+  }
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  :where(html) {
+    -webkit-text-size-adjust: 100%;
+    scrollbar-gutter: stable;
+  }
+
+  :where(body) {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: var(--leading-relaxed);
+  }
+
+  :where(h1, h2, h3, h4, h5, h6) {
+    margin-block: 0;
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  :where(p) {
+    margin-block: 0;
+    text-wrap: pretty;
+  }
+
+  :where(a) {
+    color: var(--color-accent);
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.18em;
+  }
+
+  :where(a:hover) {
+    color: var(--color-accent-hover);
+  }
+
+  :where(img, picture, video, canvas, svg) {
+    display: block;
+    max-inline-size: 100%;
+  }
+
+  :where(img, video) {
+    block-size: auto;
+  }
+
+  :where(input, button, textarea, select) {
+    font: inherit;
+  }
+
+  :where(button) {
+    cursor: pointer;
+  }
+
+  :where(button:disabled, input:disabled, textarea:disabled, select:disabled) {
+    cursor: not-allowed;
+  }
+
+  :where([hidden]:not([hidden="until-found"])) {
+    display: none !important;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-selection);
+    color: var(--color-text);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  @media (prefers-contrast: more) {
+    :root {
+      --color-border: var(--color-border-strong);
+    }
+  }
+
+  .visually-hidden {
+    position: absolute !important;
+    inline-size: 1px !important;
+    block-size: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  .skip-link {
+    position: absolute;
+    inset-block-start: -100%;
+    inset-inline-start: var(--space-4);
+    z-index: var(--z-tooltip);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 2px solid var(--color-focus);
+    border-radius: var(--radius-sm);
+  }
+
+  .skip-link:focus {
+    inset-block-start: var(--space-4);
+  }
+}

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/snaplyze/skills-hub/discussions
+    about: Ask about usage, setup, or skill design.
+  - name: Report a security vulnerability
+    url: https://github.com/snaplyze/skills-hub/security/advisories/new
+    about: Report vulnerabilities privately. Do not open a public issue.
+  - name: Read the contributing guide
+    url: https://github.com/snaplyze/skills-hub/blob/main/CONTRIBUTING.md
+    about: Learn how to propose a skill or open a pull request.

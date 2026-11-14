@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Validate skills and documentation
+        run: python scripts/validate.py
+
+      - name: Lint Python
+        run: ruff check .
+
+      - name: Lint Markdown
+        run: npx --yes markdownlint-cli2@0.24.1 "**/*.md"
+
+      - name: Check shell syntax
+        run: bash -n install/opencode.sh
+
+      - name: Install ShellCheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+
+      - name: Run ShellCheck
+        run: shellcheck install/opencode.sh
+
+      - name: Preview OpenCode install
+        run: ./install/opencode.sh --dry-run --target "$RUNNER_TEMP/skills-hub"
+
+      - name: Parse CSS tokens
+        run: npx --yes csstree-validator@4.0.1 skills/frontend-design/assets/tokens.css
