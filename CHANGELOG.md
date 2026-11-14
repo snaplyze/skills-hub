@@ -7,6 +7,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Changed
+
+- Moved GitHub Actions write permissions to job scope and kept Scorecard
+  results in the OpenSSF dashboard instead of code scanning.
+- Added direct links to private vulnerability reporting in the README and
+  security policy.
+
 ## [1.0.0] - 2026-11-14
 
 ### Added
