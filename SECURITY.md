@@ -15,9 +15,12 @@ Security fixes are applied to the latest release and `main`.
 
 Use GitHub's private vulnerability reporting:
 
-1. Open the repository's **Security** tab.
-2. Select **Report a vulnerability**.
-3. Include the details below.
+- [Report a vulnerability privately](https://github.com/snaplyze/skills-hub/security/advisories/new)
+- [Security overview](https://github.com/snaplyze/skills-hub/security)
+
+1. Open the private advisory form.
+2. Include the details below.
+3. Do not disclose the issue publicly until a fix and disclosure date are agreed.
 
 If private reporting is unavailable, contact the maintainer privately through
 their GitHub profile and ask for a secure channel. Do not include exploit
