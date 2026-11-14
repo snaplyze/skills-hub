@@ -44,7 +44,7 @@ It is deliberately opinionated about craft and deliberately neutral about style.
 The installer symlinks skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default:
 
 ```bash
-git clone <this-repo> skills-hub
+git clone https://github.com/snaplyze/skills-hub.git
 cd skills-hub
 
 # Install every skill (currently frontend-design)
