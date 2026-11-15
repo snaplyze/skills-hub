@@ -19,6 +19,7 @@ EXPECTED = {
     "delivery",
     "clean-code",
     "skill-authoring",
+    "orchestration",
 }
 
 
@@ -44,14 +45,14 @@ def test_suite_skills_and_frontmatter() -> None:
         description = data["description"]
         assert 40 <= len(description) <= 1024
         assert any(
-            phrase in description for phrase in ("Use when", "Use before", "Use after", "Use to")
+            phrase in description for phrase in ("Use when", "Use before", "Use after", "Use to", "Use for")
         )
 
 
 def test_suite_has_workflow_and_handoff() -> None:
     for skill_id in EXPECTED:
         text = skill_text(skill_id)
-        assert re.search(r"^## (Workflow|Process|The cycle|Design before prose|Decision order|Two modes|Evidence before claims|The task loop|Phase 1)", text, re.M)
+        assert re.search(r"^## (Workflow|Process|The cycle|Design before prose|Decision order|Two modes|Evidence before claims|The task loop|Phase 1|Routing matrix)", text, re.M)
         assert (
             re.search(r"^## (Handoff|Output|Final gate|Delivery)", text, re.M)
             or skill_id == "delivery"
@@ -78,6 +79,7 @@ def test_suite_tabletop_trigger_matrix() -> None:
         "delivery": ("deliver", "merge"),
         "clean-code": ("refactor", "readability"),
         "skill-authoring": ("skill", "trigger"),
+        "orchestration": ("complex", "native"),
     }
     for skill_id, words in triggers.items():
         description = frontmatter(skill_text(skill_id))["description"].lower()

@@ -22,6 +22,10 @@ short standard phrases may coincide. They are informed by:
 - [sickn33/agentic-awesome-skills — clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code)
   — repository code MIT, original content CC BY 4.0; the skill names ClawForge
   as its source. Recheck upstream terms before redistributing substantial text.
+- [alvinunreal/oh-my-opencode-slim](https://github.com/alvinunreal/oh-my-opencode-slim)
+  — MIT; orchestration/routing ideas only.
+- [snaplyze/claude-orchestration](https://github.com/snaplyze/claude-orchestration)
+  — Apache-2.0; orchestration/routing ideas only.
 
 The workflow skills deliberately avoid hooks, plugins, and session bootstrap;
 their ideas are expressed in new Markdown and tested as OpenCode skills.
