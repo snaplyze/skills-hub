@@ -34,8 +34,13 @@ automatically better.
 Squash merge is the only enabled merge method. Branches are deleted after merge.
 
 The required approval count is currently **0** so a solo maintainer can merge
-their own pull requests. When a second regular maintainer joins, raise it to 1
-and enable code-owner review. Do not bypass the ruleset for routine work.
+their own pull requests. Extra approval for unattributed changes is enabled;
+CODEOWNERS is advisory until a second regular maintainer joins. At that point,
+raise the approval count to 1, enable code-owner review, and require signed
+commits/tags. Do not bypass the ruleset for routine work.
+
+The current settings, their source, the verification date, and owner-only
+actions are recorded in [`docs/repository-settings.md`](docs/repository-settings.md).
 
 ## Becoming a maintainer
 
@@ -48,13 +53,14 @@ granted by the current maintainer and reviewed periodically.
 - Versions follow [Semantic Versioning](https://semver.org/).
 - User-facing changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 - Releases are tagged `vX.Y.Z` from `main`.
-- Tag protection blocks deletion and force updates of release tags; tag
-  creation is not gated. There is no ancestry/check-run gate after tag
-  creation; the release-gate gap is tracked in `docs/plan.md` (AUD-01).
-- Release notes are generated from merged pull request labels via
-  `.github/release.yml`; the workflow currently publishes immediately, so
-  draft/curation gating is tracked in the plan. `CHANGELOG.md` remains the
-  user-facing change record.
+- The release workflow fails closed unless the tag is signed, its commit is an
+  ancestor of `main`, and the required checks passed. It creates a draft
+  release; promotion is a manual step.
+- `CHANGELOG.md` is the single source of release notes. The workflow extracts
+  the matching version section and fails if it is missing.
+- Tag protection blocks deletion and force updates. Tag signing, immutable
+  releases, and the protected `release` environment are owner-only setup
+  actions recorded in [`docs/repository-settings.md`](docs/repository-settings.md).
 
 ## Changes to governance
 

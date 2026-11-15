@@ -16,12 +16,8 @@
 
 <!-- Paste the commands you ran and the result. Do not claim checks you did not run. -->
 
-- [ ] `make validate`
-- [ ] `make lint`
-- [ ] `make test`
-- [ ] `bash -n install/opencode.sh`
-- [ ] Installer dry run
-- [ ] CSS parse (if tokens changed)
+- [ ] `make check` (validate, lint, pytest, ShellCheck, installer dry run, CSS, workflow policy)
+- [ ] `make links` (if external links changed; network)
 - [ ] Tested in OpenCode (if skill behavior changed)
 - [ ] Accessibility/contrast checks (if UI guidance changed)
 

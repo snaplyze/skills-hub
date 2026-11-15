@@ -20,39 +20,38 @@ Please open an issue or a discussion before a large new skill so the scope can b
 
 Requirements:
 
-- Python 3.9 or newer;
+- Python 3.12 or newer;
 - Bash;
-- Node.js 22+ for the `npx`-based Markdown and CSS checks; `make validate`
-  and `make test` do not need Node;
+- Node.js 22+ for the pinned Markdown and CSS tools; `make deps` installs the
+  hash-locked Python and npm development tools;
 - OpenCode (only if you want to test discovery locally).
 
 ```bash
-python3 -m pip install -r requirements-dev.txt
+make deps
 ```
 
 ## Validate before opening a pull request
 
 ```bash
-make validate   # frontmatter, links, anchors, contrast, installer syntax
+make validate   # frontmatter, links, anchors, tokens, fixture, installer syntax
 make lint       # ruff + markdownlint
-make test       # contrast self-test + 64-pair fixture
-make check      # full local suite; CI adds ShellCheck and separate workflows
+make test       # pytest suite, including contrast CLI and negative fixtures
+make check      # every required local check, once; this is what CI runs
 ```
 
-CI runs the local validation steps plus ShellCheck. CodeQL, Dependency Review,
-and OpenSSF Scorecard run as separate workflows; Scorecard is scheduled, not
-run on every pull request.
+CI runs `make check` and separate CodeQL, Dependency Review, Secret Scan, and
+Scorecard workflows. The Link Audit runs on a schedule because external
+services are not a required merge gate.
 
 Or run the commands individually:
 
 ```bash
 python3 scripts/validate.py
 ruff check .
-python3 skills/frontend-design/scripts/contrast.py --self-test
-python3 skills/frontend-design/scripts/contrast.py \
-  --pairs skills/frontend-design/assets/token-contrast-pairs.json --check
-bash -n install/opencode.sh
+python3 -m pytest -q
+shellcheck install/opencode.sh
 ./install/opencode.sh --dry-run --target /tmp/skills-hub-check
+python3 scripts/check_workflows.py
 ```
 
 ## Skill structure
@@ -74,7 +73,7 @@ Rules:
 - Keep `SKILL.md` focused on the workflow. Put depth in `references/` and tell the model when to read each file.
 - Use relative paths such as `references/design-direction.md`.
 - Use real, tested scripts for measurable checks; do not fake deterministic results.
-- Write original text. If you adapt material, add the source and license to `THIRD_PARTY_NOTICES.md` and the skill's `references/sources.md`.
+- Write original text. If you adapt material, add the source and license to the skill's canonical `references/sources.md`; `THIRD_PARTY_NOTICES.md` is the repository-level pointer.
 - Use English for skill content so it stays portable across harnesses.
 - Do not include secrets, private URLs, personal data, or generated credentials.
 

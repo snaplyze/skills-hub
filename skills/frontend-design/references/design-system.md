@@ -27,7 +27,7 @@ Semantic tokens    -> purpose-based aliases, used in most components
 Component tokens   -> optional aliases for a specific component's API
 ```
 
-Example:
+Example (illustrative project values, not the starter sheet; the canonical primitives and semantic roles are in `assets/tokens.css`):
 
 ```css
 /* Primitive: a value */
@@ -112,58 +112,11 @@ Not every product needs all of these. A marketing page may need six; a dashboard
 
 ### Building a scale
 
-Use OKLCH for perceptual scales:
-
-```css
---brand-50:  oklch(0.97 0.02 55);
---brand-100: oklch(0.93 0.04 55);
---brand-200: oklch(0.88 0.06 55);
---brand-300: oklch(0.80 0.10 55);
---brand-400: oklch(0.71 0.14 55);
---brand-500: oklch(0.62 0.16 55);
---brand-600: oklch(0.55 0.16 55);
---brand-700: oklch(0.48 0.14 55);
---brand-800: oklch(0.38 0.10 55);
---brand-900: oklch(0.30 0.08 55);
-```
-
-Vary lightness smoothly, keep hue stable, and reduce chroma at the extremes. For neutrals, use a small chroma tinted toward the brand hue; pure gray next to a saturated accent can look dead.
+Build primitives once as a scale: vary lightness smoothly, keep hue stable, and reduce chroma at the extremes. For neutrals, use a small chroma tinted toward the brand hue; pure gray next to a saturated accent can look dead. OKLCH is optional; the starter sheet uses hex primitives. The canonical primitive and semantic values live in `assets/tokens.css`; extend that file instead of copying a second scale into documentation.
 
 ### Semantic mapping
 
-Map primitives to semantics once per theme:
-
-```css
-:root {
-  color-scheme: light;
-
-  --color-canvas: var(--neutral-50);
-  --color-surface: var(--neutral-0);
-  --color-surface-raised: var(--neutral-0);
-  --color-text: var(--neutral-900);
-  --color-text-muted: var(--neutral-600);
-  --color-border: var(--neutral-200);
-  --color-accent: var(--brand-600);
-  --color-accent-hover: var(--brand-700);
-  --color-accent-ink: var(--neutral-0);
-  --color-focus: var(--brand-600);
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-
-  --color-canvas: var(--neutral-950);
-  --color-surface: var(--neutral-900);
-  --color-surface-raised: var(--neutral-850);
-  --color-text: var(--neutral-50);
-  --color-text-muted: var(--neutral-300);
-  --color-border: var(--neutral-700);
-  --color-accent: var(--brand-400);
-  --color-accent-hover: var(--brand-300);
-  --color-accent-ink: var(--neutral-950);
-  --color-focus: var(--brand-300);
-}
-```
+Map primitives to semantic roles once per theme. The canonical light and dark mapping is in `assets/tokens.css`: it defines `--color-canvas`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-border`, `--color-accent`, `--color-accent-hover`, `--color-accent-active`, `--color-accent-ink`, `--color-focus`, and the semantic state roles. Do not restate those values in another document; update the token sheet and its contrast fixture together.
 
 Prefer explicit theme attributes for user control, and respect `prefers-color-scheme` as the default when no explicit choice is stored. Do not rely on `filter: invert()`.
 
@@ -196,32 +149,7 @@ Test charts in grayscale and with a colorblind simulator. Do not encode more tha
 
 ## Typography tokens
 
-```css
---font-display: "Archivo Narrow", "Arial Narrow", sans-serif;
---font-body: "Public Sans", system-ui, sans-serif;
---font-mono: "JetBrains Mono", ui-monospace, monospace;
-
---text-xs: 0.75rem;
---text-sm: 0.875rem;
---text-base: 1rem;
---text-lg: clamp(1.125rem, 1.05rem + 0.35vw, 1.25rem);
---text-xl: clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem);
---text-2xl: clamp(1.5rem, 1.25rem + 1.2vw, 2rem);
---text-3xl: clamp(1.875rem, 1.4rem + 2.2vw, 2.75rem);
---text-display: clamp(2.5rem, 1.6rem + 4.5vw, 6rem);
-
---leading-tight: 1.1;
---leading-snug: 1.25;
---leading-normal: 1.5;
---leading-relaxed: 1.65;
-
---tracking-tight: -0.02em;
---tracking-normal: 0;
---tracking-wide: 0.06em;
-
---measure: 65ch;
---measure-narrow: 45ch;
-```
+`assets/tokens.css` defines the canonical families (`--font-display`, `--font-body`, `--font-mono`), the fluid `--text-*` scale, `--leading-*`, `--tracking-*`, and `--measure` / `--measure-narrow`. The display family in the starter sheet is Archivo. Do not duplicate those values here; extend the token sheet.
 
 Rules:
 
@@ -357,30 +285,11 @@ Use borders for structure and grouping; use shadows for elevation, not both at r
 
 ### Elevation
 
-```css
---shadow-1: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.10);
---shadow-2: 0 4px 8px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
---shadow-3: 0 12px 32px rgb(0 0 0 / 0.12), 0 2px 8px rgb(0 0 0 / 0.08);
-```
-
-Tint shadows toward the background hue when the design calls for it. Avoid the same soft `rgba(0,0,0,.1)` shadow on every card. In dark mode, reduce shadow opacity and use surface lightness plus borders to express elevation.
+`assets/tokens.css` defines `--shadow-1`, `--shadow-2`, and `--shadow-3`. The light shadows are tinted toward the warm background hue rather than pure black. Use one scale; avoid the same soft black shadow on every card. Dark mode uses its own `--shadow-*` overrides and expresses elevation primarily with surface lightness plus borders.
 
 ## Motion tokens
 
-```css
---duration-instant: 80ms;
---duration-fast: 150ms;
---duration-normal: 220ms;
---duration-slow: 320ms;
---duration-slower: 480ms;
-
---ease-out: cubic-bezier(0.16, 1, 0.3, 1);
---ease-in: cubic-bezier(0.7, 0, 0.84, 0);
---ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
---ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-```
-
-Use motion tokens everywhere. Do not mix 137 ms, 200 ms, and 250 ms transitions in the same component. See `motion.md`.
+`assets/tokens.css` defines the canonical `--duration-*` and `--ease-*` values; `motion.md` maps them to interactions. Use those tokens everywhere. Do not mix 137 ms, 200 ms, and 250 ms transitions in the same component.
 
 ## Component contracts
 
@@ -562,17 +471,7 @@ For design-to-code handoff:
 
 ## Starter token sheet
 
-`assets/tokens.css` contains a starting point with:
-
-- OKLCH primitives and semantic light/dark tokens;
-- fluid type scale;
-- 4/8 px spacing;
-- containers, gutters, and breakpoints in comments;
-- radii, borders, shadows, z-index;
-- motion durations and easings;
-- base reset and focus styles.
-
-Use it as a reference, not a drop-in theme. Replace the brand hue, neutrals, and type families with values that fit the subject. `assets/token-contrast-pairs.json` contains 64 light/dark pairs covering the starter semantics; run it with:
+`assets/tokens.css` contains a starting point with primitive hex scales, semantic light/dark tokens, the fluid type scale, 4/8 px spacing, containers and breakpoints in comments, radii, borders, shadows, z-index, motion, and base reset/focus styles. Use it as a reference, not a drop-in theme. Replace the brand hue, neutrals, and type families with values that fit the subject. `assets/token-contrast-pairs.json` contains 64 light/dark pairs covering the starter semantics; run it with:
 
 ```bash
 python3 scripts/contrast.py --pairs assets/token-contrast-pairs.json --check

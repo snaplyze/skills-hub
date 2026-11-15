@@ -1,32 +1,57 @@
-.PHONY: help validate lint test install dry-run check
+PYTHON ?= python3
+NPM ?= npm
+RUFF ?= ruff
+SHELLCHECK ?= shellcheck
+MDLINT ?= node_modules/.bin/markdownlint-cli2
+CSSTREE ?= node_modules/.bin/csstree-validator
+DRY_RUN_TARGET ?= /tmp/opencode/skills-hub-check
+
+.PHONY: help deps validate lint test shellcheck install dry-run css workflows links check
 
 help:
 	@printf '%s\n' \
-		'make validate  - validate skill metadata, links, and docs' \
+		'make deps      - install hash-locked Python and npm development tools' \
+		'make validate  - validate skill metadata, links, tokens, and docs' \
 		'make lint      - run ruff and markdownlint' \
-		'make test      - run deterministic contrast checks' \
-		'make install   - install skills into OpenCode (symlink)' \
+		'make test      - run the pytest suite (includes contrast checks)' \
+		'make shellcheck - run ShellCheck on the installer' \
+		'make install   - install skills into OpenCode (copy)' \
 		'make dry-run   - preview the OpenCode install' \
-		'make check     - run everything CI runs'
+		'make css       - parse the frontend-design token CSS' \
+		'make workflows - check GitHub workflow policy' \
+		'make links     - audit external links (network; scheduled)' \
+		'make check     - run every required check exactly once'
+
+deps:
+	$(PYTHON) -m pip install --require-hashes -r requirements-dev.txt
+	$(NPM) ci --ignore-scripts --no-audit --no-fund
 
 validate:
-	python3 scripts/validate.py
+	$(PYTHON) scripts/validate.py
 
 lint:
-	ruff check .
-	npx --yes markdownlint-cli2@0.24.1 "**/*.md"
+	$(RUFF) check .
+	$(MDLINT) "**/*.md" "#node_modules"
 
 test:
-	python3 skills/frontend-design/scripts/contrast.py --self-test
-	python3 skills/frontend-design/scripts/contrast.py --pairs skills/frontend-design/assets/token-contrast-pairs.json --check --quiet
+	$(PYTHON) -m pytest -q
+
+shellcheck:
+	$(SHELLCHECK) install/opencode.sh
 
 install:
 	./install/opencode.sh
 
 dry-run:
-	./install/opencode.sh --dry-run
+	./install/opencode.sh --dry-run --target "$(DRY_RUN_TARGET)"
 
-check: validate lint test
-	bash -n install/opencode.sh
-	./install/opencode.sh --dry-run --target /tmp/skills-hub-check
-	npx --yes csstree-validator skills/frontend-design/assets/tokens.css
+css:
+	$(CSSTREE) skills/frontend-design/assets/tokens.css
+
+workflows:
+	$(PYTHON) scripts/check_workflows.py --strict
+
+links:
+	$(PYTHON) scripts/check_external_links.py
+
+check: validate lint test shellcheck dry-run css workflows

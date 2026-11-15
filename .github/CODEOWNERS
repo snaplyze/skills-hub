@@ -1,3 +1,6 @@
+# Advisory only: the main ruleset requires 0 approvals and does not require
+# code-owner review. See docs/repository-settings.md.
+
 # Default owner for all files.
 * @snaplyze
 

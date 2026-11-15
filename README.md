@@ -45,41 +45,91 @@ It is deliberately opinionated about craft and deliberately neutral about style.
 
 ### OpenCode
 
-The installer symlinks skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default:
+The installer copies skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default. Copy mode snapshots content and never writes into this checkout. Use `--link` only when you want a live link to the clone. It requires Bash and GNU `realpath -m`; on systems without that command, use the minimal manual copy below.
+
+New releases use signed `vX.Y.Z` tags. Tags published before the release gate
+(`v1.0.1` and earlier) are unsigned and have no source-archive assets; do not
+treat them as signed releases. Owner setup for the protected `release`
+environment, tag-signature trust, and immutable releases is documented in
+[docs/release-process.md](docs/release-process.md).
+
+#### Install from a release
+
+For a clean tag checkout, clone the tag, verify its signature separately, and
+let the installer check that the checkout is clean and at exactly that tag:
+
+```bash
+VERSION=vX.Y.Z  # replace with a signed release tag
+git clone --branch "$VERSION" --depth 1 https://github.com/snaplyze/skills-hub.git
+cd skills-hub
+git tag -v "$VERSION"          # verifies the signature with your local trust store
+./install/opencode.sh --verify --ref "$VERSION"
+```
+
+Or install the source archive from the release:
+
+```bash
+VERSION=vX.Y.Z  # replace with a signed release tag
+curl -fsSLO "https://github.com/snaplyze/skills-hub/releases/download/$VERSION/skills-hub-$VERSION.tar.gz"
+curl -fsSLO "https://github.com/snaplyze/skills-hub/releases/download/$VERSION/SHA256SUMS"
+sha256sum -c SHA256SUMS
+tar -xzf "skills-hub-$VERSION.tar.gz"
+cd "skills-hub-$VERSION"
+./install/opencode.sh --copy
+```
+
+The archive has no `.git` metadata, so `--verify` does not apply; the checksum
+and the release provenance attestation are the trust boundary. Verify
+provenance with `gh attestation verify "skills-hub-$VERSION.tar.gz" --repo snaplyze/skills-hub`.
+
+#### Install from main
+
+Use `main` only for development. It is not a release and is not covered by the
+release checksum:
 
 ```bash
 git clone https://github.com/snaplyze/skills-hub.git
 cd skills-hub
 
-# Install every skill (currently frontend-design)
-./install/opencode.sh
-
-# Or install one skill
-./install/opencode.sh frontend-design
-
-# Copy instead of symlink
-./install/opencode.sh --copy frontend-design
-
-# Preview without writing
-./install/opencode.sh --dry-run
-
-# List discovered skills
-./install/opencode.sh --list
+./install/opencode.sh                         # copy every skill
+./install/opencode.sh frontend-design         # copy one skill
+./install/opencode.sh --link frontend-design  # explicit symlink mode
+./install/opencode.sh --dry-run               # preview, no writes
+./install/opencode.sh --list                  # list skills and descriptions
 ```
 
-Use `--force` to replace an existing installation. It recursively removes
-`<target>/<skill>` before installing, so it can delete a customized or
-unrelated directory with the same name. Back up local changes first. Symlink
-installs follow the clone and break if it moves or is deleted; copy installs
-snapshot content but do not auto-update. To update, re-run the installer; to
-uninstall, remove the installed skill directory or symlink. Start a new
-OpenCode session or run `/reload` after installing.
+| Flag | Behavior |
+|---|---|
+| `--copy` | Copy the skill tree (default). Excludes generated artifacts including `__pycache__`, `*.pyc`, `.ruff_cache`, `.pytest_cache`, `.mypy_cache`, `.venv`, `.git`, `.playwright-cli`, and `node_modules`. |
+| `--link` | Symlink the skill directory. Explicit opt-in; links follow the clone and break if it moves or is deleted. |
+| `--all` | Install every discovered skill. Invalid kebab-case IDs are rejected. |
+| `--force` | Move an existing installation to `<target>/.skills-hub-backups/` and atomically replace it. |
+| `--verify` | Require a clean tracked git checkout at an exact release tag (`vX.Y.Z`, optionally with a prerelease suffix). Fails on tracked/untracked changes or a non-git archive. |
+| `--ref TAG` | Exact tag required with `--verify`; passing `--ref` implies `--verify`. |
+| `--dry-run` | Print actions without writing. |
+| `--list` | List skills, including folded YAML descriptions. |
+| `--target DIR` | Override the target; leading `~/` is expanded. Unsafe roots are refused. |
 
-Manual installation is equivalent:
+The installer canonicalizes target and source paths and refuses `/`, `$HOME`,
+the repository root or a path inside it, the source skill or its
+ancestors/descendants, symlinked source/target roots, and paths with control
+characters. It installs through a staging directory inside the target and keeps
+replaced skills under `.skills-hub-backups`.
+
+To update a copy install, re-run with `--force`; the previous version is kept in
+the backup directory. To update a symlink install, pull the clone. To uninstall,
+remove the installed skill:
 
 ```bash
-mkdir -p ~/.config/opencode/skills
-ln -s "$PWD/skills/frontend-design" ~/.config/opencode/skills/frontend-design
+rm -rf -- "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/frontend-design"
+```
+
+Start a new OpenCode session or run `/reload` after installing. A minimal
+manual copy (without the installer's safety checks or artifact exclusions) is:
+
+```bash
+mkdir -p -- ~/.config/opencode/skills
+cp -R -- skills/frontend-design ~/.config/opencode/skills/
 ```
 
 OpenCode discovers directory skills with a `SKILL.md` and advertises them by their `description`. The skill ID is the directory name (`frontend-design`).
@@ -102,15 +152,24 @@ skills-hub/
 ├── LICENSE
 ├── THIRD_PARTY_NOTICES.md
 ├── Makefile                     # local validation entry points
+├── package.json                 # pinned Markdown/CSS tools
 ├── pyproject.toml               # Ruff configuration
-├── requirements-dev.txt         # validation dependencies
+├── requirements-dev.in          # direct Python development inputs
+├── requirements-dev.txt         # hash-locked Python development tools
 ├── .github/                     # CI, security, issue/PR templates
 ├── docs/
-│   └── plan.md                  # audit and remediation registry
+│   ├── plan.md                  # audit and remediation registry
+│   ├── release-process.md       # release gate and owner setup
+│   └── repository-settings.md   # settings evidence and owner actions
 ├── install/
 │   └── opencode.sh              # global OpenCode installer
 ├── scripts/
-│   └── validate.py              # repository-wide validation
+│   ├── validate.py              # repository-wide validation
+│   ├── check_workflows.py       # Actions policy checks
+│   ├── check_external_links.py  # scheduled link audit
+│   ├── release_notes.py         # SemVer/changelog release notes
+│   └── release_checks.py        # required check-run gate
+├── tests/                       # validator, installer, release, workflow tests
 └── skills/
     └── frontend-design/
         ├── SKILL.md             # workflow, principles, hard rules
@@ -159,28 +218,32 @@ It supports hex, `rgb()`, `hsl()`, alpha compositing, text/large-text/UI thresho
 
 ## Validation
 
-Prerequisites: Python 3.9+, Bash, and Node.js 22+ for the `npx`-based
-Markdown and CSS checks. OpenCode is only needed to test installation.
+Prerequisites: Python 3.12+, Bash, and Node.js 22+ for the pinned Markdown
+and CSS tools. OpenCode is only needed to test installation.
 
-One command runs the full local suite:
+One command installs the hash-locked development tools and runs the full local
+suite:
 
 ```bash
-python3 -m pip install -r requirements-dev.txt
+make deps
 make check
 ```
 
 Or run individual checks:
 
 ```bash
-make validate   # frontmatter, references, links, anchors, contrast, installer syntax
-make lint       # ruff + markdownlint (Node)
-make test       # contrast self-test + 64-pair fixture
-make check      # full local suite; CI adds ShellCheck and separate workflows
+make validate   # frontmatter, links, anchors, tokens, fixture, installer syntax
+make lint       # ruff + markdownlint (pinned npm tools)
+make test       # pytest suite, including contrast CLI and negative fixtures
+make shellcheck # ShellCheck on the installer
+make workflows  # pinned-action and permissions policy
+make links      # external link audit (network; scheduled)
+make check      # every required local check, exactly once
 ```
 
-CI runs the local validation steps plus ShellCheck. CodeQL, Dependency Review,
-and OpenSSF Scorecard run as separate workflows; Scorecard is scheduled, not
-run on every pull request.
+CI runs `make check` and the separate CodeQL, Dependency Review, Secret Scan,
+and Scorecard workflows. Link Audit is scheduled because external services are
+not a required merge gate.
 
 ## Repository protections
 
@@ -192,23 +255,35 @@ This is a public repository. `main` is protected by a repository ruleset:
 - history must be linear; only squash merge is enabled;
 - force pushes and branch deletions are blocked;
 - CodeQL code scanning must not report error-level or high/critical security
-  alerts.
+  alerts;
+- CODEOWNERS is advisory under the current solo-maintainer ruleset.
 
-Tags matching `v*` block deletion and force updates. Tag creation itself is not
-gated, and there is no ancestry/check-run gate after tag creation;
-`--verify-tag` only checks that the tag exists. The release-gate gap is tracked
-in [docs/plan.md](docs/plan.md) (AUD-01).
+Tags matching `v*` block deletion and force updates. The release workflow is dispatched from `main` with an annotated signed tag;
+it verifies the signature against owner-configured trust material, requires the
+tagged commit to be an ancestor of `origin/main`, requires successful
+`validate` and `Analyze (python)` check-runs for that commit, and requires the
+owner to verify immutable releases separately. It creates a **draft** release with a source archive,
+`SHA256SUMS`, and a build provenance attestation; promotion is manual.
+Tag creation itself is not gated by the workflow. The protected `release`
+environment, tag ruleset, immutable-release setting, and signature trust
+variables are repository settings configured by the owner; see
+[docs/release-process.md](docs/release-process.md).
 
 Security features enabled:
 
 - secret scanning and push protection;
+- a `Secret Scan` workflow using checksum-verified gitleaks;
 - Dependabot alerts and security updates;
 - private vulnerability reporting;
 - CodeQL code scanning on `main` and pull requests;
-- OpenSSF Scorecard on a weekly schedule;
-- GitHub Actions with a read-only default token, pinned action commits,
-  a GitHub-owned/verified action allowlist, and approval required for all
-  external fork contributors.
+- OpenSSF Scorecard weekly, on `main`, and after branch-protection changes;
+  SARIF is uploaded to code scanning. Ruleset changes are covered by the
+  weekly run because Actions has no `repository_ruleset` trigger;
+- GitHub Actions with a read-only default token, job-scoped write permissions,
+  pinned action commits, a GitHub-owned/verified action allowlist, and approval
+  required for all external fork contributors;
+- explicit settings evidence and owner-only release controls in
+  [docs/repository-settings.md](docs/repository-settings.md).
 
 See [GOVERNANCE.md](GOVERNANCE.md) for the decision and review model, and
 [SECURITY.md](SECURITY.md) for private reporting. Agent-facing project facts
@@ -241,4 +316,4 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT for this repository. See [LICENSE](LICENSE). Third-party sources are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in `skills/frontend-design/references/sources.md`; available licenses are recorded there, and two community sources are explicitly marked for upstream verification.
+MIT for this repository. See [LICENSE](LICENSE). Third-party sources are recorded in the canonical [`sources.md`](skills/frontend-design/references/sources.md); [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) points to that registry. Two community sources are explicitly marked for upstream verification.

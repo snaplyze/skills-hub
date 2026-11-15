@@ -2,21 +2,6 @@
 
 Use this reference for flows, navigation, forms, feedback, states, UX copy, and research-lite decisions. The goal is not to apply a pattern because it is familiar. It is to reduce the effort between a person's intent and the outcome they need.
 
-## Contents
-
-- [Start with the job](#start-with-the-job)
-- [Flows and information architecture](#flows-and-information-architecture)
-- [Page and screen patterns](#page-and-screen-patterns)
-- [Forms](#forms)
-- [Feedback and states](#feedback-and-states)
-- [Navigation](#navigation)
-- [Content design and microcopy](#content-design-and-microcopy)
-- [Research-lite](#research-lite)
-- [Internationalization and RTL](#internationalization-and-rtl)
-- [Trust, privacy, and dark patterns](#trust-privacy-and-dark-patterns)
-- [Heuristic review](#heuristic-review)
-- [UX checklist](#ux-checklist)
-
 ## Start with the job
 
 Describe the user's job, not the feature:
@@ -26,7 +11,6 @@ Describe the user's job, not the feature:
 Examples:
 
 - "When I need a drill for one shelf, I want to know whether a neighbor has one available this weekend, so I can finish the job without buying a tool I'll use once."
-- "When I'm onboarding a new team, I want to import their accounts in one pass, so I don't spend the afternoon retyping email addresses."
 - "When a payment fails, I want to know why and what to try next, so I don't lose the order."
 
 Then map the flow:
@@ -50,26 +34,9 @@ If a flow has no failure path, it is not designed yet.
 
 ### Navigation model
 
-Choose one primary navigation model and keep it consistent:
+Choose one primary model and keep it consistent: top bar (marketing, small apps), sidebar (dashboards, admin), bottom nav (3–5 mobile areas), tabs (peer views), breadcrumbs (deep hierarchies), or search-first (large catalogs). Watch mobile fit, too many items, nested navigation, and search without empty/no-result states.
 
-| Model | Best for | Watch out for |
-|---|---|---|
-| Top bar | Marketing sites, small apps | Too many items; poor mobile fit |
-| Sidebar | Dashboards, tools, admin | Wasted width on mobile; scroll within nav |
-| Bottom nav | Mobile apps, 3–5 top-level areas | More than 5 items; nested navigation |
-| Tabs | Peer views within one context | Mixing tabs with sidebar at the same level |
-| Breadcrumbs | Deep hierarchies | Using them as the only navigation |
-| Search-first | Large catalogs, docs, content | Search that cannot handle empty/no results |
-
-Rules:
-
-- Primary navigation stays in the same place across pages.
-- Current location is visibly indicated, not just by color.
-- Do not mix tabs, sidebar, and bottom nav at the same hierarchy level.
-- Use deep links for key screens; filters, tabs, and pagination should be shareable when useful.
-- Preserve scroll position, filters, and form state when navigating back.
-- Do not break the browser back button.
-- Keep the logo linked to home; do not make the logo a dead element.
+Rules: primary navigation stays in the same place; current location is more than color; do not mix tabs, sidebar, and bottom nav at one level; deep-link key screens and shareable filters/tabs/pagination; preserve scroll, filters, and form state on back; never break the back button; keep the logo linked home.
 
 ### Hierarchy and labels
 
@@ -101,23 +68,11 @@ Rules:
 
 ### Authentication
 
-- Allow paste and password managers; never block them.
-- Use correct `autocomplete` tokens (`username`, `current-password`, `new-password`, `one-time-code`).
-- Offer passkeys or OAuth where appropriate.
-- Provide a non-cognitive alternative for memory tests (WCAG 3.3.8).
-- Show password requirements before submission, not only after failure.
-- Provide a clear recovery path.
-- Do not reveal whether an email exists in a way that enables account enumeration, unless the product intentionally does so.
+Allow paste and password managers. Use correct `autocomplete` tokens (`username`, `current-password`, `new-password`, `one-time-code`), offer passkeys or OAuth, and provide a non-cognitive alternative for memory tests (WCAG 3.3.8). Show requirements before submission, provide recovery, and avoid account enumeration unless intentional.
 
 ### Checkout and payments
 
-- Show total cost, taxes, and fees before the final step.
-- Do not add surprise charges at the end.
-- Support guest checkout when possible.
-- Preserve entered data on error.
-- Show a clear order summary and confirmation.
-- Make cancellation and refund paths findable.
-- Do not use fake urgency or countdown timers.
+Show total cost, taxes, and fees before the final step; no surprise charges. Support guest checkout, preserve entered data on error, and show an order summary and confirmation. Make cancellation and refund paths findable. Do not use fake urgency or countdowns.
 
 ## Page and screen patterns
 
@@ -142,16 +97,7 @@ Proof can be a demo, a case study, a transparent metric, a sample, a guarantee, 
 
 ### Dashboard
 
-- Lead with the decision the dashboard supports, not the number of widgets.
-- Put the most important metric and its trend first.
-- Use consistent scales, units, and time ranges.
-- Show comparisons and context; a number alone is not insight.
-- Provide filters and time range controls that persist in the URL.
-- Design empty, loading, partial, and error states for every widget.
-- Do not use a pie chart for more than a few categories; do not use 3D charts.
-- Use tables for precise values; use charts for patterns.
-- Make numbers tabular and aligned.
-- Label synthetic or sample data.
+Lead with the decision the dashboard supports, not the widget count. Put the most important metric and trend first; use consistent scales, units, and ranges; show comparisons and context. Filters and time ranges persist in the URL. Design empty, loading, partial, and error states for every widget. Prefer tables for precise values and charts for patterns; make numbers tabular and aligned. Do not use pie charts for many categories or 3D charts. Label synthetic data.
 
 ### Data display
 
@@ -169,56 +115,30 @@ Choose the chart from the question, not from the chart library:
 
 Rules:
 
-- Label axes, units, and time ranges. Do not make the reader guess.
-- Start bar charts at zero; truncating the axis exaggerates differences.
-- Use direct labels on lines and bars when possible; avoid legends that require color matching.
-- Use one accent for the focus series; mute the rest.
-- Do not rely on color alone; use patterns, labels, or annotation.
-- Use a colorblind-safe categorical palette; test in grayscale.
-- Use tabular figures and consistent precision.
-- Show comparisons (previous period, target, benchmark) where they change the decision.
+- Label axes, units, and time ranges. Start bar charts at zero.
+- Use direct labels; avoid legends that require color matching. Use one accent for the focus series and mute the rest.
+- Do not rely on color alone; use patterns, labels, or annotation, and test a colorblind-safe palette in grayscale.
+- Use tabular figures and consistent precision. Show comparisons (previous period, target, benchmark) where they change the decision.
 - Design empty, loading, partial, and error states for every chart.
-- Provide a data table or text summary for screen readers and for users who need exact values.
-- Do not use 3D charts, animated 3D pies, or decorative gradients that distort perception.
-- Do not animate bars racing from zero on every load; one meaningful transition is enough.
-- Label synthetic or sample data.
-- State the source and freshness of the data when trust matters.
+- Provide a data table or text summary for screen readers and exact values.
+- Do not use 3D charts or decorative gradients that distort perception; do not animate bars racing from zero on every load.
+- Label synthetic or sample data and state the source and freshness when trust matters.
 
 ### List and detail
 
-- List: prioritize scanning; show the fields that distinguish items.
-- Detail: answer "what is this, what can I do, what happens next?"
-- Use a clear primary action; secondary actions can be quieter.
-- Preserve list state (filters, scroll, selection) when returning from detail.
-- Support bulk actions with clear selection state and undo.
-- Design the "no items" and "no results" states differently.
+List prioritizes scanning and shows the fields that distinguish items. Detail answers what this is, what I can do, and what happens next. Use one clear primary action. Preserve filters, scroll, and selection on return. Support bulk actions with clear selection and undo. Design "no items" and "no results" differently.
 
 ### Settings
 
-- Group by mental model, not implementation.
-- Show current values, not empty fields.
-- Make save behavior explicit: autosave or explicit save, not ambiguous.
-- Confirm destructive changes.
-- Provide a way to reset or recover.
-- Distinguish read-only from disabled.
-- Do not hide critical settings behind search only.
+Group by mental model, show current values, and make save behavior explicit (autosave or save). Confirm destructive changes and provide reset or recovery. Distinguish read-only from disabled. Do not hide critical settings behind search only.
 
 ### Pricing
 
-- Show the unit, billing period, and what is included.
-- Make the recommended plan clear without dark patterns.
-- Show the difference between plans, not just feature lists.
-- Include taxes/fees or explain when they are added.
-- Provide a clear path to talk to a human for complex plans.
-- Do not use fake countdowns or "only 2 seats left" unless true.
+Show the unit, billing period, inclusions, and taxes or fees. Make the recommended plan clear without dark patterns. Show plan differences, not just feature lists. Offer a human path for complex plans. Do not use fake countdowns or false scarcity.
 
 ### Empty and first-run screens
 
-- Explain what would be here.
-- Give one primary action to populate it.
-- Offer a sample or template when useful.
-- Do not use a blank screen with a sad face as the whole experience.
-- Do not hide the navigation or the way back.
+Explain what would be here and why it is empty. Give one primary action to populate it and offer a sample or template when useful. Do not use a sad face as the whole experience or hide the way back.
 
 ## Forms
 
@@ -288,17 +208,7 @@ Use `enterkeyhint` on mobile (`next`, `done`, `search`, `send`). Use `inputmode`
 
 ### Form checklist
 
-- [ ] Every field has a visible label.
-- [ ] Required/optional status is clear.
-- [ ] Help text is persistent where needed.
-- [ ] Errors are specific, inline, and linked.
-- [ ] Error summary is focusable for multi-error forms.
-- [ ] Values persist after failure.
-- [ ] Autofill and password managers work.
-- [ ] Input types trigger the right mobile keyboard.
-- [ ] Submit has loading, success, and error states.
-- [ ] Double submission is prevented without losing input.
-- [ ] The form works with keyboard only and at 200% zoom.
+Every field has a visible label and clear required/optional status; help text persists; errors are specific, inline, linked, and summarized focusably; values persist after failure; autofill works; input types trigger the right mobile keyboard; submit has loading, success, and error states; double submission is prevented without losing input; the form works keyboard-only at 200% zoom.
 
 ## Feedback and states
 
@@ -349,23 +259,6 @@ Every asynchronous or data-driven surface needs a state plan.
 - Provide a dismiss control.
 - Do not stack more than a few toasts; group or queue them.
 - For errors, use inline messages first; a toast can supplement, not replace.
-
-## Navigation
-
-- Keep navigation consistent across pages.
-- Highlight the current location with more than color (weight, indicator, aria-current).
-- Provide a skip link to main content.
-- Use a logical heading hierarchy.
-- Make the logo a link to home.
-- Keep primary actions reachable on mobile (thumb zone).
-- Use a bottom nav for 3–5 top-level mobile destinations; use labels with icons.
-- Use a sidebar for large screens when the product has many sections.
-- Do not use a modal for primary navigation.
-- Make back behavior predictable; do not reset the stack unexpectedly.
-- Preserve scroll and filters on return.
-- Provide breadcrumbs for deep hierarchies.
-- Make search reachable from every page when the product has a large catalog.
-- Ensure sticky headers and banners do not obscure focused content; use `scroll-padding-top`.
 
 ## Content design and microcopy
 
@@ -470,7 +363,7 @@ If you have no research, say so. Do not invent personas or statistics.
 - Ask participants to think aloud.
 - Do not lead with "Would you like...?"; observe behavior.
 - Record completion, time, errors, and confidence.
-- Rate severity: critical (blocks task), major (significant difficulty), minor (hesitation), cosmetic.
+- Rate severity with P0/P1/P2 from `quality-gates.md`.
 - Report evidence and recommendation, not just opinions.
 
 ### Journey map
@@ -562,7 +455,7 @@ For each finding, state:
 - the user impact;
 - the evidence;
 - the fix;
-- the severity.
+- the severity from `quality-gates.md`.
 
 ## UX checklist
 

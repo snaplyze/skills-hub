@@ -1,6 +1,6 @@
 # Design brief and plan
 
-Fill this before writing UI code. Keep it short enough to use, specific enough to guide decisions. Delete sections that do not apply.
+The canonical brief, design-plan, and design-read template. Fill it before writing UI code; keep it short enough to use and specific enough to guide decisions. Delete sections that do not apply.
 
 ## 1. Brief
 
@@ -140,23 +140,12 @@ Measure: `___ch`. Font loading: `___`.
 | 1024 px |  |
 | 1440 px |  |
 
-## 7. Verification plan
+## 7. Risks and unknowns
 
-- [ ] Screenshots at 320, 390, 768, 1024, 1440 px
-- [ ] Keyboard-only pass
-- [ ] Contrast check
-- [ ] 200% text zoom
-- [ ] 400% page zoom
-- [ ] Reduced motion
-- [ ] Light and dark themes
-- [ ] Loading, empty, error, success states
-- [ ] Slow network / mid-range device
-- [ ] No horizontal scroll at 320 px
-
-## 8. Critique
-
-- What is the one memorable idea?
-- What would you remove?
-- Does it survive the logo-removal test?
-- Does it survive the subject-swap test?
+- What could make the direction fail?
+- What is assumed rather than evidenced?
 - What remains unverified?
+
+## 8. Verification and critique
+
+Plan and run the gates in `../references/quality-gates.md`; record results in `audit-report.md`. Use the critique prompts in `../references/design-direction.md#critique-prompts`. Do not duplicate those checklists here.

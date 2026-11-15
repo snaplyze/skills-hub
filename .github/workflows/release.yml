@@ -1,27 +1,180 @@
 name: Release
 
+# Release gate:
+#   1. the workflow is dispatched from the protected main branch with a tag;
+#   2. the tag is annotated and its signature verifies against owner-provided
+#      trust material;
+#   3. the tagged commit is an ancestor of origin/main;
+#   4. the required `validate` and `Analyze (python)` check-runs succeeded;
+#   5. the owner has verified immutable releases outside the workflow;
+#   6. only then are notes read from the tag, assets built and attested, and a
+#      DRAFT release created.
+#
+# A tag-push trigger would run workflow code from the tag commit before trust
+# can be established. This workflow is intentionally dispatched from main
+# instead, so a tag cannot replace the gate that verifies it. Repository and
+# environment setup are documented in docs/release-process.md; the `release`
+# environment must exist and be protected by the owner.
+
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Signed release tag, for example v1.2.3"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    name: Create release
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    name: Create draft release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: release
+      url: https://github.com/${{ github.repository }}/releases
     permissions:
+      actions: read
+      attestations: write
+      checks: read
       contents: write
+      id-token: write
     steps:
-      - name: Checkout
+      - name: Checkout full history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Create GitHub release
+      - name: Checkout release gate from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: gate
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify signed tag
+        env:
+          TAG: ${{ inputs.tag }}
+          GPG_PUBLIC_KEY: ${{ vars.RELEASE_TAG_GPG_PUBLIC_KEY || secrets.RELEASE_TAG_GPG_PUBLIC_KEY }}
+          ALLOWED_SIGNERS: ${{ vars.RELEASE_TAG_ALLOWED_SIGNERS || secrets.RELEASE_TAG_ALLOWED_SIGNERS }}
+        run: |
+          set -euo pipefail
+          if [[ "$(git cat-file -t "refs/tags/$TAG")" != "tag" ]]; then
+            echo "::error::Tag $TAG is not an annotated, signed tag." >&2
+            exit 1
+          fi
+          if [[ -n "$GPG_PUBLIC_KEY" && -n "$ALLOWED_SIGNERS" ]]; then
+            echo "::error::Configure only one of RELEASE_TAG_GPG_PUBLIC_KEY or RELEASE_TAG_ALLOWED_SIGNERS." >&2
+            exit 1
+          fi
+          if [[ -n "$ALLOWED_SIGNERS" ]]; then
+            signers="$(mktemp)"
+            printf '%s\n' "$ALLOWED_SIGNERS" > "$signers"
+            git -c gpg.format=ssh \
+              -c gpg.ssh.allowedSignersFile="$signers" \
+              verify-tag "$TAG" ||
+              { echo "::error::Tag $TAG SSH signature verification failed." >&2; exit 1; }
+          elif [[ -n "$GPG_PUBLIC_KEY" ]]; then
+            command -v gpg >/dev/null 2>&1 ||
+              { echo "::error::gpg is required to verify an OpenPGP-signed tag." >&2; exit 1; }
+            export GNUPGHOME
+            GNUPGHOME="$(mktemp -d)"
+            chmod 700 -- "$GNUPGHOME"
+            printf '%s\n' "$GPG_PUBLIC_KEY" | gpg --batch --import ||
+              { echo "::error::Could not import RELEASE_TAG_GPG_PUBLIC_KEY." >&2; exit 1; }
+            git verify-tag "$TAG" ||
+              { echo "::error::Tag $TAG OpenPGP signature verification failed." >&2; exit 1; }
+          else
+            echo "::error::Tag signature trust is not configured. Set the RELEASE_TAG_GPG_PUBLIC_KEY or RELEASE_TAG_ALLOWED_SIGNERS repository/environment variable; see docs/release-process.md." >&2
+            exit 1
+          fi
+
+      - name: Verify tag commit is on main
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --prune origin \
+            +refs/heads/main:refs/remotes/origin/main
+          tag_commit="$(git rev-parse --verify "${TAG}^{commit}")"
+          if ! git merge-base --is-ancestor "$tag_commit" refs/remotes/origin/main; then
+            echo "::error::Tag $TAG points to $tag_commit, which is not an ancestor of origin/main." >&2
+            exit 1
+          fi
+          printf 'TAG_COMMIT=%s\n' "$tag_commit" >> "$GITHUB_ENV"
+
+      - name: Verify required check-runs
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
+        run: |
+          set -euo pipefail
+          runs_file="$(mktemp)"
+          gh api --paginate \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/commits/${TAG_COMMIT}/check-runs?per_page=100&filter=all" \
+            --jq '.check_runs[] | @json' > "$runs_file"
+          python3 gate/scripts/release_checks.py \
+            --runs-file "$runs_file" \
+            --commit "$TAG_COMMIT" \
+            --repo "$GITHUB_REPOSITORY"
+
+      - name: Validate tag and extract release notes
+        id: notes
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release_notes.py \
+            --tag "$TAG" \
+            --notes-file release-notes.md \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Build source archive and SHA-256 checksum
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p -- dist
+          archive="dist/skills-hub-${TAG}.tar.gz"
+          git archive --format=tar.gz --prefix="skills-hub-${TAG}/" \
+            -o "$archive" "$TAG_COMMIT"
+          (
+            cd dist
+            sha256sum -- "skills-hub-${TAG}.tar.gz" > SHA256SUMS
+          )
+          test -s "$archive"
+          test -s dist/SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tar.gz
+
+      - name: Create draft release with assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          PRERELEASE: ${{ steps.notes.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          args=(
+            --draft
+            --verify-tag
+            --title "$TAG"
+            --notes-file release-notes.md
+          )
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease --latest=false)
+          fi
+          gh release create "$TAG" "${args[@]}" \
+            dist/*.tar.gz dist/SHA256SUMS
