@@ -8,7 +8,7 @@
 
 | Документ | Роль | Было | После |
 |---|---|---|---|
-| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 263 строки / 39 074 B |
+| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 263 строки / 39 069 B |
 | `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 758 B |
 | `README.md` | вход и установка | 244 / 10 557 B | 335 / 17 717 B |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
@@ -229,7 +229,7 @@
 
 - **Результат:** один компактный `orchestration` skill, который решает: работать напрямую, отдать один bounded brief нативному `explore`/`general`, или запустить параллельные read-only исследования; фиксирует ownership, review-gate и verification.
 - **Приёмка:** routing matrix; шаблон brief; правила parallel/write ownership; native `subagent` без plugin/hooks; optional model profiles не обязательны; docs сравнения с двумя источниками; тест контракта.
-- **Границы:** не устанавливать плагины/агенты, не менять глобальный `opencode.json`, не использовать hooks/background orchestration. **Зависимости:** SKL-03, SKL-06, SKL-07. **Статус:** IN_REVIEW. **Трекер:** #38.
+- **Границы:** не устанавливать плагины/агенты, не менять глобальный `opencode.json`, не использовать hooks/background orchestration. **Зависимости:** SKL-03, SKL-06, SKL-07. **Статус:** DONE. **Трекер:** #38.
 - **Выполнено:** `skills/orchestration/SKILL.md`, `docs/opencode-orchestration.md`, routing/brief/ownership tests; native `subagent` only, без plugin/hooks/background scheduler/model profiles.
 
 ## Выполнено
