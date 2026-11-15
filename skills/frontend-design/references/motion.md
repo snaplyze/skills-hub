@@ -25,39 +25,18 @@ Motion is a communication layer. It should explain where something came from, wh
 
 ## Tokens
 
-```css
-:root {
-  --duration-instant: 80ms;
-  --duration-fast: 150ms;
-  --duration-normal: 220ms;
-  --duration-slow: 320ms;
-  --duration-slower: 480ms;
-
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  --distance-sm: 4px;
-  --distance-md: 8px;
-  --distance-lg: 16px;
-}
-```
-
-Guidance:
+`assets/tokens.css` defines the canonical `--duration-*` and `--ease-*` values. Use those tokens, not one-off durations; a component at 137 ms next to one at 250 ms feels broken.
 
 | Interaction | Duration | Easing |
 |---|---|---|
-| Hover/press feedback | 80–150 ms | ease-out |
-| Tooltip/popover | 120–180 ms | ease-out |
-| Dropdown/menu | 150–220 ms | ease-out |
-| Dialog/sheet | 200–320 ms | ease-out |
-| Expand/collapse | 200–300 ms | ease-in-out |
-| Page transition | 250–400 ms | ease-in-out |
-| Exit | 60–70% of enter | ease-in |
-| Large cinematic moment | 400–700 ms | custom, use sparingly |
-
-Use tokens, not one-off values. A component that transitions in 137 ms next to one that transitions in 250 ms feels broken.
+| Hover/press feedback | `--duration-instant`–`--duration-fast` | `--ease-out` |
+| Tooltip/popover | `--duration-fast` | `--ease-out` |
+| Dropdown/menu | `--duration-fast`–`--duration-normal` | `--ease-out` |
+| Dialog/sheet | `--duration-normal`–`--duration-slow` | `--ease-out` |
+| Expand/collapse | `--duration-normal`–`--duration-slow` | `--ease-in-out` |
+| Page transition | `--duration-slow`–`--duration-slower` | `--ease-in-out` |
+| Exit | 60–70% of enter | `--ease-in` |
+| Large cinematic moment | `--duration-slower` or custom, sparingly | custom |
 
 ### Easing character
 
@@ -72,7 +51,7 @@ Use tokens, not one-off values. A component that transitions in 137 ms next to o
 ### Page load
 
 - One orchestrated sequence: the hero's type, image, and primary action settle into place.
-- Stagger by 40–80 ms, not 200 ms.
+- Stagger by `--duration-instant` or a fraction of the entrance duration, not 200 ms.
 - Keep the total under ~700 ms; do not make users wait for the show.
 - Respect reduced motion: show the final state immediately.
 
@@ -81,17 +60,7 @@ Use tokens, not one-off values. A component that transitions in 137 ms next to o
 - Hover: subtle color, border, or elevation change; no layout shift.
 - Press: 0.97–0.99 scale or 1 px translate; return on release.
 - Do not animate every card on hover; it creates noise and costs performance.
-- Hover is an enhancement, not the only affordance.
-
-```css
-.button {
-  transition: background-color var(--duration-fast) var(--ease-out),
-              transform var(--duration-fast) var(--ease-out);
-}
-.button:active {
-  transform: scale(0.98);
-}
-```
+- Hover is an enhancement, not the only affordance; use `--duration-fast` and `--ease-out`.
 
 ### Expand and collapse
 
@@ -99,21 +68,7 @@ Use tokens, not one-off values. A component that transitions in 137 ms next to o
 - Use `overflow: clip` and `min-height: 0` for grid children.
 - Keep focus inside the expanded content visible.
 - Do not use `display: none` if you need an exit animation; use `hidden`/`inert` after the transition.
-
-```css
-.disclosure {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows var(--duration-normal) var(--ease-in-out);
-}
-.disclosure[open] {
-  grid-template-rows: 1fr;
-}
-.disclosure > div {
-  overflow: clip;
-  min-height: 0;
-}
-```
+- Use `--duration-normal`–`--duration-slow` with `--ease-in-out`.
 
 ### Dialog and sheet
 
@@ -311,28 +266,7 @@ Use CSS transitions for hover, focus, press, expand, and simple entrance. Use `@
 
 ### JavaScript
 
-Use the Web Animations API for imperative animations:
-
-```js
-const animation = element.animate(
-  [
-    { opacity: 0, transform: "translateY(8px)" },
-    { opacity: 1, transform: "translateY(0)" },
-  ],
-  { duration: 220, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }
-);
-animation.finished.then(() => { /* cleanup */ });
-```
-
-Cancel in-flight animations when state changes:
-
-```js
-let current;
-function show(el) {
-  current?.cancel();
-  current = el.animate(/* ... */);
-}
-```
+Use the Web Animations API for imperative animations with token durations/easings. Cancel in-flight animations on state change and clean up when finished.
 
 ### React and Next.js
 
@@ -345,19 +279,11 @@ function show(el) {
 
 ### GSAP / ScrollTrigger
 
-- Use for complex, isolated scroll storytelling, not for routine UI.
-- Register plugins once; clean up on unmount.
-- Do not mix GSAP and a React motion library in the same component tree.
-- Use `gsap.matchMedia()` for reduced motion.
-- Avoid scroll hijacking; use ScrollTrigger for reveals, not for replacing native scroll.
+Use for complex, isolated scroll storytelling, not routine UI. Register plugins once, clean up on unmount, use `gsap.matchMedia()` for reduced motion, avoid scroll hijacking, and do not mix GSAP with a React motion library in one component tree.
 
 ### View Transitions
 
-- Use for route changes and shared elements when supported.
-- Provide a fallback that updates the DOM immediately.
-- Keep transitions short (250–400 ms).
-- Do not animate between unrelated layouts.
-- Respect reduced motion.
+Use for route changes and shared elements when supported, with a fallback that updates the DOM immediately. Keep transitions short (`--duration-slow`–`--duration-slower`), avoid unrelated layouts, and respect reduced motion.
 
 ## Motion audit
 

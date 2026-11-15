@@ -35,25 +35,7 @@ Do not add a second component library, a second styling system, or a second stat
 
 ### Suggested structure
 
-Adapt to the framework, but keep concerns separate:
-
-```text
-src/
-  app/ or pages/          routes and screens
-  components/
-    ui/                   primitives: button, input, dialog
-    patterns/             composed patterns: search, empty state
-    feature/              feature-specific components
-  styles/
-    tokens.css            primitives + semantic tokens
-    base.css              reset, typography, global styles
-    utilities.css         small utilities
-  lib/                    helpers, formatting, API client
-  hooks/                  shared behavior
-  tests/                  unit, integration, e2e
-```
-
-Colocate component tests, stories, and types with the component when the project does that. Do not create a global folder for everything.
+Adapt to the framework, but keep concerns separate: routes/screens, components (`ui/` primitives, `patterns/` composed patterns, `feature/` feature-specific), styles (`tokens.css`, `base.css`, utilities), shared helpers/hooks, and tests. Colocate component tests, stories, and types when the project does. Do not create a global folder for everything.
 
 ### CSS layers
 
@@ -92,6 +74,8 @@ Layers prevent a utility from being defeated by a component selector, and make o
 ## Modern CSS
 
 ### Custom properties
+
+Illustrative project values; the canonical starter tokens are in `assets/tokens.css`.
 
 ```css
 :root {
@@ -232,7 +216,7 @@ Prevents layout shift when a modal locks scroll or content grows.
 dialog[open] {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 200ms, transform 200ms;
+  transition: opacity var(--duration-normal), transform var(--duration-normal);
 }
 @starting-style {
   dialog[open] {
@@ -401,7 +385,7 @@ Measure with the framework's bundle analyzer. Import only the icons and utilitie
 
 ### Map tokens
 
-Tailwind v4 uses CSS-first config:
+Tailwind v4 uses CSS-first config. Illustrative project values; map the real roles to `assets/tokens.css`.
 
 ```css
 @import "tailwindcss";
@@ -410,7 +394,7 @@ Tailwind v4 uses CSS-first config:
   --color-canvas: oklch(0.97 0.01 80);
   --color-ink: oklch(0.22 0.02 80);
   --color-accent: oklch(0.62 0.16 55);
-  --font-display: "Archivo Narrow", sans-serif;
+  --font-display: "Archivo", sans-serif;
   --font-body: "Public Sans", sans-serif;
   --radius-card: 0.75rem;
 }

@@ -68,13 +68,21 @@ If you are unsure whether a test is acceptable, ask first.
 ## Security controls in this repository
 
 - Secret scanning and push protection are enabled.
+- The `Secret Scan` workflow runs gitleaks on pushes and pull requests; the
+  secret-like paths are ignored by `.gitignore`.
 - Dependabot alerts and security updates are enabled.
 - CodeQL code scanning runs on `main` and pull requests.
-- OpenSSF Scorecard runs weekly.
+- OpenSSF Scorecard runs weekly, after branch-protection changes, and on
+  `main`; its SARIF is uploaded to code scanning. Ruleset changes are covered
+  by the weekly run because Actions has no `repository_ruleset` trigger.
 - `main` requires pull requests, passing checks, resolved conversations, linear
   history, and blocks force pushes and deletions.
-- GitHub Actions use a read-only default token, job-scoped write permissions
-  where possible, pinned action commits, and a GitHub-owned/verified action
-  allowlist. Dependency Review still has a workflow-level `pull-requests: write`
-  permission; it is tracked in `docs/plan.md` (AUD-20).
-- Workflows from external forks require maintainer approval.
+- GitHub Actions use a read-only default token, job-scoped write permissions,
+  pinned action commits, and a GitHub-owned/verified action allowlist.
+  Dependency Review's `pull-requests: write` is job-scoped.
+- Workflows from external forks require maintainer approval; there are no
+  self-hosted runners.
+- CODEOWNERS is advisory under the current solo-maintainer ruleset.
+- Tag signing, immutable releases, and the protected release environment are
+  owner-only setup actions recorded in
+  [`docs/repository-settings.md`](docs/repository-settings.md).

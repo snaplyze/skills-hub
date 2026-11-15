@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "base": "skills/frontend-design",
+  "budget_bytes": 32768,
+  "scope": {
+    "counted": [
+      "SKILL.md",
+      "references/*.md",
+      "assets/*.md"
+    ],
+    "excluded": [
+      "assets/tokens.css",
+      "assets/token-contrast-pairs.json",
+      "scripts/*",
+      "LICENSE"
+    ],
+    "note": "Data and executable assets are excluded. Markdown instruction files and read templates count. File paths are relative to base."
+  },
+  "sets": {
+    "new-page": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/design-direction.md",
+        "references/visual-craft.md",
+        "references/quality-gates.md",
+        "assets/design-brief.md"
+      ]
+    },
+    "component-state": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/design-system.md",
+        "references/quality-gates.md"
+      ]
+    },
+    "audit-accessibility": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/quality-gates.md",
+        "references/accessibility.md",
+        "assets/audit-report.md"
+      ]
+    },
+    "audit-mobile": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/quality-gates.md",
+        "references/responsive-mobile.md",
+        "assets/audit-report.md"
+      ]
+    },
+    "design-system": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/design-system.md",
+        "references/quality-gates.md"
+      ]
+    },
+    "implementation": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/implementation.md",
+        "references/quality-gates.md"
+      ]
+    },
+    "motion": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/motion.md",
+        "references/quality-gates.md"
+      ]
+    },
+    "brief": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/design-direction.md",
+        "assets/design-brief.md"
+      ]
+    },
+    "attribution": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/sources.md"
+      ]
+    },
+    "ux-flows": {
+      "limit_bytes": 32768,
+      "files": [
+        "SKILL.md",
+        "references/ux-patterns.md",
+        "references/quality-gates.md"
+      ]
+    }
+  },
+  "excluded": {
+    "assets/worked-example.md": "Optional complete example; not required by a default route."
+  }
+}

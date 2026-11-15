@@ -46,19 +46,7 @@ These are not sacred. A dashboard may break at 640 and 1280; a reading site may 
 
 ### Fluid type and space
 
-```css
-:root {
-  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
-  --step-1: clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem);
-  --step-2: clamp(1.5rem, 1.25rem + 1.2vw, 2rem);
-  --step-3: clamp(1.875rem, 1.4rem + 2.2vw, 2.75rem);
-  --step-4: clamp(2.5rem, 1.6rem + 4.5vw, 6rem);
-  --gutter: clamp(1rem, 4vw, 2.5rem);
-  --section: clamp(3rem, 8vw, 7rem);
-}
-```
-
-Fluid values reduce the need for font-size breakpoints, but test the extremes. `clamp()` can produce awkward intermediate sizes; check 320, 375, 768, 1024, and 1440 px.
+Use the fluid `--text-*`, `--gutter`, and `--section-space` tokens in `assets/tokens.css`; do not define a second `--step-*` scale. Fluid values reduce font-size breakpoints, but test the extremes because `clamp()` can produce awkward intermediate sizes. Check 320, 375, 768, 1024, and 1440 px.
 
 ### Containers
 
@@ -333,7 +321,7 @@ Mobile performance is design. A page that looks calm but janks on scroll does no
 - LCP < 2.5 s at p75 on mobile.
 - INP < 200 ms at p75.
 - CLS < 0.1 at p75.
-- Initial JS budget: aim for < 150–200 KB gzip for a marketing page; less for content sites. Dashboards can be larger but should be route-split.
+- Initial JS budget: use the profile table in `implementation.md`; do not restate it here. Dashboards can be larger but should be route-split.
 - Keep the main thread free; long tasks < 50 ms.
 
 ### Techniques

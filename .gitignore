@@ -21,3 +21,20 @@ Thumbs.db
 .ruff_cache/
 .pytest_cache/
 .mypy_cache/
+
+# Secrets and private agent/tool configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+credentials*
+id_rsa
+id_ed25519
+id_ecdsa
+id_dsa
+.opencode/
+.claude/
+.agents/

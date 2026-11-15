@@ -1,0 +1,17 @@
+{
+  "name": "skills-hub-dev",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Pinned development tooling for skills-hub (not a published package)",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "check:css": "csstree-validator skills/frontend-design/assets/tokens.css"
+  },
+  "devDependencies": {
+    "csstree-validator": "4.0.1",
+    "markdownlint-cli2": "0.24.1"
+  }
+}

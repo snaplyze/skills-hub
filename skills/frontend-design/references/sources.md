@@ -62,4 +62,3 @@ When updating:
 2. Re-check browser support for modern CSS features before presenting them as baseline.
 3. Re-check platform target-size guidance; do not conflate pt, dp, and CSS px.
 4. Keep the skill's own voice and structure; do not paste large source excerpts.
-5. Run the validation steps in the repository README: frontmatter, internal links, contrast script, and installer dry run.
