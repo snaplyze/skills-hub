@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T11:00:00Z; вехи #1–#5; задачи #14–#20 закрыты; SKL-01–SKL-09 #27–#35; release v1.1.0. До сверки открытых продуктовых задач/вех не было; созданы по одной, дублей нет.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T11:00:00Z; вехи #1–#5; задачи #14–#20 закрыты; SKL-01–SKL-09 #27–#35 закрыты; PR #36; merge 0b2dcfc; release v1.1.0. До сверки открытых продуктовых задач/вех не было; созданы по одной, дублей нет.
 
 Реестр: этот файл. План — owner-facing registry на русском; он не загружается как инструкции агентов и не входит в бюджет 32 КиБ.
 
@@ -8,13 +8,13 @@
 
 | Документ | Роль | Было | После |
 |---|---|---|---|
-| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 251 строка / 37 362 B |
+| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 251 строка / 37 349 B |
 | `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 743 B |
 | `README.md` | вход и установка | 244 / 10 557 B | 335 / 17 717 B |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
 | `THIRD_PARTY_NOTICES.md`, `skills/frontend-design/references/sources.md` | атрибуция | две копии | sources canonical; notices pointer |
 
-Стартовый контекст задачи: `AGENTS.md` 6 743 B + раздел задачи 600–4 502 B + issue (`wc -c`) 712–1 990 B = 8 055–13 235 B. AGENTS + полный план + issue: 44 817–46 095 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks DONE + 9 skills IN_REVIEW, 251 строка, 37 362 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
+Стартовый контекст задачи: `AGENTS.md` 6 743 B + раздел задачи 600–4 502 B + issue (`wc -c`) 712–1 990 B = 8 055–13 235 B. AGENTS + полный план + issue: 44 804–46 082 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks + 9 skills, 16 DONE, 251 строка, 37 349 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
 
 ## Этапы
 
@@ -162,62 +162,62 @@
 - **Результат:** запрос превращается в короткую проверяемую спецификацию: проблема, пользователь, результат, non-goals, ограничения, acceptance, риски и открытые вопросы.
 - **Приёмка:** шаблон и правила вопросов; запрет выдумывать требования; handoff в планирование; валидация ссылок.
 - **Выполнено:** Инструкция и шаблон в `skills/specification/SKILL.md`; проверены description, links, anti-trigger.
-- **Границы:** не писать код, не заменять исследование кода вопросами. **Зависимости:** нет. **Статус:** IN_REVIEW. **Трекер:** #27.
+- **Границы:** не писать код, не заменять исследование кода вопросами. **Зависимости:** нет. **Статус:** DONE. **Трекер:** #27.
 
 ### SKL-02 — Implementation planning
 
 - **Источник:** writing-plans.
 - **Результат:** спецификация превращается в исполнимый план: задачи по 5–30 минут, точные файлы/интерфейсы, тесты, зависимости, проверки, риски и порядок.
-- **Приёмка:** шаблон плана, критерии task size, self-review, handoff в исполнение; без hooks. **Границы:** план, не реализация. **Зависимости:** SKL-01. **Статус:** IN_REVIEW. **Трекер:** #28.
+- **Приёмка:** шаблон плана, критерии task size, self-review, handoff в исполнение; без hooks. **Границы:** план, не реализация. **Зависимости:** SKL-01. **Статус:** DONE. **Трекер:** #28.
 - **Выполнено:** Инструкция и шаблон в `skills/implementation-planning/SKILL.md`; task size, tests, dependencies, handoff.
 
 ### SKL-03 — Autonomous execution
 
 - **Источник:** executing-plans, subagent-driven-development, dispatching-parallel-agents, using-git-worktrees.
 - **Результат:** утвержденный план исполняется автономно: worktree только при необходимости, один писатель на файл, параллельные независимые задачи, TDD-гейт, ledger, review, stop conditions.
-- **Приёмка:** брифы субагентов, правило одного писателя, ledger/план, review-gate, проверки после задач, финальный diff/тесты. **Границы:** без hooks/plugin. **Зависимости:** SKL-02, SKL-05. **Статус:** IN_REVIEW. **Трекер:** #29.
+- **Приёмка:** брифы субагентов, правило одного писателя, ledger/план, review-gate, проверки после задач, финальный diff/тесты. **Границы:** без hooks/plugin. **Зависимости:** SKL-02, SKL-05. **Статус:** DONE. **Трекер:** #29.
 - **Выполнено:** Инструкция в `skills/autonomous-execution/SKILL.md`; субагенты, один писатель, review-gate, worktree, ledger, stop conditions.
 
 ### SKL-04 — Systematic debugging
 
 - **Источник:** systematic-debugging.
 - **Результат:** сначала воспроизведение и root cause, затем минимальный fix и regression test; запрет shotgun-фиксов.
-- **Приёмка:** фазы reproduce/locate/hypothesize/fix, evidence, red flags, no-root-cause path. **Зависимости:** SKL-05. **Статус:** IN_REVIEW. **Трекер:** #30.
+- **Приёмка:** фазы reproduce/locate/hypothesize/fix, evidence, red flags, no-root-cause path. **Зависимости:** SKL-05. **Статус:** DONE. **Трекер:** #30.
 - **Выполнено:** Инструкция в `skills/systematic-debugging/SKILL.md`; reproduce/locate/hypothesis/fix и regression test.
 
 ### SKL-05 — Test-driven development
 
 - **Источник:** test-driven-development + clean-code testing.
 - **Результат:** red-green-refactor с наблюдаемым падением теста, поведенческими тестами, минимальным кодом и полным regression run.
-- **Приёмка:** три закона TDD, качества тестов, bugfix flow, anti-patterns, coverage без театра. **Зависимости:** нет. **Статус:** IN_REVIEW. **Трекер:** #31.
+- **Приёмка:** три закона TDD, качества тестов, bugfix flow, anti-patterns, coverage без театра. **Зависимости:** нет. **Статус:** DONE. **Трекер:** #31.
 - **Выполнено:** Инструкция в `skills/test-driven-development/SKILL.md`; iron law, three laws, red-green-refactor, test quality, bugfix flow.
 
 ### SKL-06 — Code review
 
 - **Источник:** requesting-code-review + receiving-code-review.
 - **Результат:** свежий контекст ревьюера получает spec/diff/tests/риски; feedback проверяется, классифицируется и принимается/отклоняется с evidence.
-- **Приёмка:** шаблон запроса, severity P0/P1/P2, response protocol, no performative agreement, no self-approval. **Зависимости:** SKL-03. **Статус:** IN_REVIEW. **Трекер:** #32.
+- **Приёмка:** шаблон запроса, severity P0/P1/P2, response protocol, no performative agreement, no self-approval. **Зависимости:** SKL-03. **Статус:** DONE. **Трекер:** #32.
 - **Выполнено:** Инструкция в `skills/code-review/SKILL.md`; request/receive, P0/P1/P2, evidence.
 
 ### SKL-07 — Delivery
 
 - **Источник:** verification-before-completion + finishing-a-development-branch.
 - **Результат:** completion доказывается свежими командами; PR/merge/cleanup выполняются без обхода проверок и с проверкой main.
-- **Приёмка:** evidence gate, diff/check/PR checklist, merge rules, cleanup, completion report. **Зависимости:** SKL-06. **Статус:** IN_REVIEW. **Трекер:** #33.
+- **Приёмка:** evidence gate, diff/check/PR checklist, merge rules, cleanup, completion report. **Зависимости:** SKL-06. **Статус:** DONE. **Трекер:** #33.
 - **Выполнено:** Инструкция в `skills/delivery/SKILL.md`; evidence gate, PR/merge/no-bypass, cleanup.
 
 ### SKL-08 — Clean code
 
 - **Источник:** clean-code + clean-code skill.
 - **Результат:** язык-агностичный рефакторинг: имена, маленькие единицы, границы, ошибки, дублирование, связность, тесты; конвенции репозитория выше эвристик.
-- **Приёмка:** decision framework, refactor loop, checklist, anti-patterns, preservation of behavior. **Зависимости:** SKL-05. **Статус:** IN_REVIEW. **Трекер:** #34.
+- **Приёмка:** decision framework, refactor loop, checklist, anti-patterns, preservation of behavior. **Зависимости:** SKL-05. **Статус:** DONE. **Трекер:** #34.
 - **Выполнено:** Инструкция в `skills/clean-code/SKILL.md`; behavior-preserving refactor, smells, checklist.
 
 ### SKL-09 — Skill authoring
 
 - **Источник:** writing-skills.
 - **Результат:** новый OpenCode-навык имеет trigger-rich description, компактный workflow, progressive disclosure, tabletop trigger matrix и repo integration.
-- **Приёмка:** шаблон, baseline-vs-skill test, tabletop trigger matrix, link/validation, attribution; поведенческие evals не заявляются без прогона. **Зависимости:** SKL-01–SKL-08. **Статус:** IN_REVIEW. **Трекер:** #35. **Проверка:** tabletop trigger matrix; behavioral evals не запускались, это указано как ограничение.
+- **Приёмка:** шаблон, baseline-vs-skill test, tabletop trigger matrix, link/validation, attribution; поведенческие evals не заявляются без прогона. **Зависимости:** SKL-01–SKL-08. **Статус:** DONE. **Трекер:** #35. **Проверка:** tabletop trigger matrix; behavioral evals не запускались, это указано как ограничение.
 - **Выполнено:** Инструкция в `skills/skill-authoring/SKILL.md`; tabletop trigger matrix, repo integration; behavioral evals не запускались.
 
 ## Выполнено
