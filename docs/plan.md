@@ -6,7 +6,7 @@
 
 | Документ | Роль | Строк / байт |
 |---|---|---|
-| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 33 804 |
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 33 852 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
 | `README.md` | вход и установка | 333 / 17 873 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
@@ -15,7 +15,7 @@
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 375 / 15 466 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
 
-Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 686 B + issue 545–1 135 B = 8 223–9 579 B. Полный план + issue: 33 804 + 545–1 135 = 34 349–34 939 B. План не входит в бюджет инструкций 32 KiB.
+Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 686 B + issue 545–1 135 B = 8 223–9 579 B. Полный план + issue: 33 852 + 545–1 135 = 34 397–34 987 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
@@ -95,7 +95,7 @@
 
 ## Завершено
 
-Все DONE подтверждены `make check`/CI; неудачных попыток по задачам не зафиксировано. Навыки: [obra/superpowers](https://github.com/obra/superpowers) (MIT) и [sickn33/agentic-awesome-skills clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code) (MIT/CC BY 4.0); оригинальный синтез. Orchestration: [oh-my-opencode-slim](https://github.com/alvinunreal/oh-my-opencode-slim) и [claude-orchestration](https://github.com/snaplyze/claude-orchestration); только идеи маршрутизации, без плагина.
+Все DONE подтверждены `make check`/CI; следующий шаг по DONE — нет; неудачных попыток по задачам не зафиксировано. Навыки: [obra/superpowers](https://github.com/obra/superpowers) (MIT) и [sickn33/agentic-awesome-skills clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code) (MIT/CC BY 4.0); оригинальный синтез. Orchestration: [oh-my-opencode-slim](https://github.com/alvinunreal/oh-my-opencode-slim) и [claude-orchestration](https://github.com/snaplyze/claude-orchestration); только идеи маршрутизации, без плагина.
 
 ### AUD-01 — Release pipeline integrity
 
@@ -217,7 +217,7 @@
 ### AUD-28 — Plan is oversized for its startup role
 
 - `DONE` · P3 · documentation/process · #47 · deps: audit complete · **Границы:** план и связанные документы; продукт не меняется.
-- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 33 804; стартовый контекст 8 223–9 579 B.
+- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 33 852; стартовый контекст 8 223–9 579 B.
 - **Доказательство:** этот файл; `make check` PASS; ссылки/якоря validate PASS; PR этой задачи закрывает #47.
 
 ## Решения владельца
