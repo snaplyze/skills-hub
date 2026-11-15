@@ -10,7 +10,7 @@
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
 | `README.md` | вход и установка | 335 / 18 013 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
-| `docs/release-process.md` | release gate и owner setup | 248 / 11 355 |
+| `docs/release-process.md` | release gate и owner setup | 251 / 11 572 |
 | `docs/repository-settings.md` | settings evidence | 75 / 4 912 |
 | `docs/release-signing/` | публичный trust и ротация | 42 / 1 783 |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 394 / 16 136 |
