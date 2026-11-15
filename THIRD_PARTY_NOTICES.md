@@ -14,7 +14,7 @@ file is the repository-level pointer so the lists cannot drift.
 
 The `specification`, `implementation-planning`, `autonomous-execution`,
 `systematic-debugging`, `test-driven-development`, `code-review`, `delivery`,
-`clean-code`, and `skill-authoring` skills are original synthesis; no upstream text is reproduced wholesale, although
+`clean-code`, `skill-authoring`, and `orchestration` skills are original synthesis; no upstream text is reproduced wholesale, although
 short standard phrases may coincide. They are informed by:
 
 - [obra/superpowers](https://github.com/obra/superpowers) — MIT, copyright

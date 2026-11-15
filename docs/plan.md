@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T12:40:00Z; вехи #1–#6 закрыты; задачи #14–#20, #27–#35, #38 закрыты; PR #39; merge 9cc2fd3; release v1.1.0. До сверки открытых продуктовых задач/вех не было; созданы по одной, дублей нет.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T12:52:41Z; вехи #1–#6 закрыты; новый аудит — веха #7, задачи #41–#48; tasks #14–#20, #27–#35, #38 закрыты; release v1.1.0. До сверки открытых продуктовых задач/вех не было; созданы по одной, дублей нет.
 
 Реестр: этот файл. План — owner-facing registry на русском; он не загружается как инструкции агентов и не входит в бюджет 32 КиБ.
 
@@ -8,13 +8,13 @@
 
 | Документ | Роль | Было | После |
 |---|---|---|---|
-| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 263 строки / 39 034 B |
+| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 328 строк / 51 255 B |
 | `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 758 B |
-| `README.md` | вход и установка | 244 / 10 557 B | 336 / 17 937 B |
+| `README.md` | вход и установка | 244 / 10 557 B | 333 / 17 873 B |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
 | `THIRD_PARTY_NOTICES.md`, `skills/frontend-design/references/sources.md` | атрибуция | две копии | sources canonical; notices pointer |
 
-Стартовый контекст задачи: `AGENTS.md` 6 758 B + раздел задачи 595–4 502 B + issue (`wc -c`) 712–1 990 B = 8 065–13 250 B. AGENTS + полный план + issue: 46 504–47 782 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks + 10 skills, 17 DONE, 263 строки, 39 034 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
+Стартовый контекст задачи: `AGENTS.md` 6 758 B + раздел задачи 595–4 502 B + issue (`wc -c`) 712–1 990 B = 8 065–13 250 B. AGENTS + полный план + issue: 58 725–60 003 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks + 10 workflow skills DONE + 8 audit tasks OPEN, 328 строк, 51 255 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
 
 ## Этапы
 
@@ -26,6 +26,7 @@
 | 04 | Agent workflow skills (веха #4) | SKL-01 #27, SKL-02 #28, SKL-03 #29 |
 | 05 | Quality and delivery skills (веха #5) | SKL-04 #30, SKL-05 #31, SKL-06 #32, SKL-07 #33, SKL-08 #34, SKL-09 #35 |
 | 06 | Native orchestration (веха #6) | ORC-01 #38 |
+| 07 | Audit 2026-11-15 (веха #7) | AUD-22 #41, AUD-23 #42, AUD-24 #43, AUD-25 #44, AUD-26 #45, AUD-27 #46, AUD-28 #47, AUD-29 #48 |
 
 Очередь навыков: SKL-01 → SKL-02 → SKL-05 → SKL-03/SKL-04/SKL-08 → SKL-06 → SKL-07 → SKL-09. Исполнение не начинается до принятого spec/plan; review-gate обязателен на каждой задаче.
 
@@ -155,7 +156,7 @@
 
 ## Навыки 2026-11-15
 
-Источники: [obra/superpowers](https://github.com/obra/superpowers) (MIT, Jesse Vincent) и [sickn33/agentic-awesome-skills clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code) (MIT/CC BY 4.0). Навыки — оригинальный синтез; без хуков, плагинов и копирования текста. Проверка: `python3 scripts/validate.py` (10 skills), `tests/test_skill_suite.py`, `make check` 188 tests.
+Источники: [obra/superpowers](https://github.com/obra/superpowers) (MIT, Jesse Vincent) и [sickn33/agentic-awesome-skills clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code) (MIT/CC BY 4.0). Навыки — оригинальный синтез; без хуков, плагинов и копирования текста. Проверка: `python3 scripts/validate.py` (11 skills), `tests/test_skill_suite.py`, `make check` 188 tests.
 
 ### SKL-01 — Specification
 
@@ -231,6 +232,70 @@
 - **Приёмка:** routing matrix; шаблон brief; правила parallel/write ownership; native `subagent` без plugin/hooks; optional model profiles не обязательны; docs сравнения с двумя источниками; тест контракта.
 - **Границы:** не устанавливать плагины/агенты, не менять глобальный `opencode.json`, не использовать hooks/background orchestration. **Зависимости:** SKL-03, SKL-06, SKL-07. **Статус:** DONE. **Трекер:** #38.
 - **Выполнено:** `skills/orchestration/SKILL.md`, `docs/opencode-orchestration.md`, routing/brief/ownership tests; native `subagent` only, без plugin/hooks/background scheduler/model profiles.
+
+## Аудит 2026-11-15 — повторный
+
+- Исходный коммит: `977e2f257e633dc811d2dfc2b32479dc37f7871a`; дата: 2026-11-15; репозиторий и трекер публичные.
+- Охват: архитектура, безопасность, данные, производительность, тесты, сборка/доставка, документация. Снимок: `git archive` в `/tmp/opencode/audit-977e2f2`; в нём `make check` PASS (188 tests), `validate` PASS (11 skills), 49/49 внешних ссылок; tag `v1.1.0` проверен публичным allowed-signers из пользовательского хранилища.
+- Архитектура: проверена; 1 находка (AUD-27). Безопасность: проверена; 1 находка (AUD-23). Данные: проверены, новых дефектов нет; fixture 64 пары + 26 combos. Производительность: проверена стоимость тестов, продуктовых путей с исполняемым кодом нет; 1 находка (AUD-29). Тесты: проверены; 2 находки (AUD-25, AUD-26). Сборка/доставка: проверена; 1 находка (AUD-22). Документация: проверена; 2 находки (AUD-24, AUD-28).
+- Не проверено: fork PR, dispatch/создание тега и релиза, destructive installer, UI WCAG, upstream legal review, wall-time CI; это внешние или необратимые сценарии, для них дана лучшая доступная проверка.
+
+### AUD-22 — Latest release does not contain the skill suite
+
+- **Аудит:** 2026-11-15. **Тип:** delivery/docs. **Приоритет:** P2 — пользователь, устанавливающий latest release, получает только `frontend-design`. **Уверенность:** высокая.
+- **Доказательство:** `git ls-tree -d --name-only v1.1.0:skills` → `frontend-design`; `README.md:27-37` перечисляет 11 навыков; release `v1.1.0` создан из `b1f438d` до PR #36/#39. **Влияние:** release install и README расходятся; новые навыки доступны только из `main`.
+- **Решение:** выпустить следующий signed release после suite, обновить release notes/README; при необходимости добавить release checklist «все skills присутствуют». Трудоёмкость 1–2 ч; риск: release требует owner approval. **Проверка:** `git ls-tree` нового тега содержит 11 skills; archive install устанавливает их; checksum/attestation PASS.
+- **Приёмка:** latest release содержит suite; README и release notes совпадают. **Зависимости:** AUD-01 (release gate), SKL/ORC завершены. **Статус:** OPEN. **Трекер:** #41.
+
+### AUD-23 — Public release signature is not independently verifiable from docs
+
+- **Аудит:** 2026-11-15. **Тип:** security/docs. **Приоритет:** P2 — `git tag -v` не работает у пользователя без закрытого/публичного trust-файла. **Уверенность:** высокая.
+- **Доказательство:** `README.md:82` требует `git tag -v "$VERSION"`, но не публикует allowed-signers/public key; fresh shallow clone `v1.1.0` → `gpg.ssh.allowedSignersFile needs to be configured`; с локальным `allowed_signers` проверка PASS. **Влияние:** пользователь не может воспроизвести проверку подписи по инструкции; остаётся доверять только GitHub-аккаунту.
+- **Решение:** опубликовать public allowed-signers/key в репозитории или release asset, добавить точную команду `git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=... verify-tag`, тест/CI. Трудоёмкость 30–60 мин; риск: раскрытие только публичного материала. **Проверка:** fresh clone + repo trust file PASS; подмена подписи FAIL.
+- **Приёмка:** документированная проверка работает на чистом clone; key rotation описана. **Зависимости:** AUD-01. **Статус:** OPEN. **Трекер:** #42.
+
+### AUD-24 — Documentation references and skill counts drift
+
+- **Аудит:** 2026-11-15. **Тип:** documentation. **Приоритет:** P3 — ломает навигацию, не влияет на исполнение. **Уверенность:** высокая.
+- **Доказательство:** `docs/opencode-orchestration.md:76` указывал на несуществующий `tests/test_orchestration.py` (реальный тест — `tests/test_skill_suite.py`); проверка в `docs/plan.md` называла 10 навыков при 11 в `validate.py`; README intro и layout не отражали `orchestration` и новые skills; `THIRD_PARTY_NOTICES.md` не перечислял `orchestration`; в `docs/release-process.md` был дублирован фрагмент про signature/ancestry/check-run. **Влияние:** следующий исполнитель ищет несуществующий тест, неверно оценивает состав.
+- **Исправлено (аудит 2026-11-15):** README intro/layout, путь теста, счётчик validate, notices и дубль в release-process исправлены в PR аудита.
+- **Остаётся:** автоматическая проверка, что пути тестов из docs существуют и счётчики навыков совпадают с `skills/`; без неё drift вернётся. Трудоёмкость 30–60 мин. **Проверка:** mutation docs path/count fails; `make check` PASS.
+- **Приёмка:** нет ложных путей/счётчиков; проверка ловит подмену path/count. **Зависимости:** ORC-01. **Статус:** OPEN. **Трекер:** #43.
+
+### AUD-25 — Skill suite contract tests are too weak
+
+- **Аудит:** 2026-11-15. **Тип:** tests. **Приоритет:** P3 — тесты зелёные при пустом/размытом навыке. **Уверенность:** высокая.
+- **Доказательство:** `tests/test_skill_suite.py:52-58` проверяет только заголовок из списка; `:71-84` — наличие двух слов в description, без prompt/negative prompt. **Влияние:** сломанный workflow/trigger не ловится.
+- **Решение:** table-driven trigger matrix с realistic prompts и negative prompts; проверять обязательные секции/stop conditions; мутация пустого workflow должна падать. Трудоёмкость 1–2 ч. **Проверка:** mutation-тест.
+- **Приёмка:** пустой workflow/слишком широкий trigger валит suite; positive prompts проходят. **Зависимости:** SKL-09. **Статус:** OPEN. **Трекер:** #44.
+
+### AUD-26 — Simple-skill validation branch has no focused test
+
+- **Аудит:** 2026-11-15. **Тип:** tests. **Приоритет:** P3 — ветка используется новыми навыками, но не проверена негативно. **Уверенность:** высокая.
+- **Доказательство:** `scripts/validate.py:298-310` проверяет размер `SKILL.md` для навыка без manifest; `tests/test_validation.py` покрывает manifest, но не простой oversize/absence path. **Влияние:** регрессия размера/чтения может пройти.
+- **Решение:** temp skill без `references/assets`: pass; oversize SKILL.md: fail; `references` без manifest: fail. **Проверка:** pytest.
+- **Приёмка:** три кейса зелёные, mutation ветки падает. **Зависимости:** AUD-03. **Статус:** OPEN. **Трекер:** #45.
+
+### AUD-27 — Orchestration and execution triggers overlap
+
+- **Аудит:** 2026-11-15. **Тип:** architecture/content. **Приоритет:** P3 — возможна двойная загрузка двух skill-инструкций. **Уверенность:** средняя.
+- **Доказательство:** `skills/orchestration/SKILL.md:3` и `skills/autonomous-execution/SKILL.md:3` обе срабатывают на complex/multi-step; у orchestration нет anti-trigger «передать утвержденный план в autonomous-execution». **Влияние:** дублирование routing/execution правил, лишний контекст.
+- **Решение:** добавить в orchestration явный anti-trigger/handoff, проверить trigger matrix negative prompt. Трудоёмкость 15–30 мин.
+- **Приёмка:** на «execute approved plan» срабатывает execution, на «how to route unknown work» — orchestration; tabletop tests. **Зависимости:** ORC-01, SKL-09. **Статус:** OPEN. **Трекер:** #46.
+
+### AUD-28 — Plan is oversized for its startup role
+
+- **Аудит:** 2026-11-15. **Тип:** documentation/process. **Приоритет:** P3 — план owner-facing, но полный контекст 46–48 KB и старые evidence-блоки затрудняют навигацию. **Уверенность:** высокая.
+- **Доказательство:** `docs/plan.md` 328 строк / 51 255 B; `AGENTS.md` + plan + issue 58 725–60 003 B; в плане сохраняются длинные evidence и старые done-блоки. **Влияние:** следующий исполнитель тратит контекст; риск повторного аудита/дублей.
+- **Решение:** отдельный проход «Порядок в плане»: оставить один аудит-раздел, компактные evidence, удалить устаревшие narrative-блоки после переноса уникального. Это вне текущего аудита, поэтому только задача. **Проверка:** измеренный startup context, отсутствие дублей ID.
+- **Приёмка:** план компактнее, ID/статусы/ссылки сохранены. **Зависимости:** завершение аудита. **Статус:** OPEN. **Трекер:** #47.
+
+### AUD-29 — External-link tests start a server per test
+
+- **Аудит:** 2026-11-15. **Тип:** performance/tests. **Приоритет:** P3 — 4 × 0.5 s teardown, около 2 s из 15 s pytest. **Уверенность:** высокая.
+- **Доказательство:** `tests/test_external_links.py:45-57` создаёт/останавливает `ThreadingHTTPServer` в каждой fixture; `pytest --durations` показывает 0.50 s teardown на каждом из 4 тестов. **Влияние:** лишняя стоимость тестов, не продукта.
+- **Решение:** module/session-scoped server с уникальными путями/handlers, сохранить изоляцию; или один CLI-тест с несколькими URL. **Проверка:** `pytest --durations` ≤1 s на файл, тесты PASS.
+- **Приёмка:** server один на модуль, поведение/изоляция сохранены. **Зависимости:** AUD-03. **Статус:** OPEN. **Трекер:** #48.
 
 ## Выполнено
 

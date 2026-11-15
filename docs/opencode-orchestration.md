@@ -73,7 +73,7 @@ evidence, impact, and a concrete fix. Do not edit or approve on my behalf.
 ## Verification
 
 - `python3 scripts/validate.py` checks the skill frontmatter and links.
-- `tests/test_orchestration.py` checks the native routing contract and the docs.
+- `tests/test_skill_suite.py` checks the native routing contract and the docs.
 - `make check` runs the full repository suite.
 
 See [the plan](plan.md) for the task record and [the workflow skills](../skills/orchestration/SKILL.md) for the operational instructions.
