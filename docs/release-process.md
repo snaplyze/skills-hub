@@ -93,7 +93,7 @@ publishable.
 
 Tag creation itself is not the release trigger. A maintainer who can push a tag
 can provide it as the workflow input; the signature, ancestry, check-run, and
-immutable-release checks still apply.
+signature, ancestry, and check-run checks still apply; the immutable setting is owner-verified.
 
 ### Tag signature trust
 

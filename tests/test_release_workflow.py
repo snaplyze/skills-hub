@@ -41,3 +41,5 @@ def test_release_is_draft_and_has_provenance() -> None:
     assert "args+=(--latest)" not in text
     assert "gate/scripts/release_checks.py" in text
     assert "actions: read" in text
+    assert "ref: main" in text
+    assert "path: gate" in text

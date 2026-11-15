@@ -429,6 +429,14 @@ def test_nested_markdown_not_covered_fails(tmp_path: Path) -> None:
     assert_validation_fails(repo, "not covered by a set or excluded")
 
 
+def test_pair_token_fields_must_be_strings(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    data = load_fixture(repo)
+    data["pairs"][0]["theme"] = None
+    save_fixture(repo, data)
+    assert_validation_fails(repo, "must be non-empty strings")
+
+
 def test_pair_theme_must_match_label(tmp_path: Path) -> None:
     repo = copy_repo(tmp_path)
     data = load_fixture(repo)

@@ -5,8 +5,8 @@
   "scope": {
     "counted": [
       "SKILL.md",
-      "references/*.md",
-      "assets/*.md"
+      "references/**/*.md",
+      "assets/**/*.md"
     ],
     "excluded": [
       "assets/tokens.css",

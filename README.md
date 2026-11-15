@@ -167,7 +167,8 @@ skills-hub/
 │   ├── validate.py              # repository-wide validation
 │   ├── check_workflows.py       # Actions policy checks
 │   ├── check_external_links.py  # scheduled link audit
-│   └── release_notes.py         # SemVer/changelog release notes
+│   ├── release_notes.py         # SemVer/changelog release notes
+│   └── release_checks.py        # required check-run gate
 ├── tests/                       # validator, installer, release, workflow tests
 └── skills/
     └── frontend-design/
@@ -260,8 +261,8 @@ This is a public repository. `main` is protected by a repository ruleset:
 Tags matching `v*` block deletion and force updates. The release workflow is dispatched from `main` with an annotated signed tag;
 it verifies the signature against owner-configured trust material, requires the
 tagged commit to be an ancestor of `origin/main`, requires successful
-`validate` and `Analyze (python)` check-runs for that commit, and requires
-immutable releases. It creates a **draft** release with a source archive,
+`validate` and `Analyze (python)` check-runs for that commit, and requires the
+owner to verify immutable releases separately. It creates a **draft** release with a source archive,
 `SHA256SUMS`, and a build provenance attestation; promotion is manual.
 Tag creation itself is not gated by the workflow. The protected `release`
 environment, tag ruleset, immutable-release setting, and signature trust

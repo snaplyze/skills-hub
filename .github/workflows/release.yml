@@ -6,7 +6,7 @@ name: Release
 #      trust material;
 #   3. the tagged commit is an ancestor of origin/main;
 #   4. the required `validate` and `Analyze (python)` check-runs succeeded;
-#   5. immutable releases are enabled;
+#   5. the owner has verified immutable releases outside the workflow;
 #   6. only then are notes read from the tag, assets built and attested, and a
 #      DRAFT release created.
 #

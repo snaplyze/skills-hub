@@ -618,6 +618,10 @@ def check_contrast_fixture(
         if missing:
             errors.append(f"{where} missing field(s): {', '.join(missing)}")
             continue
+        string_fields = ("label", "theme", "fg_token", "bg_token")
+        if not all(isinstance(item[field], str) and item[field].strip() for field in string_fields):
+            errors.append(f"{where} fields {', '.join(string_fields)} must be non-empty strings")
+            continue
         label = item["label"]
         fg, bg, size = item["fg"], item["bg"], item["size"]
         if not isinstance(label, str) or not label.strip():
