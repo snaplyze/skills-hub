@@ -1,316 +1,259 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T12:52:41Z; вехи #1–#6 закрыты; новый аудит — веха #7, задачи #41–#48; tasks #14–#20, #27–#35, #38 закрыты; release v1.1.0. До сверки открытых продуктовых задач/вех не было; созданы по одной, дублей нет.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T14:05:26Z; этапы 01–07; аудит #41–#48 (AUD-22…AUD-29; AUD-28 #47 — DONE в этом PR); закрытые #14–#20, #27–#35, #38. Реестр — этот файл; план owner-facing, на русском, не загружается как инструкции агентов.
 
-Реестр: этот файл. План — owner-facing registry на русском; он не загружается как инструкции агентов и не входит в бюджет 32 КиБ.
+## Документы и стартовый контекст
 
-## Карта документов и стартовый контекст
+| Документ | Роль | Строк / байт |
+|---|---|---|
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 34 274 |
+| `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
+| `README.md` | вход и установка | 333 / 17 873 |
+| `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
+| `docs/release-process.md` | release gate и owner setup | 226 / 10 004 |
+| `docs/repository-settings.md` | settings evidence | 72 / 4 588 |
+| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 375 / 15 466 |
+| `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
 
-| Документ | Роль | Было | После |
-|---|---|---|---|
-| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 328 строк / 51 255 B |
-| `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 758 B |
-| `README.md` | вход и установка | 244 / 10 557 B | 333 / 17 873 B |
-| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
-| `THIRD_PARTY_NOTICES.md`, `skills/frontend-design/references/sources.md` | атрибуция | две копии | sources canonical; notices pointer |
-
-Стартовый контекст задачи: `AGENTS.md` 6 758 B + раздел задачи 595–4 502 B + issue (`wc -c`) 712–1 990 B = 8 065–13 250 B. AGENTS + полный план + issue: 58 725–60 003 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks + 10 workflow skills DONE + 8 audit tasks OPEN, 328 строк, 51 255 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
+Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 610 B + issue 545–1 135 B = 8 223–9 503 B. Полный план + issue: 34 274 + 545–1 135 = 34 819–35 409 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
 | # | Веха | Задачи |
 |---|---|---|
-| 01 | Release, installer, validation (веха #1) | AUD-01 #14, AUD-02 #15, AUD-03 #16 |
-| 02 | CI, secrets, content (веха #2) | AUD-04 #17, AUD-05 #18, AUD-06 #19 |
-| 03 | Protections (веха #3) | AUD-07 #20 |
-| 04 | Agent workflow skills (веха #4) | SKL-01 #27, SKL-02 #28, SKL-03 #29 |
-| 05 | Quality and delivery skills (веха #5) | SKL-04 #30, SKL-05 #31, SKL-06 #32, SKL-07 #33, SKL-08 #34, SKL-09 #35 |
-| 06 | Native orchestration (веха #6) | ORC-01 #38 |
-| 07 | Audit 2026-11-15 (веха #7) | AUD-22 #41, AUD-23 #42, AUD-24 #43, AUD-25 #44, AUD-26 #45, AUD-27 #46, AUD-28 #47, AUD-29 #48 |
+| 01 | Release, installer, validation (веха #1, closed) | AUD-01 #14, AUD-02 #15, AUD-03 #16 |
+| 02 | CI, secrets, content (веха #2, closed) | AUD-04 #17, AUD-05 #18, AUD-06 #19 |
+| 03 | Protections (веха #3, closed) | AUD-07 #20 |
+| 04 | Agent workflow skills (веха #4, closed) | SKL-01 #27, SKL-02 #28, SKL-03 #29 |
+| 05 | Quality and delivery skills (веха #5, closed) | SKL-04 #30, SKL-05 #31, SKL-06 #32, SKL-07 #33, SKL-08 #34, SKL-09 #35 |
+| 06 | Native orchestration (веха #6, closed) | ORC-01 #38 |
+| 07 | Audit 2026-11-15 (веха #7, open) | AUD-22 #41, AUD-23 #42, AUD-24 #43, AUD-25 #44, AUD-26 #45, AUD-27 #46, AUD-28 #47 DONE, AUD-29 #48 |
 
-Очередь навыков: SKL-01 → SKL-02 → SKL-05 → SKL-03/SKL-04/SKL-08 → SKL-06 → SKL-07 → SKL-09. Исполнение не начинается до принятого spec/plan; review-gate обязателен на каждой задаче.
+Порядок этапов: 01 → 02 → 03 → 04 → 05 → 06 → 07. Очередь навыков: SKL-01 → SKL-02 → SKL-05 → SKL-03/SKL-04/SKL-08 → SKL-06 → SKL-07 → SKL-09. Исполнение не начинается до принятого spec/plan; review-gate обязателен на каждой задаче.
 
-## Аудит 2026-11-15
+## Открытые задачи
 
-- Исходный коммит: `2b4be4f983af517d827b4ad8d42a13d804eaed44`; видимость: публичный репозиторий и трекер.
-- Охват: архитектура, безопасность, данные, производительность, тесты, сборка/доставка, документация.
-- Проверено: архитектура/скрипты/установщик; security config/API/history; data/fixtures/tokens; performance snapshot; tests/CI; build/delivery; docs.
-- Не проверено: fork PR, tag/release creation, destructive installer, UI WCAG, tokenizer/CI wall-time, upstream legal review. Python 3.9 runtime не проверялся; floor поднят до 3.12.
-- Реестр относится к коммиту аудита; изменения после него — только план и документы.
-
-### Карта слияния ID
-
-| Было | Стало | Причина |
-|---|---|---|
-| AUD-01, AUD-06, AUD-09 | AUD-01 | один release pipeline: gate, notes, provenance |
-| AUD-02, AUD-03, installer tests из AUD-11 | AUD-02 | один installer: безопасность, trust, проверка |
-| AUD-11, AUD-16, AUD-17 | AUD-03 | одна validation correctness: false greens, parser, tokens |
-| AUD-05, AUD-08, AUD-10, AUD-20 | AUD-04 | один CI/toolchain/workflow contract |
-| AUD-04 | AUD-05 | secret handling |
-| AUD-07, AUD-14, AUD-18, AUD-19 | AUD-06 | один skill content/instruction budget |
-| AUD-12, AUD-13, AUD-21 | AUD-07 | repository protections и evidence |
-| AUD-15 | DONE | документы уже исправлены |
-
-## Задачи
-
-### AUD-01 — Release pipeline integrity
-
-- **Было:** AUD-01, AUD-06, AUD-09.
-- **Аудит:** 2026-11-15. **Тип:** security/release. **Приоритет:** P1. **Уверенность:** высокая. **Статус:** DONE.
-- **Границы:** release workflow/tags/notes/provenance; no skill content or product behavior; no branch/runner settings without owner. **Исполнитель:** не назначен.
-- **Результат:** релиз создаётся только с `main` и зелёными обязательными проверками; notes имеют один источник; теги подписаны/immutable; нет обхода PR/CI.
-- **Доказательство:** `.github/workflows/release.yml:4-6,16-27` — любой `v*`, `contents: write`, `--verify-tag` (только existence), без ancestry/check-run и environment; tag ruleset `27259245` — только deletion/non-ff, creation не gated; releases assets 0, immutable false, теги без подписи; `.github/release.yml` labels не используются (на `2b4be4f` — 9 PR без labels), notes переписаны вручную; `GOVERNANCE.md §Releases` заявляет `main`; tag creation не gated.
-- **Влияние:** unreviewed коммит публикуется как релиз; notes/provenance не воспроизводимы.
-- **Решение:** (1) `fetch-depth: 0`, ancestry `merge-base --is-ancestor`, check-runs `validate`/`Analyze (python)`, protected environment, draft; (2) SemVer regex, `--prerelease`/`--latest=false`, tag creation restriction/required signatures; (3) выбрать labels+`.github/release.yml` или `CHANGELOG`-notes, добавить labeler/проверку версии; (4) подписывать теги, verification в workflow, immutable releases, checksums/attestations. Трудоёмкость 4–6 ч; риски: full history, approval-клик, signing keys.
-- **Проверка:** тег вне `main`/без checks не создаёт release; notes воспроизводимы; `git tag -v` и immutable release.
-- **Приёмка:** gate работает; успешный release с green `main` сохраняется; draft + manual promotion; notes один источник и воспроизводимы; CI проверяет версию; `updated_at == published_at` для новых релизов, если нет документированного ручного шага; tags signed; immutable + provenance опубликован; `GOVERNANCE`/README описывают фактический gate и совпадают.
-- **Выполнено:** release workflow запускается только dispatch с `main`; проверяет подписанный annotated tag, ancestry `origin/main`, check-runs `validate`/`Analyze (python)` с ожидаемым workflow path, protected environment ref; immutable releases включены, release immutable=true; workflow не читает admin endpoint, настройка подтверждена владельцем; notes из CHANGELOG, draft, archive/SHA256/attestation. `release_notes.py`/`release_checks.py` покрыты тестами. Release v1.1.0 опубликован из signed tag `v1.1.0` (commit `b1f438d`), immutable=true; environment, trust variable, tag rules и checksum/attestation проверены.
-- **Зависимости:** нет; AUD-02 — связанная (#15). **Трекер:** #14. **Следующий шаг:** нет. Signed release v1.1.0 опубликован, immutable=true. **Выводы неудачных попыток:** нет.
-
-### AUD-02 — Installer safety and verifiable install
-
-- **Было:** AUD-02, AUD-03, installer tests из AUD-11.
-- **Аудит:** 2026-11-15. **Тип:** security/delivery. **Приоритет:** P2. **Уверенность:** высокая. **Статус:** DONE.
-- **Границы:** installer and install docs; no skill content; tests only temp HOME/target; no real user config writes. **Исполнитель:** не назначен.
-- **Результат:** installer не удаляет source/чужие каталоги; copy/force/list работают; есть tests; установка verifiable и versioned.
-- **Доказательство:** `install/opencode.sh:98-100` guard только `""`/`/`/`$HOME`; `:180` `rm -rf`; `--target repo/skills` = source; `:168-172` `--copy --force` над symlink — no-op; `:128-137` `--all` без kebab regex; `:195` copy ignored artifacts; `:79-83` `~/` literal; `:116-118` folded `>`; symlink default `:192-193`; releases без assets; `v1.0.1` (`6c24112`) отстаёт от `main`.
-- **Влияние:** data loss, ложная copy-установка, мутабельный глобальный skill, невозможность проверить версию.
-- **Решение:** (1) `realpath -m`, refuse `/`/`$HOME`/repo/source/ancestors, symlink targets, control characters, NUL-safe `find`/`read`, `--` flags, temp+atomic, backup; (2) `--copy` заменяет symlink, `--all` regex, whitelist copy, `~/`, YAML description; (3) bats/plain-bash tests temp HOME/target для link/copy/force/conflict/list/refusal; (4) copy/verify default, release tar+sha/attestation, `--ref`, docs update. Трудоёмкость 1–1.5 дня; риски: cross-platform realpath, update friction.
-- **Проверка:** target matrix отказывает; source tree неизменен; copy/force работают; tests; установка с тега/checksum.
-- **Приёмка:** destructive target-кейсы не пишут вне target; source tree неизменен; `--copy --force` действительно копирует; `--all` отвергает невалидные ID; copy без ignored artifacts; `~/` раскрывается; folded description читается; tests покрывают link/copy/force/conflict/list/refusal; установка воспроизводима из тега и checksum проверяется; README различает main/release.
-- **Выполнено:** `install/opencode.sh` — copy default, realpath/refuse guards, atomic staging/backups, `--copy` over symlink, `--all` IDs, ignored artifacts, `~/`, folded YAML, `--verify/--ref`; installer + release-archive/checksum/copy tests. Остаток: нет; archive/checksum/install проверены на v1.1.0.
-- **Зависимости:** AUD-01 (#14) — release assets; AUD-03 (#16), AUD-04 (#17) — связанные. **Трекер:** #15. **Следующий шаг:** нет. Asset checksum/install проверены на v1.1.0. **Выводы неудачных попыток:** нет.
-
-### AUD-03 — Validation correctness and token fixture
-
-- **Было:** AUD-11, AUD-16, AUD-17.
-- **Аудит:** 2026-11-15. **Тип:** tests/accessibility/data. **Приоритет:** P1. **Уверенность:** высокая. **Статус:** DONE.
-- **Границы:** validator/tests/token fixture; no weakening required checks; no skill prose beyond token/fixture corrections. **Исполнитель:** не назначен.
-- **Результат:** validator ловит SKILL/cross-file anchors, contrast failure/missing script, fixture shrink, semantic AA; frontmatter/body/links проверяются.
-- **Доказательство:** `validate.py:137-142` skip SKILL; `:79,92` same-file anchors; `:169-186` только passing fixture; `contrast.py:397-398` return 1 не тестируется; `:172-173` silent skip; fixture 1/0 pairs проходит; mutation 75 KB/empty body проходит. Токены: `#6f695e` на `#d9eee1`/`#f8e3b8`/`#fbe0dd` = 4.48/4.32/4.36; `#237366` на `#f8e3b8` = 4.49; `#9b9587` на `#163a29` = 4.21; `#8a8478` на `#f8e3b8`/`#fbe0dd` = 2.95/2.97. `validate.py:83` skips http; `:190-197` не проверяет AGENTS/PR template; `MD_LINK_RE` ломает titled links.
-- **Влияние:** entry-point links и accessibility gate могут исчезнуть; starter tokens дают AA-fail; contributor links/AGENTS не защищены.
-- **Решение:** (1) negative suite: `tests/` на pytest/unittest с temp fixtures, SKILL/cross-file anchors, contrast exit 0/1/2 + missing script, fixture 64/32/32/unique/colors; (2) semantic role matrix, не Cartesian product, генерировать fixture из tokens или проверять каждое значение, fix AA или document unsupported, token/fixture doc-test; (3) frontmatter allowlist/non-empty body/SPDX, не требовать `name == dir`, Markdown parser для title/reference/root-relative/GitHub slug/duplicate/setext, AGENTS/PR template/.github, external lychee schedule/PR с cache/allowlist; (4) table-driven contrast rgb/hsl/alpha/named/json/quiet/stdin. Трудоёмкость 2–3 дня; риски: parser/anchors/flaky external.
-- **Проверка:** mutations падают; 106 local links; AA supported; fixture/token parity; external broken link ловится.
-- **Приёмка:** каждый документированный формат/ссылка и каждая проверка имеют pass/fail fixture; CI запускает suite; mutation любого guard обнаруживается; SKILL/AGENTS/PR template; 106 локальных ссылок staged tree; 64 pairs/AA; fixture/tokens parity; coverage gate — новый semantic token без пары валит validate; external link.
-- **Выполнено:** validator проверяет SKILL/cross-file anchors, title/reference/root-relative links, frontmatter/body, fixture 64/32+32, semantic coverage, reading sets; contrast CLI tests exit 0/1/2; 64 pairs + 26 semantic combos AA; 45 external links PASS; 188 tests.
-- **Зависимости:** нет; AUD-02 (#15), AUD-04 (#17), AUD-06 (#19) — связанные. **Трекер:** #16. **Следующий шаг:** нет. **Выводы неудачных попыток:** нет.
-
-### AUD-04 — CI toolchain and workflow hardening
-
-- **Было:** AUD-05, AUD-08, AUD-10, AUD-20.
-- **Аудит:** 2026-11-15. **Тип:** CI/security/reproducibility. **Приоритет:** P2. **Уверенность:** высокая. **Статус:** DONE.
-- **Границы:** CI/workflows/toolchain; no product behavior; no runner/branch/account settings without owner. **Исполнитель:** не назначен.
-- **Результат:** одинаковые tool versions, один check entry point, workflow static policy, least privilege; CI routing: hosted-only, self-hosted 0, fork approval all external, без расхождений.
-- **Доказательство:** `requirements-dev.txt` ranges; `ci.yml:39-40` pip upgrade; `:30-35` cache только pip; `:49,64` npx без lock; `:54-55` apt shellcheck; `ubuntu-latest`; `Makefile:32` unpinned csstree; `make check` 4 contrast/2 bash, CI 2 bash, ShellCheck missing local; `validate.py:205-223` parse-only; `dependency-review.yml:8-10` workflow-level `pull-requests: write`; `CHANGELOG` v1.0.1 overstates job scope. Раннеры: repo `total_count: 0`, все jobs `ubuntu-latest`, организация отсутствует, fork approval `all_external_contributors`; self-hosted нет.
-- **Влияние:** проверки дрейфуют, supply-chain, CI/local divergence, неверный security claim.
-- **Решение:** (1) pin runner/Python и pip, pip hashes, npm lock/cache/Dependabot, ShellCheck pin/remove, csstree pin; (2) один `make check`/CI entry point, contrast/bash once, читать файлы один раз, ShellCheck local or documented; (3) actionlint/zizmor/check-jsonschema, SHA/version/permissions/timeouts/persist-credentials/pull_request_target checks; (4) Dependency Review write в job scope, future changelog correction. Трудоёмкость 1–2 дня; риски: lockfile churn, tool allowlist, runner drift.
-- **Условие:** self-hosted сейчас нет; если появится — owner input о платформе/метках/ОС/архитектуре/группе/доступе, suitable jobs на self-hosted, fork code остаётся hosted, fork approval для self-hosted.
-- **Производительность:** путь `.github/workflows/ci.yml`; нагрузка — pip/npm acquisition и тестовый suite; baseline — старый `make check` 866 ms без pytest; сейчас `make validate` ~0.3 s, полный `make check` ~20 s, coverage 188 tests. Инвариант — те же проверки и coverage; старый лимит 810 ms к расширенному suite неприменим; владелец принял бюджет ≤1 s / ≤30 s; сравнение — per-step timing/cache hit; удалить — duplicate contrast/bash и лишние installs.
-- **Проверка:** одинаковые `pip freeze`/`npm ls` + cache hit; один проход; unsafe workflow fails; least privilege; runtime документирован (~0.3 s validate / ~20 s full check); Scorecard Pinned-Dependencies ≥9; смена версии требует commit.
-- **Приёмка:** reproducible toolchain с hash/lock; npm cache hit и npm Dependabot; нет unpinned install; один проход проверок; docs/CI согласованы; unsafe workflow не проходит static analysis; least privilege/job-scope write; runtime документирован (~0.3 s validate / ~20 s full check; старый 810 ms — baseline без pytest); coverage 188 tests; Python floor 3.12+ подтверждён CI.
-- **Выполнено:** CI на `ubuntu-24.04`, Python 3.12, pip 26.3, hash-locked Python/npm, `npm ci` cache; `make check` — единый вход; workflow policy проверяет 7 файлов; Dependency Review write в job scope; 188 tests. `make validate` ~0.3 s, полный `make check` ~20 s; старый 810 ms относился к набору без pytest; владелец принял новый бюджет `make validate` ≤1 s / `make check` ≤30 s.
-- **Зависимости:** AUD-03 (#16) — tests; AUD-01 (#14), AUD-02 (#15), AUD-06 (#19), AUD-07 (#20) — связанные. **Трекер:** #17. **Следующий шаг:** нет. Владелец 2026-11-15 принял бюджет: `make validate` ≤1 s, `make check` ≤30 s на hosted runner. **Выводы неудачных попыток:** нет.
-
-### AUD-05 — Secret handling and ignore guard
-
-- **Было:** AUD-04.
-- **Аудит:** 2026-11-15. **Тип:** security. **Приоритет:** P2. **Уверенность:** высокая. **Статус:** DONE.
-- **Границы:** .gitignore/secret scan; no secret values; AGENTS caveat update separate. **Исполнитель:** не назначен.
-- **Результат:** `.env*`/ключи/client dirs игнорируются; secret scan в CI; non-provider patterns включены или документированы.
-- **Доказательство:** `.gitignore` не содержит `.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`, `secrets/`, `credentials*`, `.opencode/`, `.claude/`, `.agents/`; `git check-ignore` NOT-IGNORED для перечисленных; API non-provider/validity disabled; `AGENTS.md` требует manual index check; 0 alerts сейчас.
-- **Влияние:** случайный `git add -A` публикует credentials; push protection покрывает только provider patterns.
-- **Решение:** ignore patterns + `!.env.example`; enable non-provider/validity если доступно; pinned gitleaks CI/pre-commit; после изменения обновить AGENTS (отдельно). Трудоёмкость 2–3 ч; риски: false positives.
-- **Проверка:** `git check-ignore`; secret scan; нет tracked secret-like files.
-- **Приёмка:** пути ignored; `.env.example` разрешён; CI scan; AGENTS caveat снят.
-- **Выполнено:** `.gitignore` покрывает `.env*`, ключи, `secrets/`, `credentials*`, agent dirs; `Secret Scan` скачивает gitleaks 8.30.1 по HTTPS с SHA-256, сканирует историю; 41 CI/secret test; `git check-ignore` PASS. Non-provider/validity scanning остаются owner-only и записаны в `docs/repository-settings.md`.
-- **Зависимости:** нет; AUD-03 (#16) — связанная. **Трекер:** #18. **Следующий шаг:** владелец может включить non-provider/validity scanning; кодовая часть завершена. **Выводы неудачных попыток:** нет.
-
-### AUD-06 — Skill content and instruction budget
-
-- **Было:** AUD-07, AUD-14, AUD-18, AUD-19.
-- **Аудит:** 2026-11-15. **Тип:** content/performance/docs. **Приоритет:** P2. **Уверенность:** высокая. **Статус:** DONE.
-- **Границы:** skill docs/assets and AGENTS project info; no product behavior or code/CI. **Исполнитель:** не назначен.
-- **Результат:** бюджет инструкций определён/уложен; tokens canonical; references не противоречат; один template/attribution; AGENTS plan/description точны.
-- **Доказательство:** `design-direction.md` 35 017 B; typical set 85 527 B; no size check; `design-system.md:567` OKLCH vs tokens hex, focus/accent/Archivo/shadows mismatch; `design-direction.md:735-737` 240/120 ms vs motion 40–80/80–150–480; `accessibility.md:437` 44 px Apple vs 44 pt; `responsive-mobile.md:336` vs `implementation.md:380` JS budgets; `quality-gates.md`/`assets/audit-report.md` two templates; design brief duplicate; notices/sources 3 lists; `SKILL.md:332` subset; `AGENTS.md §План` stale, description only-text claim.
-- **Влияние:** context cost/truncation, copied theme/motion/unit/budget errors, duplicate maintenance, attribution drift, agent confusion.
-- **Решение:** (1) определить scope 32 KiB, split/trim design-direction, update routing/reading, size gate; (2) tokens canonical, fix references/motion/units/budgets, doc-test; (3) canonical audit/design templates, one source registry/parity, full attribution; (4) update AGENTS plan/description отдельным PR. Трудоёмкость 1–2 дня; риски: fragmentation, link churn.
-- **Производительность:** путь `SKILL.md` routing + references; нагрузка — байты, загружаемые на задачу; baseline — design-direction 35 017 B, typical set 85 527 B; инвариант — все требования и progressive disclosure; цель — 32 KiB из AGENTS.md; сравнение — `wc -c` до/после; удалить — дубли/лишние разделы, worked example в asset при необходимости.
-- **Проверка:** documented set ≤32 KiB; no conflicting values; one template; parity; AGENTS; doc-test.
-- **Приёмка:** budget scope документирован; чтение ≤32 KiB; CI ловит oversize reference; references/tokens/motion/units/budgets не противоречат; doc-test зелёный; ровно один шаблон каждого артефакта; sources/attribution parity; AGENTS project info/plan/skill listing совпадают.
-- **Выполнено:** SKILL 7 035 B; visual-craft 9 201 B; 10 reading sets, new-page 32 462 B с design-brief; worked-example явно excluded; исправлены tokens/motion/units/budgets/templates/attribution; `make check` PASS, 188 tests. См. `assets/reading-sets.json`.
-- **Зависимости:** AUD-03 (#16) — token test; AUD-04 (#17), AUD-07 (#20) — связанные. **Трекер:** #19. **Следующий шаг:** нет. **Выводы неудачных попыток:** нет.
-
-### AUD-07 — Repository protections and evidence
-
-- **Было:** AUD-12, AUD-13, AUD-21.
-- **Аудит:** 2026-11-15. **Тип:** security/docs. **Приоритет:** P3. **Уверенность:** высокая. **Статус:** DONE.
-- **Границы:** CODEOWNERS/ruleset docs/settings evidence; no access changes without owner. **Исполнитель:** не назначен.
-- **Результат:** CODEOWNERS advisory/enforced; approvals/signatures policy; Scorecard trigger/visibility; settings evidence.
-- **Доказательство:** `.github/CODEOWNERS:1-9`; ruleset 0 approvals/no codeowner/no signatures; `GOVERNANCE.md §Review and merge policy`; `scorecard.yml:4` `branch_protection_rule` dead при rulesets, no `repository_ruleset`; SARIF не в code scanning, artifact 5 дней; README/SECURITY/GOVERNANCE claims без in-repo evidence/даты.
-- **Влияние:** appearance of review; weekly protection regression; stale security claims.
-- **Решение:** (1) CODEOWNERS advisory comment; при втором maintainer — approvals=1, codeowner, signatures, emergency path; (2) `branch_protection_rule` + weekly schedule (Actions не поддерживает `repository_ruleset`), concurrency, SARIF и retention 30 дней; (3) `docs/repository-settings.md` setting/where/owner/verified date. Трудоёмкость 1–2 ч + второй maintainer; риски: solo block.
-- **Проверка:** ruleset/docs совпадают; branch-protection edit triggers Scorecard; rulesets — weekly; evidence date.
-- **Приёмка:** advisory/enforced clear; trigger works; claims/evidence/date совпадают; settings evidence.
-- **Выполнено:** CODEOWNERS явно advisory; Scorecard triggers `branch_protection_rule`, weekly, push; ruleset changes покрываются weekly, потому что Actions не поддерживает `repository_ruleset`; SARIF в code scanning, artifact 30 дней; `docs/repository-settings.md` фиксирует settings/date/owner actions; claims синхронизированы. Ruleset/approvals не менялись без владельца.
-- **Зависимости:** AUD-01 (#14), AUD-04 (#17), AUD-06 (#19) — связанные. **Трекер:** #20. **Следующий шаг:** при втором maintainer включить approvals/code-owner review; сейчас advisory. **Выводы неудачных попыток:** нет.
-
-## Навыки 2026-11-15
-
-Источники: [obra/superpowers](https://github.com/obra/superpowers) (MIT, Jesse Vincent) и [sickn33/agentic-awesome-skills clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code) (MIT/CC BY 4.0). Навыки — оригинальный синтез; без хуков, плагинов и копирования текста. Проверка: `python3 scripts/validate.py` (11 skills), `tests/test_skill_suite.py`, `make check` 188 tests.
-
-### SKL-01 — Specification
-
-- **Источник:** brainstorming/specification.
-- **Результат:** запрос превращается в короткую проверяемую спецификацию: проблема, пользователь, результат, non-goals, ограничения, acceptance, риски и открытые вопросы.
-- **Приёмка:** шаблон и правила вопросов; запрет выдумывать требования; handoff в планирование; валидация ссылок.
-- **Выполнено:** Инструкция и шаблон в `skills/specification/SKILL.md`; проверены description, links, anti-trigger.
-- **Границы:** не писать код, не заменять исследование кода вопросами. **Зависимости:** нет. **Статус:** DONE. **Трекер:** #27.
-
-### SKL-02 — Implementation planning
-
-- **Источник:** writing-plans.
-- **Результат:** спецификация превращается в исполнимый план: задачи по 5–30 минут, точные файлы/интерфейсы, тесты, зависимости, проверки, риски и порядок.
-- **Приёмка:** шаблон плана, критерии task size, self-review, handoff в исполнение; без hooks. **Границы:** план, не реализация. **Зависимости:** SKL-01. **Статус:** DONE. **Трекер:** #28.
-- **Выполнено:** Инструкция и шаблон в `skills/implementation-planning/SKILL.md`; task size, tests, dependencies, handoff.
-
-### SKL-03 — Autonomous execution
-
-- **Источник:** executing-plans, subagent-driven-development, dispatching-parallel-agents, using-git-worktrees.
-- **Результат:** утвержденный план исполняется автономно: worktree только при необходимости, один писатель на файл, параллельные независимые задачи, TDD-гейт, ledger, review, stop conditions.
-- **Приёмка:** брифы субагентов, правило одного писателя, ledger/план, review-gate, проверки после задач, финальный diff/тесты. **Границы:** без hooks/plugin. **Зависимости:** SKL-02, SKL-05. **Статус:** DONE. **Трекер:** #29.
-- **Выполнено:** Инструкция в `skills/autonomous-execution/SKILL.md`; субагенты, один писатель, review-gate, worktree, ledger, stop conditions.
-
-### SKL-04 — Systematic debugging
-
-- **Источник:** systematic-debugging.
-- **Результат:** сначала воспроизведение и root cause, затем минимальный fix и regression test; запрет shotgun-фиксов.
-- **Приёмка:** фазы reproduce/locate/hypothesize/fix, evidence, red flags, no-root-cause path. **Зависимости:** SKL-05. **Статус:** DONE. **Трекер:** #30.
-- **Выполнено:** Инструкция в `skills/systematic-debugging/SKILL.md`; reproduce/locate/hypothesis/fix и regression test.
-
-### SKL-05 — Test-driven development
-
-- **Источник:** test-driven-development + clean-code testing.
-- **Результат:** red-green-refactor с наблюдаемым падением теста, поведенческими тестами, минимальным кодом и полным regression run.
-- **Приёмка:** три закона TDD, качества тестов, bugfix flow, anti-patterns, coverage без театра. **Зависимости:** нет. **Статус:** DONE. **Трекер:** #31.
-- **Выполнено:** Инструкция в `skills/test-driven-development/SKILL.md`; iron law, three laws, red-green-refactor, test quality, bugfix flow.
-
-### SKL-06 — Code review
-
-- **Источник:** requesting-code-review + receiving-code-review.
-- **Результат:** свежий контекст ревьюера получает spec/diff/tests/риски; feedback проверяется, классифицируется и принимается/отклоняется с evidence.
-- **Приёмка:** шаблон запроса, severity P0/P1/P2, response protocol, no performative agreement, no self-approval. **Зависимости:** SKL-03. **Статус:** DONE. **Трекер:** #32.
-- **Выполнено:** Инструкция в `skills/code-review/SKILL.md`; request/receive, P0/P1/P2, evidence.
-
-### SKL-07 — Delivery
-
-- **Источник:** verification-before-completion + finishing-a-development-branch.
-- **Результат:** completion доказывается свежими командами; PR/merge/cleanup выполняются без обхода проверок и с проверкой main.
-- **Приёмка:** evidence gate, diff/check/PR checklist, merge rules, cleanup, completion report. **Зависимости:** SKL-06. **Статус:** DONE. **Трекер:** #33.
-- **Выполнено:** Инструкция в `skills/delivery/SKILL.md`; evidence gate, PR/merge/no-bypass, cleanup.
-
-### SKL-08 — Clean code
-
-- **Источник:** clean-code + clean-code skill.
-- **Результат:** язык-агностичный рефакторинг: имена, маленькие единицы, границы, ошибки, дублирование, связность, тесты; конвенции репозитория выше эвристик.
-- **Приёмка:** decision framework, refactor loop, checklist, anti-patterns, preservation of behavior. **Зависимости:** SKL-05. **Статус:** DONE. **Трекер:** #34.
-- **Выполнено:** Инструкция в `skills/clean-code/SKILL.md`; behavior-preserving refactor, smells, checklist.
-
-### SKL-09 — Skill authoring
-
-- **Источник:** writing-skills.
-- **Результат:** новый OpenCode-навык имеет trigger-rich description, компактный workflow, progressive disclosure, tabletop trigger matrix и repo integration.
-- **Приёмка:** шаблон, baseline-vs-skill test, tabletop trigger matrix, link/validation, attribution; поведенческие evals не заявляются без прогона. **Зависимости:** SKL-01–SKL-08. **Статус:** DONE. **Трекер:** #35. **Проверка:** tabletop trigger matrix; behavioral evals не запускались, это указано как ограничение.
-- **Выполнено:** Инструкция в `skills/skill-authoring/SKILL.md`; tabletop trigger matrix, repo integration; behavioral evals не запускались.
-
-## Native orchestration 2026-11-15
-
-Источники: [alvinunreal/oh-my-opencode-slim](https://github.com/alvinunreal/oh-my-opencode-slim) и [snaplyze/claude-orchestration](https://github.com/snaplyze/claude-orchestration). Цель — сохранить маршрутизацию и quality gates, но не добавлять плагин, hooks, background job scheduler, marketplace, TUI и профили моделей.
-
-### ORC-01 — Native OpenCode orchestration skill
-
-- **Результат:** один компактный `orchestration` skill, который решает: работать напрямую, отдать один bounded brief нативному `explore`/`general`, или запустить параллельные read-only исследования; фиксирует ownership, review-gate и verification.
-- **Приёмка:** routing matrix; шаблон brief; правила parallel/write ownership; native `subagent` без plugin/hooks; optional model profiles не обязательны; docs сравнения с двумя источниками; тест контракта.
-- **Границы:** не устанавливать плагины/агенты, не менять глобальный `opencode.json`, не использовать hooks/background orchestration. **Зависимости:** SKL-03, SKL-06, SKL-07. **Статус:** DONE. **Трекер:** #38.
-- **Выполнено:** `skills/orchestration/SKILL.md`, `docs/opencode-orchestration.md`, routing/brief/ownership tests; native `subagent` only, без plugin/hooks/background scheduler/model profiles.
-
-## Аудит 2026-11-15 — повторный
-
-- Исходный коммит: `977e2f257e633dc811d2dfc2b32479dc37f7871a`; дата: 2026-11-15; репозиторий и трекер публичные.
-- Охват: архитектура, безопасность, данные, производительность, тесты, сборка/доставка, документация. Снимок: `git archive` в `/tmp/opencode/audit-977e2f2`; в нём `make check` PASS (188 tests), `validate` PASS (11 skills), 49/49 внешних ссылок; tag `v1.1.0` проверен публичным allowed-signers из пользовательского хранилища.
-- Архитектура: проверена; 1 находка (AUD-27). Безопасность: проверена; 1 находка (AUD-23). Данные: проверены, новых дефектов нет; fixture 64 пары + 26 combos. Производительность: проверена стоимость тестов, продуктовых путей с исполняемым кодом нет; 1 находка (AUD-29). Тесты: проверены; 2 находки (AUD-25, AUD-26). Сборка/доставка: проверена; 1 находка (AUD-22). Документация: проверена; 2 находки (AUD-24, AUD-28).
-- Не проверено: fork PR, dispatch/создание тега и релиза, destructive installer, UI WCAG, upstream legal review, wall-time CI; это внешние или необратимые сценарии, для них дана лучшая доступная проверка.
+Исполнитель: не назначен. BLOCKED: нет. DONE ставится только после проверки по правилу 3.
 
 ### AUD-22 — Latest release does not contain the skill suite
 
-- **Аудит:** 2026-11-15. **Тип:** delivery/docs. **Приоритет:** P2 — пользователь, устанавливающий latest release, получает только `frontend-design`. **Уверенность:** высокая.
-- **Доказательство:** `git ls-tree -d --name-only v1.1.0:skills` → `frontend-design`; `README.md:27-37` перечисляет 11 навыков; release `v1.1.0` создан из `b1f438d` до PR #36/#39. **Влияние:** release install и README расходятся; новые навыки доступны только из `main`.
-- **Решение:** выпустить следующий signed release после suite, обновить release notes/README; при необходимости добавить release checklist «все skills присутствуют». Трудоёмкость 1–2 ч; риск: release требует owner approval. **Проверка:** `git ls-tree` нового тега содержит 11 skills; archive install устанавливает их; checksum/attestation PASS.
-- **Приёмка:** latest release содержит suite; README и release notes совпадают. **Зависимости:** AUD-01 (release gate), SKL/ORC завершены. **Статус:** OPEN. **Трекер:** #41.
+- `OPEN` · P2 · delivery/docs · #41 · deps: AUD-01, SKL/ORC (DONE). **Границы:** release assets/notes/README; публикация — только владелец.
+- **Доказательство:** `git ls-tree -d --name-only v1.1.0:skills` → `frontend-design`; `README.md:27-37` перечисляет 11 навыков; `v1.1.0` (`b1f438d`) создан до PR #36/#39. **Влияние:** release install и README расходятся; новые навыки доступны только из `main`.
+- **Решение:** выпустить следующий signed release после suite, обновить notes/README, добавить checklist «все 11 skills присутствуют». Трудоёмкость 1–2 ч; риск — owner approval.
+- **Проверка/приёмка:** `git ls-tree` нового тега содержит 11 skills; archive install устанавливает их; checksum/attestation PASS; README и notes совпадают.
+- **Следующий шаг:** владелец назначает release; задача не BLOCKED.
 
 ### AUD-23 — Public release signature is not independently verifiable from docs
 
-- **Аудит:** 2026-11-15. **Тип:** security/docs. **Приоритет:** P2 — `git tag -v` не работает у пользователя без закрытого/публичного trust-файла. **Уверенность:** высокая.
-- **Доказательство:** `README.md:82` требует `git tag -v "$VERSION"`, но не публикует allowed-signers/public key; fresh shallow clone `v1.1.0` → `gpg.ssh.allowedSignersFile needs to be configured`; с локальным `allowed_signers` проверка PASS. **Влияние:** пользователь не может воспроизвести проверку подписи по инструкции; остаётся доверять только GitHub-аккаунту.
-- **Решение:** опубликовать public allowed-signers/key в репозитории или release asset, добавить точную команду `git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=... verify-tag`, тест/CI. Трудоёмкость 30–60 мин; риск: раскрытие только публичного материала. **Проверка:** fresh clone + repo trust file PASS; подмена подписи FAIL.
-- **Приёмка:** документированная проверка работает на чистом clone; key rotation описана. **Зависимости:** AUD-01. **Статус:** OPEN. **Трекер:** #42.
+- `OPEN` · P2 · security/docs · #42 · deps: AUD-01 (DONE). **Границы:** публичный trust-материал и docs; секреты не публикуются.
+- **Доказательство:** `README.md:82` требует `git tag -v "$VERSION"`, но не публикует allowed-signers/public key; fresh shallow clone `v1.1.0` → `gpg.ssh.allowedSignersFile needs to be configured`; с локальным `allowed_signers` проверка PASS.
+- **Влияние:** пользователь не может воспроизвести проверку подписи по инструкции; остаётся доверять GitHub-аккаунту.
+- **Решение:** опубликовать public allowed-signers/key в repo или release asset; добавить точную команду `git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=... verify-tag`; тест/CI. Трудоёмкость 30–60 мин; риск — раскрытие только публичного материала.
+- **Проверка/приёмка:** fresh clone + repo trust file PASS; подмена подписи FAIL; ротация ключа описана.
+- **Следующий шаг:** добавить trust asset и команду проверки в docs.
 
 ### AUD-24 — Documentation references and skill counts drift
 
-- **Аудит:** 2026-11-15. **Тип:** documentation. **Приоритет:** P3 — ломает навигацию, не влияет на исполнение. **Уверенность:** высокая.
-- **Доказательство:** `docs/opencode-orchestration.md:76` указывал на несуществующий `tests/test_orchestration.py` (реальный тест — `tests/test_skill_suite.py`); проверка в `docs/plan.md` называла 10 навыков при 11 в `validate.py`; README intro и layout не отражали `orchestration` и новые skills; `THIRD_PARTY_NOTICES.md` не перечислял `orchestration`; в `docs/release-process.md` был дублирован фрагмент про signature/ancestry/check-run. **Влияние:** следующий исполнитель ищет несуществующий тест, неверно оценивает состав.
-- **Исправлено (аудит 2026-11-15):** README intro/layout, путь теста, счётчик validate, notices и дубль в release-process исправлены в PR аудита.
-- **Остаётся:** автоматическая проверка, что пути тестов из docs существуют и счётчики навыков совпадают с `skills/`; без неё drift вернётся. Трудоёмкость 30–60 мин. **Проверка:** mutation docs path/count fails; `make check` PASS.
-- **Приёмка:** нет ложных путей/счётчиков; проверка ловит подмену path/count. **Зависимости:** ORC-01. **Статус:** OPEN. **Трекер:** #43.
+- `OPEN` · P3 · documentation · #43 · deps: ORC-01 (DONE). **Границы:** docs и автоматическая проверка путей/счётчиков; поведение продукта не меняется.
+- **Доказательство:** `docs/opencode-orchestration.md` указывал на несуществующий `tests/test_orchestration.py` (реальный — `tests/test_skill_suite.py`); проверка в плане называла 10 навыков при 11; README intro/layout не отражали `orchestration`; `THIRD_PARTY_NOTICES.md` не перечислял `orchestration`; в `docs/release-process.md` был дублирован фрагмент signature/ancestry/check-run.
+- **Исправлено:** drift исправлен в PR #49; остаётся автоматическая проверка, что пути тестов из docs существуют и счётчики навыков совпадают с `skills/`.
+- **Влияние:** следующий исполнитель ищет несуществующий тест или неверно оценивает состав.
+- **Решение/проверка:** добавить проверку path/count; mutation docs path/count должна падать; `make check` PASS. Трудоёмкость 30–60 мин.
+- **Приёмка:** нет ложных путей/счётчиков; проверка ловит подмену path/count. **Следующий шаг:** реализовать guard.
 
 ### AUD-25 — Skill suite contract tests are too weak
 
-- **Аудит:** 2026-11-15. **Тип:** tests. **Приоритет:** P3 — тесты зелёные при пустом/размытом навыке. **Уверенность:** высокая.
+- `OPEN` · P3 · tests · #44 · deps: SKL-09 (DONE). **Границы:** `tests/test_skill_suite.py`; обязательные проверки не ослабляются.
 - **Доказательство:** `tests/test_skill_suite.py:52-58` проверяет только заголовок из списка; `:71-84` — наличие двух слов в description, без prompt/negative prompt. **Влияние:** сломанный workflow/trigger не ловится.
-- **Решение:** table-driven trigger matrix с realistic prompts и negative prompts; проверять обязательные секции/stop conditions; мутация пустого workflow должна падать. Трудоёмкость 1–2 ч. **Проверка:** mutation-тест.
-- **Приёмка:** пустой workflow/слишком широкий trigger валит suite; positive prompts проходят. **Зависимости:** SKL-09. **Статус:** OPEN. **Трекер:** #44.
+- **Решение:** table-driven trigger matrix с realistic prompts и negative prompts; проверять обязательные секции/stop conditions; пустой workflow должен валить suite. Трудоёмкость 1–2 ч.
+- **Проверка/приёмка:** positive prompts проходят; пустой workflow/слишком широкий trigger валит suite; mutation-тест PASS.
+- **Следующий шаг:** добавить matrix и negative cases.
 
 ### AUD-26 — Simple-skill validation branch has no focused test
 
-- **Аудит:** 2026-11-15. **Тип:** tests. **Приоритет:** P3 — ветка используется новыми навыками, но не проверена негативно. **Уверенность:** высокая.
+- `OPEN` · P3 · tests · #45 · deps: AUD-03 (DONE). **Границы:** `scripts/validate.py` simple-skill branch; manifest path не переписывается.
 - **Доказательство:** `scripts/validate.py:298-310` проверяет размер `SKILL.md` для навыка без manifest; `tests/test_validation.py` покрывает manifest, но не простой oversize/absence path. **Влияние:** регрессия размера/чтения может пройти.
-- **Решение:** temp skill без `references/assets`: pass; oversize SKILL.md: fail; `references` без manifest: fail. **Проверка:** pytest.
-- **Приёмка:** три кейса зелёные, mutation ветки падает. **Зависимости:** AUD-03. **Статус:** OPEN. **Трекер:** #45.
+- **Решение:** temp skill без `references/assets`: pass; oversize `SKILL.md`: fail; `references` без manifest: fail. Трудоёмкость 30–60 мин.
+- **Проверка/приёмка:** три кейса зелёные; mutation ветки падает.
+- **Следующий шаг:** добавить focused tests.
 
 ### AUD-27 — Orchestration and execution triggers overlap
 
-- **Аудит:** 2026-11-15. **Тип:** architecture/content. **Приоритет:** P3 — возможна двойная загрузка двух skill-инструкций. **Уверенность:** средняя.
-- **Доказательство:** `skills/orchestration/SKILL.md:3` и `skills/autonomous-execution/SKILL.md:3` обе срабатывают на complex/multi-step; у orchestration нет anti-trigger «передать утвержденный план в autonomous-execution». **Влияние:** дублирование routing/execution правил, лишний контекст.
-- **Решение:** добавить в orchestration явный anti-trigger/handoff, проверить trigger matrix negative prompt. Трудоёмкость 15–30 мин.
-- **Приёмка:** на «execute approved plan» срабатывает execution, на «how to route unknown work» — orchestration; tabletop tests. **Зависимости:** ORC-01, SKL-09. **Статус:** OPEN. **Трекер:** #46.
-
-### AUD-28 — Plan is oversized for its startup role
-
-- **Аудит:** 2026-11-15. **Тип:** documentation/process. **Приоритет:** P3 — план owner-facing, но полный контекст 46–48 KB и старые evidence-блоки затрудняют навигацию. **Уверенность:** высокая.
-- **Доказательство:** `docs/plan.md` 328 строк / 51 255 B; `AGENTS.md` + plan + issue 58 725–60 003 B; в плане сохраняются длинные evidence и старые done-блоки. **Влияние:** следующий исполнитель тратит контекст; риск повторного аудита/дублей.
-- **Решение:** отдельный проход «Порядок в плане»: оставить один аудит-раздел, компактные evidence, удалить устаревшие narrative-блоки после переноса уникального. Это вне текущего аудита, поэтому только задача. **Проверка:** измеренный startup context, отсутствие дублей ID.
-- **Приёмка:** план компактнее, ID/статусы/ссылки сохранены. **Зависимости:** завершение аудита. **Статус:** OPEN. **Трекер:** #47.
+- `OPEN` · P3 · architecture/content · #46 · deps: ORC-01, SKL-09 (DONE). **Границы:** skill descriptions/handoff; без plugin/hooks.
+- **Доказательство:** `skills/orchestration/SKILL.md:3` и `skills/autonomous-execution/SKILL.md:3` обе срабатывают на complex/multi-step; у orchestration нет anti-trigger «передать утвержденный план в autonomous-execution». **Влияние:** двойная загрузка двух skill-инструкций, лишний контекст.
+- **Решение:** добавить явный anti-trigger/handoff и negative prompt в trigger matrix. Трудоёмкость 15–30 мин.
+- **Проверка/приёмка:** «execute approved plan» → execution; «how to route unknown work» → orchestration; tabletop tests PASS.
+- **Следующий шаг:** уточнить description/handoff.
 
 ### AUD-29 — External-link tests start a server per test
 
-- **Аудит:** 2026-11-15. **Тип:** performance/tests. **Приоритет:** P3 — 4 × 0.5 s teardown, около 2 s из 15 s pytest. **Уверенность:** высокая.
-- **Доказательство:** `tests/test_external_links.py:45-57` создаёт/останавливает `ThreadingHTTPServer` в каждой fixture; `pytest --durations` показывает 0.50 s teardown на каждом из 4 тестов. **Влияние:** лишняя стоимость тестов, не продукта.
-- **Решение:** module/session-scoped server с уникальными путями/handlers, сохранить изоляцию; или один CLI-тест с несколькими URL. **Проверка:** `pytest --durations` ≤1 s на файл, тесты PASS.
-- **Приёмка:** server один на модуль, поведение/изоляция сохранены. **Зависимости:** AUD-03. **Статус:** OPEN. **Трекер:** #48.
+- `OPEN` · P3 · performance/tests · #48 · deps: AUD-03 (DONE). **Границы:** `tests/test_external_links.py`; изоляция и поведение сохраняются.
+- **Доказательство:** `tests/test_external_links.py:45-57` создаёт/останавливает `ThreadingHTTPServer` в каждой fixture; `pytest --durations` показывает 0.50 s teardown на каждом из 4 тестов, около 2 s из 15 s. **Влияние:** лишняя стоимость тестов, не продукта.
+- **Решение:** module/session-scoped server с уникальными путями/handlers или один CLI-тест с несколькими URL. Трудоёмкость 30–60 мин.
+- **Проверка/приёмка:** server один на модуль; `pytest --durations` ≤1 s на файл; тесты PASS.
+- **Следующий шаг:** консолидировать fixture.
 
-## Выполнено
+## Завершено
 
-**AUD-15 — documentation corrections.** DONE 2026-11-15. Исправлены README/CONTRIBUTING/GOVERNANCE/SECURITY/CHANGELOG/notices: `make check` vs CI, Node 22+, `--force` deletion scope, release-gate wording, tag creation, skills table, license qualifiers, description trigger. Residual AUD-20 tracked in AUD-04. Доказательство: `git show 9a7804e`, CI #12 PASS.
+Все DONE подтверждены `make check`/CI; следующий шаг по DONE — нет; неудачных попыток по задачам не зафиксировано. Навыки: [obra/superpowers](https://github.com/obra/superpowers) (MIT) и [sickn33/agentic-awesome-skills clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code) (MIT/CC BY 4.0); оригинальный синтез. Orchestration: [oh-my-opencode-slim](https://github.com/alvinunreal/oh-my-opencode-slim) и [claude-orchestration](https://github.com/snaplyze/claude-orchestration); только идеи маршрутизации, без плагина.
+
+### AUD-01 — Release pipeline integrity
+
+- `DONE` · P1 · security/release · #14 · deps: none (AUD-02 related) · **Границы:** release workflow/tags/notes/provenance; no skill content/product behavior; settings only by owner.
+- **Было:** release workflow принимал любой `v*` без ancestry/check-run/env; теги без подписи; notes вручную; assets 0.
+- **Результат/решение:** dispatch only from `main`; signed annotated tag verified against owner trust, ancestry `origin/main`, required `validate`/`Analyze (python)` check-runs with workflow path, protected `release` env; notes single-source from `CHANGELOG`; draft + manual promotion; prerelease uses `--prerelease --latest=false`; archive/SHA-256/provenance; `v1.1.0` signed/immutable (`b1f438d`); labels rejected; `README`/`GOVERNANCE §Releases` match the gate; `updated_at == published_at` для новых релизов, если ручной шаг не задокументирован; immutable setting owner-verified, workflow не читает admin endpoint.
+- **Приёмка/доказательство:** `.github/workflows/release.yml`, `scripts/release_notes.py`, `scripts/release_checks.py`, `tests/test_release_*`, `docs/release-process.md`; `make check`; `git tag -v v1.1.0` PASS with allowed-signers.
+
+### AUD-02 — Installer safety and verifiable install
+
+- `DONE` · P2 · security/delivery · #15 · deps: AUD-01; related AUD-03/AUD-04 · **Границы:** installer/install docs; no skill content; tests use temp HOME/target; no real user config writes.
+- **Было:** guard только `/`/`$HOME`; `rm -rf` target; `--copy --force` no-op на symlink; `--all` без kebab regex; ignored artifacts копировались.
+- **Результат/решение:** copy default; realpath/refuse guards; atomic staging/backups; `--copy` over symlink; `--all` IDs; artifact exclusions; `~/`; folded YAML; `--verify/--ref`; source tree unchanged, destructive targets write only target; README различает main/release; archive/checksum/install tested on `v1.1.0`.
+- **Приёмка/доказательство:** `install/opencode.sh`, `tests/test_installer.py`, `tests/test_release_assets.py`; target matrix/refusal/copy/force/conflict/list PASS.
+
+### AUD-03 — Validation correctness and token fixture
+
+- `DONE` · P1 · tests/accessibility/data · #16 · deps: none; related AUD-02/AUD-04/AUD-06 · **Границы:** validator/tests/token fixture; no skill prose; обязательные проверки не ослабляются.
+- **Было:** validator пропускал SKILL/cross-file anchors, проверял только passing fixture; contrast exit failure не тестировался; fixture 1/0 pairs проходил; tokens давали AA-fail.
+- **Результат/решение:** validator covers SKILL/cross-file anchors, title/reference/root-relative links, frontmatter/body, 106 local links, AGENTS/PR template, fixture 64/32+32, semantic coverage, reading sets; contrast CLI exit 0/1/2; every check has pass/fail fixture and mutation; 64 pairs + 26 semantic combos AA; token/fixture parity.
+- **Приёмка/доказательство:** `scripts/validate.py`, `tests/test_validation.py`, `tests/test_contrast_cli.py`; 188 tests PASS.
+
+### AUD-04 — CI toolchain and workflow hardening
+
+- `DONE` · P2 · CI/security/reproducibility · #17 · deps: AUD-03; related AUD-01/AUD-02/AUD-06/AUD-07 · **Границы:** CI/workflows/toolchain; no product behavior; runner/branch/account settings only by owner.
+- **Было:** unpinned ranges/npx/apt, `ubuntu-latest`, workflow-level `pull-requests: write`; локальный/CI набор расходился.
+- **Результат/решение:** `ubuntu-24.04`, Python 3.12, pip 26.3, hash-locked `requirements-dev.txt`/npm, `npm ci` cache and npm Dependabot; one `make check`; workflow policy checks 7 files and rejects unsafe workflows; Dependency Review write at job scope; docs/CI match; budget `make validate` ≤1 s / `make check` ≤30 s accepted.
+- **Производительность:** путь `.github/workflows/ci.yml`; нагрузка — pip/npm + suite; baseline 810 ms без pytest; цель `validate` ≤1 s/`check` ≤30 s; сравнение per-step timing; duplicate contrast/bash удалены.
+- **Приёмка/доказательство:** `.github/workflows/*`, `Makefile`, `scripts/check_workflows.py`, `tests/test_workflows.py`, `.github/dependabot.yml`; Scorecard Pinned-Dependencies ≥9; 188 tests; runtime ~0.3 s/20 s.
+
+### AUD-05 — Secret handling and ignore guard
+
+- `DONE` · P2 · security · #18 · deps: none (AUD-03 related) · **Границы:** `.gitignore`/secret scan; секретные значения не читаются и не публикуются.
+- **Было:** `.env*`, ключи, `secrets/`, `credentials*`, agent dirs не игнорировались; secret scan отсутствовал.
+- **Результат/решение:** `.gitignore` covers `.env*` (with `!.env.example`), `*.pem`/`*.key`/`*.p12`, `secrets/`, `credentials*`, `.opencode/`, `.claude/`, `.agents/`; gitleaks 8.30.1 pinned by SHA scans history; non-provider/validity scanning owner-only; AGENTS caveat снят.
+- **Приёмка/доказательство:** `.gitignore`, `.github/workflows/secret-scan.yml`, `tests/test_secrets.py`, `docs/repository-settings.md`; `git check-ignore` PASS.
+
+### AUD-06 — Skill content and instruction budget
+
+- `DONE` · P2 · content/performance/docs · #19 · deps: AUD-03; related AUD-04/AUD-07 · **Границы:** skill docs/assets/AGENTS project info; no product behavior or code/CI.
+- **Было:** `design-direction.md` 35 017 B, typical set 85 527 B; tokens/motion/units/budgets расходились; дубли шаблонов и attribution.
+- **Результат/решение:** 32 KiB reading budget; tokens canonical; motion/units/budgets fixed; `quality-gates.md`/`assets/audit-report.md` one template; `skills/frontend-design/references/sources.md` canonical; `AGENTS.md §План`/project info/listing aligned; `SKILL.md` 7 035 B; 10 reading sets; new-page 32 462 B; worked example excluded.
+- **Производительность:** путь `SKILL.md` routing + references; нагрузка — загружаемые байты; baseline 35 017 B / 85 527 B; цель 32 KiB; сравнение `wc -c`; дубли/лишние разделы удалены.
+- **Приёмка/доказательство:** `skills/frontend-design/assets/reading-sets.json`, references, `scripts/validate.py`; `make check` PASS.
+
+### AUD-07 — Repository protections and evidence
+
+- `DONE` · P3 · security/docs · #20 · deps: related AUD-01/AUD-04/AUD-06 · **Границы:** CODEOWNERS/ruleset docs/settings evidence; access changes only by owner.
+- **Было:** ruleset 0 approvals/no codeowner; `branch_protection_rule` не срабатывает на rulesets; settings evidence отсутствовал.
+- **Результат/решение:** CODEOWNERS advisory; Scorecard triggers `branch_protection_rule`/weekly/push; SARIF in code scanning; artifact 30 days; settings/date/owner actions in `docs/repository-settings.md`; `GOVERNANCE §Review`/settings evidence/date match; approvals/code-owner review/emergency path deferred to second maintainer.
+- **Приёмка/доказательство:** `.github/CODEOWNERS`, `.github/workflows/scorecard.yml`, `docs/repository-settings.md`; claims synchronized.
+
+### SKL-01 — Specification
+
+- `DONE` · #27 · deps: none · **Границы:** не писать код, не заменять исследование кода вопросами.
+- **Результат/приёмка:** запрос → проверяемая спецификация (проблема, пользователь, результат, non-goals, ограничения, acceptance, риски, открытые вопросы); правила вопросов, запрет выдумывать требования, handoff в планирование, ссылки валидируются.
+- **Доказательство:** `skills/specification/SKILL.md`; description/links/anti-trigger PASS.
+
+### SKL-02 — Implementation planning
+
+- `DONE` · #28 · deps: SKL-01 · **Границы:** план, не реализация.
+- **Результат/приёмка:** спецификация → исполнимый план: задачи 5–30 минут, точные файлы/интерфейсы, тесты, зависимости, проверки, риски; шаблон, self-review, handoff в исполнение; без hooks.
+- **Доказательство:** `skills/implementation-planning/SKILL.md`; task size/deps/handoff PASS.
+
+### SKL-03 — Autonomous execution
+
+- `DONE` · #29 · deps: SKL-02, SKL-05 · **Границы:** без hooks/plugin; worktree только при необходимости.
+- **Результат/приёмка:** утверждённый план исполняется автономно: один писатель на файл, параллельные независимые задачи, TDD-гейт, ledger, review, stop conditions, брифы субагентов.
+- **Доказательство:** `skills/autonomous-execution/SKILL.md`; subagents/one-writer/review-gate/worktree/ledger PASS.
+
+### SKL-04 — Systematic debugging
+
+- `DONE` · #30 · deps: SKL-05 · **Границы:** сначала reproduce/root cause, не shotgun-фиксы.
+- **Результат/приёмка:** reproduce → locate → hypothesize → fix → regression test; evidence, red flags, no-root-cause path.
+- **Доказательство:** `skills/systematic-debugging/SKILL.md`; phases/regression PASS.
+
+### SKL-05 — Test-driven development
+
+- `DONE` · #31 · deps: none · **Границы:** поведенческие тесты, не подгонка под тесты.
+- **Результат/приёмка:** red-green-refactor с наблюдаемым падением; три закона TDD, качество тестов, bugfix flow, anti-patterns, полный regression run.
+- **Доказательство:** `skills/test-driven-development/SKILL.md`; iron law/three laws/refactor PASS.
+
+### SKL-06 — Code review
+
+- `DONE` · #32 · deps: SKL-03 · **Границы:** свежий контекст, без self-approval.
+- **Результат/приёмка:** ревьюер получает spec/diff/tests/риски; severity P0/P1/P2; response protocol; no performative agreement.
+- **Доказательство:** `skills/code-review/SKILL.md`; request/receive/evidence PASS.
+
+### SKL-07 — Delivery
+
+- `DONE` · #33 · deps: SKL-06 · **Границы:** без обхода проверок.
+- **Результат/приёмка:** completion доказывается свежими командами; evidence gate, diff/check/PR checklist, merge rules, cleanup, completion report.
+- **Доказательство:** `skills/delivery/SKILL.md`; evidence/PR/merge/cleanup PASS.
+
+### SKL-08 — Clean code
+
+- `DONE` · #34 · deps: SKL-05 · **Границы:** behavior-preserving refactor; конвенции репозитория выше эвристик.
+- **Результат/приёмка:** язык-агностичный рефакторинг: имена, маленькие единицы, границы, ошибки, дублирование, связность, тесты; decision framework, refactor loop, checklist, anti-patterns.
+- **Доказательство:** `skills/clean-code/SKILL.md`; behavior/refactor PASS.
+
+### SKL-09 — Skill authoring
+
+- `DONE` · #35 · deps: SKL-01–SKL-08 · **Границы:** без behavioral evals без прогона; без hooks.
+- **Результат/приёмка:** trigger-rich description, компактный workflow, progressive disclosure, tabletop trigger matrix, repo integration, attribution; behavioral evals не запускались — ограничение.
+- **Доказательство:** `skills/skill-authoring/SKILL.md`; tabletop matrix/link/validation PASS.
+
+### ORC-01 — Native OpenCode orchestration skill
+
+- `DONE` · #38 · deps: SKL-03, SKL-06, SKL-07 · **Границы:** без plugin/hooks/background scheduler/marketplace/TUI/model profiles; глобальный `opencode.json` не меняется.
+- **Результат/приёмка:** routing matrix (direct/one delegate/parallel read-only/serialized writers/review/delivery), brief template, file ownership, review-gate, verification; native `explore`/`general` only; docs comparison с двумя источниками; contract tests.
+- **Доказательство:** `skills/orchestration/SKILL.md`, `docs/opencode-orchestration.md`, `tests/test_skill_suite.py`; `make check` PASS.
+
+### AUD-15 — documentation corrections
+
+- `DONE` · docs · no tracker · **Границы:** только документы; поведение не менялось.
+- **Результат/приёмка:** README/CONTRIBUTING/GOVERNANCE/SECURITY/CHANGELOG/notices: `make check` vs CI, Node 22+, `--force` deletion scope, release-gate wording, tag creation, skills table, license qualifiers, description trigger; residual AUD-20 tracked in AUD-04.
+- **Доказательство:** `git show 9a7804e`; CI #12 PASS.
+
+### AUD-28 — Plan is oversized for its startup role
+
+- `DONE` · P3 · documentation/process · #47 · deps: audit complete · **Границы:** план и связанные документы; продукт не меняется.
+- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 34 274; стартовый контекст 8 223–9 503 B.
+- **Доказательство:** этот файл; `make check` PASS; ссылки/якоря validate PASS; PR этой задачи закрывает #47.
+
+## Решения владельца
+
+- CI: hosted; self-hosted сейчас нет; fork approval для всех внешних; обязательные проверки `validate`, `Analyze (python)`, `dependency-review`; CodeQL — code-scanning gate.
+- Бюджет проверок: `make validate` ≤1 s, `make check` ≤30 s на hosted runner.
+- Релизы: только владелец; signed annotated tags, ancestry `main`, required checks, protected `release` environment, immutable releases, draft + manual promotion, notes из `CHANGELOG`.
+- Main: 0 approvals пока solo; CODEOWNERS advisory; при втором maintainer — approvals=1, code-owner review, signed commits/tags, emergency path.
+- Навыки: 10 workflow skills + `frontend-design`; orchestration только native `explore`/`general`; без plugin/hooks/background/TUI/model profiles; 32 KiB reading budget; WCAG 2.2 AA (24/44 px, 4.5:1/3:1, 64 pairs).
+- План: owner-facing, русский, единый реестр; не загружается как инструкции; продуктовые исправления не начинались; только отдельными задачами.
+- Доступ/оркестрация: full non-interactive только через пользовательскую обёртку; в проекте не настраивать; подагентов не устанавливать и не менять.
+
+## Аудит: охват и ограничения
+
+- 2026-11-15, база `2b4be4f`: архитектура, безопасность, данные, производительность, тесты, сборка/доставка, документация; находки AUD-01…AUD-07 DONE.
+- 2026-11-15, база `977e2f2`: те же области; 8 находок, 7 OPEN + AUD-28 DONE. Снимок: `make check` PASS (188 tests), `validate` PASS (11 skills), 49/49 внешних ссылок; `v1.1.0` проверен публичным allowed-signers.
+- Не проверено: fork PR, tag/release dispatch, destructive installer, UI WCAG, tokenizer/CI wall-time, upstream legal review; Python 3.9 runtime не проверялся (floor 3.12). Реестр относится к коммитам аудита; после них менялись только план и документы.
+
+## Риски
+
+- Release: custody/rotation подписывающего ключа; environment approval; owner bypass при создании тегов; full history; solo-review.
+- Installer: `realpath -m` на не-GNU платформах; замена/бэкапы/частота обновлений.
+- Validation/tests: edge cases Markdown/parser; flaky external links; semantic coverage; secret-scan false positives; стоимость suite.
+- CI: churn lockfile/actions; ширина allowlist; drift runner/toolchain.
+- Skills/plan: фрагментация контекста и link churn; tokenizer vs bytes; drift плана; upstream licensing.
 
 ## Гипотезы (не задачи)
 
 - Fork PR может не пройти `dependency-review` из-за `comment-summary-in-pr: always`; проверить контролируемым fork PR.
-- CI wall-time: локальный полный suite ~20 s; per-step timing на hosted ещё не снят.
-- CodeQL на docs-only PR может быть дорог; проверить paths-ignore без ослабления required checks.
+- CI wall-time: локальный suite ~20 s; per-step timing на hosted не снят.
+- CodeQL на docs-only PR может быть дорог; проверить `paths-ignore` без ослабления required checks.
 - Токенизация references может отличаться от bytes/4; проверить tokenizer.
 - Actions allowlist `verified_allowed` шире least privilege; сузить при необходимости.
 - `require_extra_approval_for_unattributed_changes` при 0 approvals; проверить unverified email.
 - name/ID portability вне OpenCode; проверить спецификации.
-- «64 audited» provenance; fixture не содержит audit metadata.
+- «64 audited» provenance: fixture не содержит audit metadata.
 - PR template relative link rendering; проверить GitHub UI.
 - Upstream licensing/text-copying; нужен legal review.
 - Alternate `<name>.md` skill layout; проверить harness.
@@ -325,4 +268,30 @@
 - Claude Code/Codex не установлены; загрузка не проверялась.
 - Второй maintainer нужен для approvals/code-owner review.
 - Upstream-лицензии двух источников требуют проверки.
-- Продуктовые исправления не начинались; для них — отдельное выполнение задач плана.
+
+## Карта слияния ID
+
+| Было | Стало | Причина |
+|---|---|---|
+| AUD-01, AUD-06, AUD-09 | AUD-01 | один release pipeline: gate, notes, provenance |
+| AUD-02, AUD-03, installer tests из AUD-11 | AUD-02 | один installer: безопасность, trust, проверка |
+| AUD-11, AUD-16, AUD-17 | AUD-03 | одна validation correctness: false greens, parser, tokens |
+| AUD-05, AUD-08, AUD-10, AUD-20 | AUD-04 | один CI/toolchain/workflow contract |
+| AUD-04 | AUD-05 | secret handling |
+| AUD-07, AUD-14, AUD-18, AUD-19 | AUD-06 | один skill content/instruction budget |
+| AUD-12, AUD-13, AUD-21 | AUD-07 | repository protections и evidence |
+| AUD-15 | DONE | документы уже исправлены |
+
+## Что свёрнуто и почему
+
+| Было | Стало | Причина |
+|---|---|---|
+| Подробные evidence-блоки AUD-01…AUD-07 | Компактные DONE-записи с путями доказательств | Работа завершена; evidence сохранён, narrative не нужен для следующей задачи |
+| Подробные блоки SKL-01…SKL-09 и ORC-01 | Компактные DONE-записи | Завершено; канонические инструкции — в `skills/` |
+| `AUD-28` как открытая задача | DONE-запись | Этот проход выполнил её приёмку: план сжат, #47 закрывается |
+| `AUD-15` narrative | DONE-запись | Исправление уже влито; residual AUD-20 остаётся в AUD-04 |
+| Два раздела аудита (`Аудит 2026-11-15`, `… повторный`) | Один раздел «Аудит: охват и ограничения» | Дублируют охват/limits; findings остаются отдельными ID |
+| `Выполнено`, `Гипотезы`, `Владельцу` | Компактные разделы | Один факт — одно место; все ID/решения/риски сохранены |
+| `Карта слияния ID` | Без изменений | Исторические ID нужны для трассировки |
+
+Удалено только доказанно лишнее: повторяющиеся evidence-абзацы завершённых задач, дублирующие summaries и narrative, уже перенесённые в код/документы. Ни один ID, статус, зависимость, риск, решение владельца или условие BLOCKED не потерян; открытые задачи сохранены.
