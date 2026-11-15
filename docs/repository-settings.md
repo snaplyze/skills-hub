@@ -15,10 +15,10 @@ regress.
 | Required checks | `validate`, `Analyze (python)`, `dependency-review`; strict up-to-date policy | Ruleset `main-protection` | Maintainer |
 | Code scanning | CodeQL required; errors and high/critical security alerts block | Ruleset `main-protection` | Maintainer |
 | Force push / deletion | Blocked | Ruleset `main-protection` | Maintainer |
-| Tag ruleset | `tag-protection` (#27259245), active; blocks creation, deletion, non-fast-forward; requires signatures; owner bypass | Tag ruleset | Maintainer |
+| Tag ruleset | `tag-protection` (#27259245), active; blocks creation, deletion, non-fast-forward; requires signatures; owner-only creation via configured bypass; bypass does not bypass signature/ancestry/check-run gates | Tag ruleset | Maintainer |
 | Tag creation | Gated by the tag ruleset with owner bypass; signatures required | Tag ruleset | Maintainer |
 | CODEOWNERS | Advisory only; the ruleset does not require code-owner review | `.github/CODEOWNERS` | Maintainer |
-| Environments | `release` exists; required reviewer `snaplyze`; deployment policy allows `main`; admin bypass disabled | Actions environments | Maintainer |
+| Environments | `release` exists; required reviewer `snaplyze`; deployment policy allows `main`; self-review allowed by solo exception; admin bypass disabled | Actions environments | Maintainer |
 
 ## Actions and runners
 
@@ -66,7 +66,10 @@ fork code on it, and keep fork approval enabled.
    the personal public repository API did not enable them.
 2. When a second regular maintainer joins, raise the main ruleset approval
    count to 1 and require code-owner review.
-3. If self-hosted runners are added, configure labels/OS/architecture, enable
+3. When a second reviewer joins, add them to the `release` environment and set
+   `prevent_self_review` to true; do not use a second account only to satisfy
+   the gate.
+4. If self-hosted runners are added, configure labels/OS/architecture, enable
    fork approval for those jobs, and keep untrusted code on hosted runners.
-4. Rotate the SSH release signing key and update
+5. Rotate the SSH release signing key and update
    `RELEASE_TAG_ALLOWED_SIGNERS` before the current key is retired.

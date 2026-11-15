@@ -84,6 +84,14 @@ The workflow references `environment: release`. If the environment does not
 exist, GitHub can run the job without the intended approval gate, so create it
 before the first release.
 
+Solo-maintainer exception: the current environment has one reviewer and
+`prevent_self_review` is false. This is accepted only because no second
+reviewer exists; the signed tag, required checks, changelog notes, draft review,
+checksums, provenance, and immutable release are compensating controls. When a
+second maintainer joins, add that person as a reviewer and set
+`prevent_self_review` to true before the next release. Do not use a second
+account merely to satisfy the approval gate.
+
 ### Tag ruleset
 
 Keep a ruleset for `v*` tags that blocks deletion and force updates, and, where
@@ -91,6 +99,13 @@ the available rule set supports it, restricts tag creation to maintainers and
 requires signed tags. The workflow independently verifies the tag signature
 with `git verify-tag`, so missing tag-rule support does not make an unsigned tag
 publishable.
+
+The current `tag-protection` ruleset restricts creation to the repository owner
+through its configured bypass actor. That bypass only allows the owner to create
+a tag; it does not bypass signature verification, main ancestry, required
+check-runs, the protected environment, or immutable-release controls. Keep the
+owner-only creation rule while there is one release manager; when a second
+release manager joins, replace the bypass with a non-bypass release role.
 
 Tag creation itself is not the release trigger. A maintainer who can push a tag
 can provide it as the workflow input; the signature, ancestry, and check-run
