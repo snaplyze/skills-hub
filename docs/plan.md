@@ -1,12 +1,12 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T14:32:48Z; этапы 01–07; аудит #41–#48 (AUD-22 OPEN; AUD-23…AUD-29 DONE, в т.ч. #47 и этот PR); закрытые #14–#20, #27–#35, #38. Реестр — этот файл; план owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T14:32:48Z; этапы 01–07; аудит #41–#48 (AUD-22 IN_REVIEW; AUD-23…AUD-29 DONE, в т.ч. #47 и этот PR); закрытые #14–#20, #27–#35, #38. Реестр — этот файл; план owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
 | Документ | Роль | Строк / байт |
 |---|---|---|
-| `docs/plan.md` | реестр плана | 328 / 51 255 → 298 / 35 315 |
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 298 / 35 325 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
 | `README.md` | вход и установка | 335 / 18 013 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
@@ -16,7 +16,7 @@
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 394 / 16 136 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
 
-Документы, изменённые задачами аудита: `README.md`, `CHANGELOG.md`, `docs/release-process.md`, `docs/release-signing/`; план обновлён; остальные не менялись. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 1 277 B + issue #41 653 B = 8 688 B. Полный план + issue: 35 315 + 653 = 35 968 B. План не входит в бюджет инструкций 32 KiB.
+Документы, изменённые задачами аудита: `README.md`, `CHANGELOG.md`, `docs/release-process.md`, `docs/release-signing/`; план обновлён; остальные не менялись. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 1 277 B + issue #41 653 B = 8 688 B. Полный план + issue: 35 325 + 653 = 35 978 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
@@ -28,7 +28,7 @@
 | 04 | Agent workflow skills (веха #4, closed) | SKL-01 #27, SKL-02 #28, SKL-03 #29 |
 | 05 | Quality and delivery skills (веха #5, closed) | SKL-04 #30, SKL-05 #31, SKL-06 #32, SKL-07 #33, SKL-08 #34, SKL-09 #35 |
 | 06 | Native orchestration (веха #6, closed) | ORC-01 #38 |
-| 07 | Audit 2026-11-15 (веха #7, open) | AUD-22 #41 OPEN; AUD-23 #42 DONE; AUD-24 #43 DONE; AUD-25 #44 DONE; AUD-26 #45 DONE; AUD-27 #46 DONE; AUD-28 #47 DONE; AUD-29 #48 DONE |
+| 07 | Audit 2026-11-15 (веха #7, open) | AUD-22 #41 IN_REVIEW; AUD-23 #42 DONE; AUD-24 #43 DONE; AUD-25 #44 DONE; AUD-26 #45 DONE; AUD-27 #46 DONE; AUD-28 #47 DONE; AUD-29 #48 DONE |
 
 Порядок этапов: 01 → 02 → 03 → 04 → 05 → 06 → 07. Очередь навыков: SKL-01 → SKL-02 → SKL-05 → SKL-03/SKL-04/SKL-08 → SKL-06 → SKL-07 → SKL-09. Исполнение не начинается до принятого spec/plan; review-gate обязателен на каждой задаче.
 
