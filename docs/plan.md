@@ -6,7 +6,7 @@
 
 | Документ | Роль | Строк / байт |
 |---|---|---|
-| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 34 041 |
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 34 274 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
 | `README.md` | вход и установка | 333 / 17 873 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
@@ -15,7 +15,7 @@
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 375 / 15 466 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
 
-Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 610 B + issue 545–1 135 B = 8 223–9 503 B. Полный план + issue: 34 041 + 545–1 135 = 34 586–35 176 B. План не входит в бюджет инструкций 32 KiB.
+Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 610 B + issue 545–1 135 B = 8 223–9 503 B. Полный план + issue: 34 274 + 545–1 135 = 34 819–35 409 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
@@ -99,32 +99,32 @@
 
 ### AUD-01 — Release pipeline integrity
 
-- `DONE` · P1 · security/release · #14 · deps: none (AUD-02 related) · **Границы:** release workflow/tags/notes/provenance; no product behavior; settings only by owner.
+- `DONE` · P1 · security/release · #14 · deps: none (AUD-02 related) · **Границы:** release workflow/tags/notes/provenance; no skill content/product behavior; settings only by owner.
 - **Было:** release workflow принимал любой `v*` без ancestry/check-run/env; теги без подписи; notes вручную; assets 0.
 - **Результат/решение:** dispatch only from `main`; signed annotated tag verified against owner trust, ancestry `origin/main`, required `validate`/`Analyze (python)` check-runs with workflow path, protected `release` env; notes single-source from `CHANGELOG`; draft + manual promotion; prerelease uses `--prerelease --latest=false`; archive/SHA-256/provenance; `v1.1.0` signed/immutable (`b1f438d`); labels rejected; `README`/`GOVERNANCE §Releases` match the gate; `updated_at == published_at` для новых релизов, если ручной шаг не задокументирован; immutable setting owner-verified, workflow не читает admin endpoint.
 - **Приёмка/доказательство:** `.github/workflows/release.yml`, `scripts/release_notes.py`, `scripts/release_checks.py`, `tests/test_release_*`, `docs/release-process.md`; `make check`; `git tag -v v1.1.0` PASS with allowed-signers.
 
 ### AUD-02 — Installer safety and verifiable install
 
-- `DONE` · P2 · security/delivery · #15 · deps: AUD-01; related AUD-03/AUD-04 · **Границы:** installer/install docs; tests use temp HOME/target; no real user config writes.
+- `DONE` · P2 · security/delivery · #15 · deps: AUD-01; related AUD-03/AUD-04 · **Границы:** installer/install docs; no skill content; tests use temp HOME/target; no real user config writes.
 - **Было:** guard только `/`/`$HOME`; `rm -rf` target; `--copy --force` no-op на symlink; `--all` без kebab regex; ignored artifacts копировались.
 - **Результат/решение:** copy default; realpath/refuse guards; atomic staging/backups; `--copy` over symlink; `--all` IDs; artifact exclusions; `~/`; folded YAML; `--verify/--ref`; source tree unchanged, destructive targets write only target; README различает main/release; archive/checksum/install tested on `v1.1.0`.
 - **Приёмка/доказательство:** `install/opencode.sh`, `tests/test_installer.py`, `tests/test_release_assets.py`; target matrix/refusal/copy/force/conflict/list PASS.
 
 ### AUD-03 — Validation correctness and token fixture
 
-- `DONE` · P1 · tests/accessibility/data · #16 · deps: none; related AUD-02/AUD-04/AUD-06 · **Границы:** validator/tests/token fixture; обязательные проверки не ослабляются.
+- `DONE` · P1 · tests/accessibility/data · #16 · deps: none; related AUD-02/AUD-04/AUD-06 · **Границы:** validator/tests/token fixture; no skill prose; обязательные проверки не ослабляются.
 - **Было:** validator пропускал SKILL/cross-file anchors, проверял только passing fixture; contrast exit failure не тестировался; fixture 1/0 pairs проходил; tokens давали AA-fail.
 - **Результат/решение:** validator covers SKILL/cross-file anchors, title/reference/root-relative links, frontmatter/body, 106 local links, AGENTS/PR template, fixture 64/32+32, semantic coverage, reading sets; contrast CLI exit 0/1/2; every check has pass/fail fixture and mutation; 64 pairs + 26 semantic combos AA; token/fixture parity.
 - **Приёмка/доказательство:** `scripts/validate.py`, `tests/test_validation.py`, `tests/test_contrast_cli.py`; 188 tests PASS.
 
 ### AUD-04 — CI toolchain and workflow hardening
 
-- `DONE` · P2 · CI/security/reproducibility · #17 · deps: AUD-03; related AUD-01/AUD-02/AUD-06/AUD-07 · **Границы:** CI/workflows/toolchain; no product behavior; runner/account settings only by owner.
+- `DONE` · P2 · CI/security/reproducibility · #17 · deps: AUD-03; related AUD-01/AUD-02/AUD-06/AUD-07 · **Границы:** CI/workflows/toolchain; no product behavior; runner/branch/account settings only by owner.
 - **Было:** unpinned ranges/npx/apt, `ubuntu-latest`, workflow-level `pull-requests: write`; локальный/CI набор расходился.
-- **Результат/решение:** `ubuntu-24.04`, Python 3.12, pip 26.3, hash-locked `requirements-dev.txt`/npm, `npm ci` cache; one `make check`; workflow policy checks 7 files and rejects unsafe workflows; Dependency Review write at job scope; docs/CI match; budget `make validate` ≤1 s / `make check` ≤30 s accepted.
+- **Результат/решение:** `ubuntu-24.04`, Python 3.12, pip 26.3, hash-locked `requirements-dev.txt`/npm, `npm ci` cache and npm Dependabot; one `make check`; workflow policy checks 7 files and rejects unsafe workflows; Dependency Review write at job scope; docs/CI match; budget `make validate` ≤1 s / `make check` ≤30 s accepted.
 - **Производительность:** путь `.github/workflows/ci.yml`; нагрузка — pip/npm + suite; baseline 810 ms без pytest; цель `validate` ≤1 s/`check` ≤30 s; сравнение per-step timing; duplicate contrast/bash удалены.
-- **Приёмка/доказательство:** `.github/workflows/*`, `Makefile`, `scripts/check_workflows.py`, `tests/test_workflows.py`; 188 tests; runtime ~0.3 s/20 s.
+- **Приёмка/доказательство:** `.github/workflows/*`, `Makefile`, `scripts/check_workflows.py`, `tests/test_workflows.py`, `.github/dependabot.yml`; Scorecard Pinned-Dependencies ≥9; 188 tests; runtime ~0.3 s/20 s.
 
 ### AUD-05 — Secret handling and ignore guard
 
@@ -145,7 +145,7 @@
 
 - `DONE` · P3 · security/docs · #20 · deps: related AUD-01/AUD-04/AUD-06 · **Границы:** CODEOWNERS/ruleset docs/settings evidence; access changes only by owner.
 - **Было:** ruleset 0 approvals/no codeowner; `branch_protection_rule` не срабатывает на rulesets; settings evidence отсутствовал.
-- **Результат/решение:** CODEOWNERS advisory; Scorecard triggers `branch_protection_rule`/weekly/push; SARIF in code scanning; artifact 30 days; settings/date/owner actions in `docs/repository-settings.md`; `GOVERNANCE §Review`/settings evidence/date match; approvals/code-owner review deferred to second maintainer.
+- **Результат/решение:** CODEOWNERS advisory; Scorecard triggers `branch_protection_rule`/weekly/push; SARIF in code scanning; artifact 30 days; settings/date/owner actions in `docs/repository-settings.md`; `GOVERNANCE §Review`/settings evidence/date match; approvals/code-owner review/emergency path deferred to second maintainer.
 - **Приёмка/доказательство:** `.github/CODEOWNERS`, `.github/workflows/scorecard.yml`, `docs/repository-settings.md`; claims synchronized.
 
 ### SKL-01 — Specification
@@ -217,7 +217,7 @@
 ### AUD-28 — Plan is oversized for its startup role
 
 - `DONE` · P3 · documentation/process · #47 · deps: audit complete · **Границы:** план и связанные документы; продукт не меняется.
-- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 34 041; стартовый контекст 8 223–9 503 B.
+- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 34 274; стартовый контекст 8 223–9 503 B.
 - **Доказательство:** этот файл; `make check` PASS; ссылки/якоря validate PASS; PR этой задачи закрывает #47.
 
 ## Решения владельца
@@ -225,9 +225,9 @@
 - CI: hosted; self-hosted сейчас нет; fork approval для всех внешних; обязательные проверки `validate`, `Analyze (python)`, `dependency-review`; CodeQL — code-scanning gate.
 - Бюджет проверок: `make validate` ≤1 s, `make check` ≤30 s на hosted runner.
 - Релизы: только владелец; signed annotated tags, ancestry `main`, required checks, protected `release` environment, immutable releases, draft + manual promotion, notes из `CHANGELOG`.
-- Main: 0 approvals пока solo; CODEOWNERS advisory; при втором maintainer — approvals=1, code-owner review, signed commits/tags.
+- Main: 0 approvals пока solo; CODEOWNERS advisory; при втором maintainer — approvals=1, code-owner review, signed commits/tags, emergency path.
 - Навыки: 10 workflow skills + `frontend-design`; orchestration только native `explore`/`general`; без plugin/hooks/background/TUI/model profiles; 32 KiB reading budget; WCAG 2.2 AA (24/44 px, 4.5:1/3:1, 64 pairs).
-- План: owner-facing, русский, единый реестр; не загружается как инструкции; продуктовые исправления — только отдельными задачами.
+- План: owner-facing, русский, единый реестр; не загружается как инструкции; продуктовые исправления не начинались; только отдельными задачами.
 - Доступ/оркестрация: full non-interactive только через пользовательскую обёртку; в проекте не настраивать; подагентов не устанавливать и не менять.
 
 ## Аудит: охват и ограничения
@@ -238,9 +238,9 @@
 
 ## Риски
 
-- Release: custody/rotation подписывающего ключа; environment approval; owner bypass при создании тегов; solo-review.
+- Release: custody/rotation подписывающего ключа; environment approval; owner bypass при создании тегов; full history; solo-review.
 - Installer: `realpath -m` на не-GNU платформах; замена/бэкапы/частота обновлений.
-- Validation/tests: edge cases Markdown/parser; flaky external links; semantic coverage; стоимость suite.
+- Validation/tests: edge cases Markdown/parser; flaky external links; semantic coverage; secret-scan false positives; стоимость suite.
 - CI: churn lockfile/actions; ширина allowlist; drift runner/toolchain.
 - Skills/plan: фрагментация контекста и link churn; tokenizer vs bytes; drift плана; upstream licensing.
 
