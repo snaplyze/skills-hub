@@ -45,7 +45,7 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def server() -> str:
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)

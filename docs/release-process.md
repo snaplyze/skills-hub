@@ -41,7 +41,8 @@ created. The workflow fails closed with an `::error::` message.
 1. Add user-facing changes under `## [Unreleased]` and open a pull request.
 2. Before cutting the release, open a pull request that moves the entries into
    `## [X.Y.Z] - YYYY-MM-DD`, leaves an empty `## [Unreleased]`, and uses the
-   same version as the future tag. Merge it.
+   same version as the future tag. Confirm that `skills/` contains every skill
+   listed in the README and that the current-HEAD archive test passes. Merge it.
 3. Wait for `validate` and `Analyze (python)` on `main`, and for
    `dependency-review` on the pull request. Do not bypass branch protection.
 4. From a clean `main` checkout, create a signed annotated tag:
@@ -92,8 +93,8 @@ with `git verify-tag`, so missing tag-rule support does not make an unsigned tag
 publishable.
 
 Tag creation itself is not the release trigger. A maintainer who can push a tag
-can provide it as the workflow input; the signature, ancestry, check-run, and
-signature, ancestry, and check-run checks still apply; the immutable setting is owner-verified.
+can provide it as the workflow input; the signature, ancestry, and check-run
+checks still apply, and the immutable setting is owner-verified.
 
 ### Tag signature trust
 
@@ -110,8 +111,12 @@ variable first and falls back to the secret.
 Set only one. The workflow imports the OpenPGP key into a temporary
 `GNUPGHOME`, or writes the allowed-signers file to a temporary path, and runs
 `git verify-tag`. The allowed-signers file must contain the principal used for
-the tag. A lightweight tag, an unsigned annotated tag, a signature from an
-unknown key, or both variables being set fails the job.
+the tag. The public copy is
+[`docs/release-signing/allowed_signers`](release-signing/allowed_signers); its
+rotation is documented in
+[`docs/release-signing/README.md`](release-signing/README.md). A lightweight
+tag, an unsigned annotated tag, a signature from an unknown key, or both
+variables being set fails the job.
 
 Create the tag with the matching local configuration, for example:
 
@@ -197,7 +202,9 @@ the signature separately), clone the signed tag and use `--verify --ref`:
 git clone --branch "$VERSION" --depth 1 \
   https://github.com/snaplyze/skills-hub.git
 cd skills-hub
-git tag -v "$VERSION"
+git -c gpg.format=ssh \
+  -c gpg.ssh.allowedSignersFile=docs/release-signing/allowed_signers \
+  verify-tag "$VERSION"
 ./install/opencode.sh --verify --ref "$VERSION"
 ```
 

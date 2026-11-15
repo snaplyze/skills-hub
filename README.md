@@ -9,7 +9,7 @@
 
 Portable, high-craft skills for AI coding agents. Each skill is a self-contained directory with a `SKILL.md`, optional references, assets, and deterministic scripts. Install it globally into the agent you use; keep it versioned here.
 
-The first skill is **Frontend Design** for **OpenCode**. Support for Claude Code, Codex, and other harnesses will follow without rewriting the skill content.
+The repository includes **Frontend Design** plus a compact agent workflow suite for **OpenCode**: specification, planning, orchestration, execution, debugging, TDD, review, delivery, clean code, and skill authoring. The workflow skills are deliberately smaller than hook-heavy frameworks: they use ordinary skill descriptions and portable Markdown, with no plugin or session bootstrap.
 
 ## Status
 
@@ -25,6 +25,16 @@ The first skill is **Frontend Design** for **OpenCode**. Support for Claude Code
 | Skill | Purpose | Harness |
 |---|---|---|
 | [`frontend-design`](skills/frontend-design/SKILL.md) | Distinctive, accessible web interface design and frontend quality | OpenCode |
+| [`orchestration`](skills/orchestration/SKILL.md) | Route complex work across native `explore`/`general` subagents without a plugin | OpenCode |
+| [`specification`](skills/specification/SKILL.md) | Turn ambiguous requests into testable specs with non-goals and acceptance | OpenCode |
+| [`implementation-planning`](skills/implementation-planning/SKILL.md) | Turn a spec into small, testable, dependency-aware tasks | OpenCode |
+| [`autonomous-execution`](skills/autonomous-execution/SKILL.md) | Execute approved plans with subagents, worktrees, TDD gates, and a ledger | OpenCode |
+| [`systematic-debugging`](skills/systematic-debugging/SKILL.md) | Reproduce, locate root cause, fix, and prove with a regression test | OpenCode |
+| [`test-driven-development`](skills/test-driven-development/SKILL.md) | Red-green-refactor with behavior-focused tests | OpenCode |
+| [`code-review`](skills/code-review/SKILL.md) | Request fresh-context review and evaluate feedback with evidence | OpenCode |
+| [`delivery`](skills/delivery/SKILL.md) | Verify, open a scoped PR, merge without bypass, and report evidence | OpenCode |
+| [`clean-code`](skills/clean-code/SKILL.md) | Language-agnostic readability, boundaries, errors, and refactoring | OpenCode |
+| [`skill-authoring`](skills/skill-authoring/SKILL.md) | Design, test, and integrate new OpenCode skills | OpenCode |
 
 ### `frontend-design`
 
@@ -41,16 +51,23 @@ Use it when you want:
 
 It is deliberately opinionated about craft and deliberately neutral about style. The brief and the existing product outrank its defaults.
 
+### Agent workflow suite
+
+These skills cover the path from an ambiguous request to a verified merge. They are independent enough to load on demand, but designed to hand off to one another: `specification` → `implementation-planning` → `autonomous-execution` → `code-review` → `delivery`, with `systematic-debugging`, `test-driven-development`, and `clean-code` available at the points where they change the outcome. `skill-authoring` is the meta-skill for extending the suite. `orchestration` is the thin routing layer over native OpenCode subagents.
+
+No hooks, plugin bootstrap, or session injection are required. Trigger quality comes from each skill description and explicit routing. Each skill is loaded independently; the suite is not a single context load.
+
 ## Install
 
 ### OpenCode
 
 The installer copies skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default. Copy mode snapshots content and never writes into this checkout. Use `--link` only when you want a live link to the clone. It requires Bash and GNU `realpath -m`; on systems without that command, use the minimal manual copy below.
 
-New releases use signed `vX.Y.Z` tags. Tags published before the release gate
-(`v1.0.1` and earlier) are unsigned and have no source-archive assets; do not
-treat them as signed releases. Owner setup for the protected `release`
-environment, tag-signature trust, and immutable releases is documented in
+Release `v1.2.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release
+gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do
+not treat them as signed releases. The protected `release` environment,
+tag-signature trust, tag rules, and immutable-release setup are recorded in
+[docs/repository-settings.md](docs/repository-settings.md) and
 [docs/release-process.md](docs/release-process.md).
 
 #### Install from a release
@@ -62,7 +79,9 @@ let the installer check that the checkout is clean and at exactly that tag:
 VERSION=vX.Y.Z  # replace with a signed release tag
 git clone --branch "$VERSION" --depth 1 https://github.com/snaplyze/skills-hub.git
 cd skills-hub
-git tag -v "$VERSION"          # verifies the signature with your local trust store
+git -c gpg.format=ssh \
+  -c gpg.ssh.allowedSignersFile=docs/release-signing/allowed_signers \
+  verify-tag "$VERSION"
 ./install/opencode.sh --verify --ref "$VERSION"
 ```
 
@@ -159,6 +178,7 @@ skills-hub/
 ├── .github/                     # CI, security, issue/PR templates
 ├── docs/
 │   ├── plan.md                  # audit and remediation registry
+│   ├── opencode-orchestration.md # native routing architecture and limits
 │   ├── release-process.md       # release gate and owner setup
 │   └── repository-settings.md   # settings evidence and owner actions
 ├── install/
@@ -170,14 +190,10 @@ skills-hub/
 │   ├── release_notes.py         # SemVer/changelog release notes
 │   └── release_checks.py        # required check-run gate
 ├── tests/                       # validator, installer, release, workflow tests
-└── skills/
-    └── frontend-design/
-        ├── SKILL.md             # workflow, principles, hard rules
-        ├── LICENSE              # MIT for the portable skill
-        ├── references/          # design, UX, accessibility, implementation
-        ├── assets/              # tokens, contrast pairs, templates
-        └── scripts/
-            └── contrast.py      # dependency-free WCAG contrast checker
+└── skills/                      # 11 portable skills; see the Skills table
+    ├── frontend-design/         # design references, assets, contrast script
+    ├── orchestration/           # native subagent routing
+    └── ...                      # nine workflow skills
 ```
 
 ## Using the skill

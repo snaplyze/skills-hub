@@ -58,9 +58,10 @@ granted by the current maintainer and reviewed periodically.
   release; promotion is a manual step.
 - `CHANGELOG.md` is the single source of release notes. The workflow extracts
   the matching version section and fails if it is missing.
-- Tag protection blocks deletion and force updates. Tag signing, immutable
-  releases, and the protected `release` environment are owner-only setup
-  actions recorded in [`docs/repository-settings.md`](docs/repository-settings.md).
+- Tag protection blocks creation/deletion, force updates, and requires signed
+  tags. Immutable releases and the protected `release` environment are
+  enabled; key rotation remains an owner action recorded in
+  [`docs/repository-settings.md`](docs/repository-settings.md).
 
 ## Changes to governance
 

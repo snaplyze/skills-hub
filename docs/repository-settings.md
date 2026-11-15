@@ -15,10 +15,10 @@ regress.
 | Required checks | `validate`, `Analyze (python)`, `dependency-review`; strict up-to-date policy | Ruleset `main-protection` | Maintainer |
 | Code scanning | CodeQL required; errors and high/critical security alerts block | Ruleset `main-protection` | Maintainer |
 | Force push / deletion | Blocked | Ruleset `main-protection` | Maintainer |
-| Tag ruleset | `tag-protection` (#27259245), active; blocks deletion and non-fast-forward only | Tag ruleset | Maintainer |
-| Tag creation | Not gated; no required signatures | Tag ruleset | Owner decision required |
+| Tag ruleset | `tag-protection` (#27259245), active; blocks creation, deletion, non-fast-forward; requires signatures; owner bypass | Tag ruleset | Maintainer |
+| Tag creation | Gated by the tag ruleset with owner bypass; signatures required | Tag ruleset | Maintainer |
 | CODEOWNERS | Advisory only; the ruleset does not require code-owner review | `.github/CODEOWNERS` | Maintainer |
-| Environments | None configured; `release.yml` references a `release` environment, so the owner must create and protect it | Actions environments | Owner decision required |
+| Environments | `release` exists; required reviewer `snaplyze`; deployment policy allows `main`; admin bypass disabled | Actions environments | Maintainer |
 
 ## Actions and runners
 
@@ -42,12 +42,12 @@ fork code on it, and keep fork approval enabled.
 |---|---|---|---|
 | Secret scanning | Enabled | Security settings | Maintainer |
 | Push protection | Enabled | Security settings | Maintainer |
-| Non-provider patterns | Disabled | Security settings | Owner decision required |
-| Validity checks | Disabled | Security settings | Owner decision required |
+| Non-provider patterns | Disabled; API did not enable on this personal public repository | Security settings | Owner decision required |
+| Validity checks | Disabled; API did not enable on this personal public repository | Security settings | Owner decision required |
 | Dependabot alerts/updates | Enabled | Security settings | Maintainer |
 | Private vulnerability reporting | Enabled | Security settings | Maintainer |
-| Immutable releases | Disabled | Releases settings | Owner decision required |
-| Release tag signatures | `v1.0.0` and `v1.0.1` are unsigned | Git tags | Owner decision required |
+| Immutable releases | Enabled | Releases settings | Maintainer |
+| Release tag signatures | Required by ruleset; trust variable `RELEASE_TAG_ALLOWED_SIGNERS` is set; `v1.2.0` signed/immutable; `v1.0.0`/`v1.0.1` predate the rule | Tag ruleset and repository variables | Maintainer |
 
 ## Claim-to-evidence map
 
@@ -62,13 +62,11 @@ fork code on it, and keep fork approval enabled.
 
 ## Owner actions that cannot be completed from repository code
 
-1. Create and protect a `release` environment with required reviewers.
-2. Add a trusted release signing key/public key and sign new `v*` tags; configure
-   the release workflow secret/public-key path so `git tag -v` succeeds.
-3. Enable immutable releases in repository settings.
-4. Enable non-provider secret scanning patterns and validity checks if the
-   plan's privacy/cost constraints allow.
-5. When a second regular maintainer joins, raise the ruleset approval count to
-   1 and enable code-owner review and required signatures.
-6. If self-hosted runners are added, configure labels/OS/architecture, enable
+1. Non-provider secret scanning patterns and validity checks remain disabled;
+   the personal public repository API did not enable them.
+2. When a second regular maintainer joins, raise the main ruleset approval
+   count to 1 and require code-owner review.
+3. If self-hosted runners are added, configure labels/OS/architecture, enable
    fork approval for those jobs, and keep untrusted code on hosted runners.
+4. Rotate the SSH release signing key and update
+   `RELEASE_TAG_ALLOWED_SIGNERS` before the current key is retired.
