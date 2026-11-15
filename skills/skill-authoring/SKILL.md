@@ -11,6 +11,14 @@ compatibility: opencode
 
 A skill is a small, portable instruction package that changes behavior at the moment it is relevant. `SKILL.md` is the entry point; deeper material belongs in `references/` and is loaded only when needed. Descriptions are the trigger surface; the body is the workflow.
 
+## Discover the need
+
+Collect a real prompt or session where the current agent failed. Name the behavior change, not the topic. Check whether an existing skill already covers it; prefer editing that skill over adding a near-duplicate. Decide the skill type: workflow (a sequence), technique (a method), reference (a lookup), or pattern (a reusable design). Each type has a different test and amount of prose.
+
+## Directory shape
+
+Use `skills/<lowercase-kebab-id>/SKILL.md`, optional `references/` for depth, `assets/` for templates/data, and `scripts/` only for deterministic checks. Keep the entry point short; a reference must be named in routing and loaded only when needed.
+
 ## Design before prose
 
 1. **Name the behavior change.** What should an agent do differently after loading this skill? If the answer is "know more", the skill is probably documentation.
@@ -55,7 +63,7 @@ Use TDD for behavior-shaping documentation:
 5. **Mutation test:** remove or weaken a rule and confirm the test scenario catches the regression.
 6. **Budget test:** keep the loaded set small; link references instead of dumping them.
 
-If you cannot run an agent evaluation, use a documented tabletop test and state that it is not behavioral evidence.
+If you cannot run an agent evaluation, use a documented tabletop trigger matrix and state that it is not behavioral evidence. For a reference skill, test lookup accuracy and staleness; for a workflow, test sequence and stop conditions; for a technique, test application and failure cases; for a pattern, test selection and tradeoffs.
 
 ## Repository integration
 

@@ -7,6 +7,16 @@ compatibility: opencode
 
 # Test-Driven Development
 
+## The iron law
+
+Do not write production code without a failing test that demands it, unless the task is impossible to test mechanically and the gap is explicitly reported. Code written before the test is deleted or moved behind a failing test before it is kept.
+
+The three laws:
+
+1. Do not write production code until a failing test exists.
+2. Do not write more test than is sufficient to fail.
+3. Do not write more production code than is sufficient to pass.
+
 ## The cycle
 
 1. **Red:** write one small test for the next behavior. Run it. It must fail because the behavior is missing, not because the test is broken.
@@ -54,4 +64,4 @@ For purely visual, exploratory, or environment-specific work, define a reproduci
 
 ## Handoff
 
-Use `clean-code` for the refactor and `code-review` for the diff. Delivery requires the full suite, not only the new test.
+Use `clean-code` for the refactor and `code-review` for the diff. Delivery requires the full suite, not only the new test. If a test cannot be written, get explicit agreement on the substitute and record it as NOT_TESTED.

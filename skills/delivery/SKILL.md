@@ -31,6 +31,10 @@ Use PASS, FAIL, or NOT_TESTED. A local check does not replace a required CI chec
 
 Include: goal, issue link, what changed, why, tests and evidence, risks, compatibility, rollback, and anything intentionally not done. Keep the PR focused. Do not mix unrelated refactors. Use the repository's template when present.
 
+## Integration choice
+
+Before merging, confirm the base branch and the intended integration: merge, open a PR, keep the branch for review, or discard the work. Do not choose a destructive discard or force-push without explicit confirmation. If the change came from a worktree, verify the base and test the merged result, then remove only the clean worktree.
+
 ## Merge gate
 
 - The head commit is the one tested.
@@ -39,6 +43,7 @@ Include: goal, issue link, what changed, why, tests and evidence, risks, compati
 - No admin bypass, force push, or self-approval is used to get around a protection.
 - Merge method matches the repository policy.
 - After merge, verify the actual main commit and the expected files/content.
+- If a push or merge is rejected, inspect the actual remote state; do not retry with force.
 
 An auto-merge queue is not a merge; confirm the final commit. If checks fail, fix the cause and rerun the affected checks; do not edit the test to hide a regression.
 

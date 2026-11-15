@@ -21,9 +21,10 @@ Use it when the request is multi-step, affects other people, changes existing be
 2. **Ask only decision-changing questions.** Batch the smallest set of questions whose answers change scope, behavior, data, compatibility, or acceptance. If an answer is unavailable, state an assumption and its consequence.
 3. **Write the spec in six parts:** problem, users and job, observable outcome, non-goals, constraints, and acceptance checks. Add risks, assumptions, and open questions only when they are real.
 4. **Make acceptance observable.** Each check should name a command, behavior, screen, API response, or measurable result. Avoid "works well", "clean", and "fast" without a target.
-5. **Play it back.** Give a five-line summary: problem, outcome, non-goals, main constraint, and acceptance. Ask for confirmation when a wrong decision would be expensive. For small work, a one-line intent is enough.
-6. **Persist it for multi-step work.** Save to `docs/specs/YYYY-MM-DD-<slug>.md` or the project's existing spec location. Do not create a spec file for a trivial change.
-7. **Hand off.** Use the `implementation-planning` skill when the spec is accepted. Use `systematic-debugging` instead when the task is a defect with unknown cause.
+5. **Size and options.** If the work is large, split it into outcomes instead of one giant spec. If the solution space is open, list two or three viable approaches with tradeoffs and a recommendation; do not pretend the first idea is the only option.
+6. **Play it back.** Give a five-line summary: problem, outcome, non-goals, main constraint, and acceptance. Ask for confirmation when a wrong decision would be expensive. For small work, a one-line intent is enough.
+7. **Persist it for multi-step work.** Save to `docs/specs/YYYY-MM-DD-<slug>.md` or the project's existing spec location. Do not create a spec file for a trivial change.
+8. **Hand off.** Use the `implementation-planning` skill when the spec is accepted. Use `systematic-debugging` instead when the task is a defect with unknown cause.
 
 ## Spec template
 

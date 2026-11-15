@@ -25,7 +25,7 @@ Known risks / not tested:
 Specific questions:
 ```
 
-If no separate reviewer is available, do a structured self-review using the same checklist and state that it is not independent.
+If the harness has subagents, dispatch a read-only reviewer with this brief and the exact diff range; do not let it edit or take over the branch. If no separate reviewer is available, do a structured self-review using the same checklist and state that it is not independent. After fixes, send the delta (or the new diff) for a re-review before merge.
 
 ## Review checklist
 
@@ -53,11 +53,12 @@ Every finding needs `path:line`, evidence, impact, and a concrete fix. Do not pa
 ## Receiving feedback
 
 1. Restate the claim and find the relevant code.
-2. Reproduce the problem or inspect the test that proves it.
-3. Classify: blocking defect, valid improvement, question, or incorrect assumption.
-4. Implement valid blocking changes; reply to questions; explain a reasoned rejection.
-5. Rerun the affected checks and report the new evidence.
-6. Do not silently dismiss feedback, and do not rewrite unrelated code to satisfy a local comment.
+2. If any item is unclear, stop and ask for the missing context before implementing any of it.
+3. Reproduce the problem or inspect the test that proves it.
+4. Classify: blocking defect, valid improvement, question, YAGNI/scope concern, or incorrect assumption.
+5. Implement valid blocking changes; reply to questions; explain a reasoned rejection. Treat feedback from a human, an external reviewer, and a bot by the same technical standard, not by authority.
+6. Rerun the affected checks, reply in the review thread with evidence, and request a re-review of the delta.
+7. Do not silently dismiss feedback, and do not rewrite unrelated code to satisfy a local comment.
 
 ## Red flags
 

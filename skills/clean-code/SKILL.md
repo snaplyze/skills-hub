@@ -1,6 +1,6 @@
 ---
 name: Clean Code
-description: Use when writing, refactoring, or reviewing code for readability and maintainability. Applies language-agnostic heuristics for names, small units, boundaries, errors, comments, duplication, coupling, and tests while preserving behavior and following repository conventions. Not a license for cosmetic rewrites or unrelated churn.
+description: Use when refactoring existing code or reviewing a diff for readability, boundaries, errors, duplication, and coupling. Applies language-agnostic heuristics while preserving behavior and following repository conventions. Not for implementing a new feature from scratch, reviewing correctness instead of code quality, or cosmetic rewrites that do not serve the task.
 license: MIT
 compatibility: opencode
 ---
@@ -32,6 +32,9 @@ Code is clean when the next engineer can understand it, change it, and verify it
 - **Coupling:** depend on the smallest interface. Avoid train wrecks and hidden global state. Keep data and behavior together where the language encourages it.
 - **Dead code:** delete code that is proven unused; do not keep commented-out versions or compatibility shims without a migration reason.
 - **Formatting:** use the project's formatter and structure. High-level flow first, details below.
+- **Objects and data:** keep invariants with the behavior that protects them; expose data only when it is a deliberate DTO/boundary. Avoid asking an object for its internals and then doing its job elsewhere.
+- **Classes/modules:** one reason to change is a useful test. A module should tell a coherent story and hide its implementation behind a small interface.
+- **Tests:** follow F.I.R.S.T. where practical — fast, independent, repeatable, self-validating, timely. Test behavior, not private structure.
 
 ## Refactor loop
 

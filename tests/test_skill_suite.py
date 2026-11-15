@@ -59,11 +59,44 @@ def test_suite_has_workflow_and_handoff() -> None:
 
 
 def test_suite_is_portable_markdown() -> None:
+    forbidden = ("plugin install", "bootstrap", "session-start", "opencode.json", "hooks/", "~/.claude")
     for skill_id in EXPECTED:
         text = skill_text(skill_id)
-        assert "hooks/" not in text
-        assert "opencode.json" not in text
-        assert "~/.claude" not in text
+        for phrase in forbidden:
+            assert phrase not in text, f"{skill_id} contains {phrase}"
+        assert "Not for" in frontmatter(text)["description"]
+
+
+def test_suite_tabletop_trigger_matrix() -> None:
+    triggers = {
+        "specification": ("request", "specification"),
+        "implementation-planning": ("plan", "tasks"),
+        "autonomous-execution": ("execute", "plan"),
+        "systematic-debugging": ("bug", "root-cause"),
+        "test-driven-development": ("test", "red-green-refactor"),
+        "code-review": ("review", "feedback"),
+        "delivery": ("deliver", "merge"),
+        "clean-code": ("refactor", "readability"),
+        "skill-authoring": ("skill", "trigger"),
+    }
+    for skill_id, words in triggers.items():
+        description = frontmatter(skill_text(skill_id))["description"].lower()
+        assert all(word in description for word in words), (skill_id, words)
+
+
+def test_suite_handoff_targets_exist() -> None:
+    handoffs = {
+        "specification": "implementation-planning",
+        "implementation-planning": "autonomous-execution",
+        "autonomous-execution": "code-review",
+        "systematic-debugging": "test-driven-development",
+        "test-driven-development": "clean-code",
+        "code-review": "delivery",
+        "clean-code": "test-driven-development",
+    }
+    for source, target in handoffs.items():
+        assert (SKILLS / target / "SKILL.md").is_file()
+        assert f"`{target}`" in skill_text(source)
 
 
 def test_suite_is_listed_in_readme_and_agents() -> None:

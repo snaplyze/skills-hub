@@ -1,6 +1,6 @@
 ---
 name: Autonomous Execution
-description: Use to execute an approved implementation plan autonomously with small commits, test-first gates, a visible ledger, optional subagents or worktrees, and clear stop conditions. Use for multi-task plans where the user asked for implementation, not for planning or debugging unknowns. Handles parallel independent tasks without sharing files.
+description: Use to execute an approved implementation plan autonomously with small commits, test-first gates, a visible ledger, optional subagents or worktrees, and clear stop conditions. Use for multi-task plans where the user asked for implementation. Not for planning, spec discovery, or debugging an unknown cause; use the corresponding skill first.
 license: MIT
 compatibility: opencode
 ---
@@ -14,7 +14,7 @@ Execution is coordination, not typing. Keep the plan, the current task, the evid
 ## Preflight
 
 1. Read the plan and the relevant spec. If acceptance or dependencies are missing, return to planning instead of guessing.
-2. Check the workspace: current branch, dirty files, baseline test command, and whether an isolated workspace already exists. Use the current workspace by default; create a worktree only when isolation is needed and the user/project permits it.
+2. Check the workspace using the Isolation section below; establish the baseline before editing.
 3. Define the ledger: plan path, task ID, status, files owned, commands run, evidence, and blockers. Update it after every task.
 4. Establish a green baseline or record the pre-existing failure. Never attribute an old failure to the new work.
 
@@ -31,13 +31,19 @@ Execution is coordination, not typing. Keep the plan, the current task, the evid
 
 ## Isolation
 
-Check whether the workspace is already isolated before creating anything. Use the current checkout by default; create a worktree or equivalent only when the task needs a clean branch alongside other work and the project/user permits it. If you create one, verify it points at the intended base commit, install/setup as the project requires, and run the baseline checks there. Remove only your own clean worktree at the end; do not delete another agent's workspace or uncommitted work.
+Check whether the workspace is already isolated before creating anything. Use the current checkout by default; create a worktree or equivalent only when the task needs a clean branch alongside other work and the project/user permits it. Prefer the harness's native isolation; if using `git worktree`, verify the branch/base, do not copy ignored directories such as `node_modules` or caches, and check the ignore rules before adding files. Install/setup as the project requires and run the baseline checks there. Remove only your own clean worktree at the end; do not delete another agent's workspace or uncommitted work.
+
+## Review gate
+
+After each task, if a fresh reviewer or subagent is available, dispatch `code-review` with the task spec, diff, tests, and open questions. A P0/P1 finding blocks the next task; fix it, rerun the affected checks, and re-review the delta. If independent review is unavailable, perform the same checklist yourself, record that it is a self-review, and do not claim independent approval. Do not accumulate unreviewed tasks until the end.
 
 ## Subagents and parallelism
 
 Give each subagent a self-contained brief: goal, context and paths, write ownership, constraints, expected result, verification, and stop condition. Subagents do not own the goal, Git/publication, or the ledger. Do not let two agents write the same file. When results return, inspect the diff and rerun the relevant checks rather than trusting the report.
 
 Use parallelism only for independent work: separate files, separate investigations, separate test failures. Do not parallelize a design decision, a shared refactor, or a sequence with a hidden dependency.
+
+For parallel branches or worktrees, designate one integration branch and one merge owner. Merge task branches in dependency order, resolve conflicts at the integration branch, and run the full suite on the merged result. Never let two agents resolve the same conflict. Remove only clean worktrees created for the task; keep unmerged work.
 
 ## Stop conditions
 
