@@ -7,13 +7,32 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-15
+
 ### Added
 
-- Add a native `orchestration` skill that routes complex work over `explore`/`general` subagents without a plugin, hooks, or background scheduler.
+- Add a native `orchestration` skill that routes complex work over
+  `explore`/`general` subagents without a plugin, hooks, or background
+  scheduler.
 - Add a compact OpenCode workflow skill suite: specification, implementation
   planning, autonomous execution, systematic debugging, TDD, code review,
   delivery, clean code, and skill authoring. The skills are portable Markdown
   with no hooks or plugin bootstrap.
+- Publish the public release-signing trust file and exact tag-verification
+  commands.
+- Add archive coverage for every skill in the current release tree.
+
+### Changed
+
+- Harden the skill contract tests with trigger matrices, workflow-content
+  mutation, documentation path/count guards, and simple-skill validation
+  coverage.
+- Hand off approved implementation plans from `orchestration` to
+  `autonomous-execution`.
+- Use one module-scoped server for external-link tests.
+- Run required CI with full history and tags so release-signature checks are
+  mandatory.
+- Compact the plan registry and sync the open audit tasks with the tracker.
 
 ## [1.1.0] - 2026-11-15
 
