@@ -65,7 +65,7 @@ Do not spend a free design axis on a default unless the brief asks: cream + seri
 
 ### Reading budget
 
-Hard **32,768 B**, soft **30,000 B**. Counted: this file, `references/*.md`, `assets/*.md`; excluded: `assets/tokens.css`, `assets/token-contrast-pairs.json`, `scripts/*`, `LICENSE`. Exact sets: `assets/reading-sets.json`; each under 32,768, new-page ≤30,000.
+Hard **32,768 B** per typical set. Counted: this file, `references/**/*.md`, `assets/**/*.md`; excluded: `assets/tokens.css`, `assets/token-contrast-pairs.json`, `scripts/*`, `LICENSE`, and the optional `assets/worked-example.md`. Exact sets: `assets/reading-sets.json`; every set is under 32,768, including the new-page set with `assets/design-brief.md`.
 
 Typical sets: **new page** — design-direction, visual-craft, quality-gates; **component/state** — design-system, quality-gates; **audit** — quality-gates, accessibility or responsive-mobile, audit-report; **implementation or motion** — the matching reference, quality-gates; **brief or attribution** — design-brief or sources.
 

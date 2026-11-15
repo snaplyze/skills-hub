@@ -387,8 +387,8 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
         excluded_paths.add(candidate)
 
     all_markdown = {(skill_dir / "SKILL.md").resolve()}
-    all_markdown.update(path.resolve() for path in (skill_dir / "references").glob("*.md"))
-    all_markdown.update(path.resolve() for path in (skill_dir / "assets").glob("*.md"))
+    all_markdown.update(path.resolve() for path in (skill_dir / "references").rglob("*.md"))
+    all_markdown.update(path.resolve() for path in (skill_dir / "assets").rglob("*.md"))
     missing_sets = sorted(
         path.relative_to(skill_dir).as_posix()
         for path in all_markdown - covered - excluded_paths
@@ -451,9 +451,10 @@ def check_skill(skill_dir: Path, errors: list[str]) -> None:
         if not (skill_dir / target).exists():
             errors.append(f"{rel}: missing referenced file -> {target}")
 
-    for reference in sorted((skill_dir / "references").glob("*.md")):
-        if reference.name not in body:
-            errors.append(f"{rel}: reference not mentioned in routing -> {reference.name}")
+    for reference in sorted((skill_dir / "references").rglob("*.md")):
+        routing_path = reference.relative_to(skill_dir).as_posix()
+        if routing_path not in body and reference.name not in body:
+            errors.append(f"{rel}: reference not mentioned in routing -> {routing_path}")
 
     check_reading_sets(skill_dir, body, errors)
     check_markdown_links(skill_file, errors)
@@ -679,6 +680,12 @@ def check_contrast_fixture(
         bg_token = item.get("bg_token")
         if not all(isinstance(value, str) for value in (label, theme, fg_token, bg_token)):
             continue
+        label_theme = label.split(":", 1)[0] if ":" in label else ""
+        if theme != label_theme:
+            errors.append(
+                f"{fixture.relative_to(ROOT)}: pair {label!r} theme {theme!r} "
+                f"does not match label theme {label_theme!r}"
+            )
         if theme not in resolved_tokens:
             errors.append(f"{fixture.relative_to(ROOT)}: pair {label!r} has unknown theme {theme!r}")
             continue

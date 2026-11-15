@@ -14,7 +14,7 @@
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
 | `THIRD_PARTY_NOTICES.md`, `skills/frontend-design/references/sources.md` | атрибуция | две копии | sources canonical; notices pointer |
 
-Стартовый контекст задачи: `AGENTS.md` 5 834 B + раздел задачи 2 227–4 470 B + issue (`wc -c`) 712–1 990 B = 8 773–12 294 B. AGENTS + полный план + issue: 35 987–37 265 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 задач (5 DONE, 2 BLOCKED), 181 строка, 29 441 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
+Стартовый контекст задачи: `AGENTS.md` 6 582 B + раздел задачи 2 227–4 470 B + issue (`wc -c`) 712–1 990 B = 9 521–13 042 B. AGENTS + полный план + issue: 36 735–38 013 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 задач (5 DONE, 2 BLOCKED), 181 строка, 29 441 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
 
 ## Этапы
 
@@ -88,7 +88,7 @@
 - **Решение:** (1) negative suite: `tests/` на pytest/unittest с temp fixtures, SKILL/cross-file anchors, contrast exit 0/1/2 + missing script, fixture 64/32/32/unique/colors; (2) semantic role matrix, не Cartesian product, генерировать fixture из tokens или проверять каждое значение, fix AA или document unsupported, token/fixture doc-test; (3) frontmatter allowlist/non-empty body/SPDX, не требовать `name == dir`, Markdown parser для title/reference/root-relative/GitHub slug/duplicate/setext, AGENTS/PR template/.github, external lychee schedule/PR с cache/allowlist; (4) table-driven contrast rgb/hsl/alpha/named/json/quiet/stdin. Трудоёмкость 2–3 дня; риски: parser/anchors/flaky external.
 - **Проверка:** mutations падают; 106 local links; AA supported; fixture/token parity; external broken link ловится.
 - **Приёмка:** каждый документированный формат/ссылка и каждая проверка имеют pass/fail fixture; CI запускает suite; mutation любого guard обнаруживается; SKILL/AGENTS/PR template; 106 локальных ссылок staged tree; 64 pairs/AA; fixture/tokens parity; coverage gate — новый semantic token без пары валит validate; external link.
-- **Выполнено:** validator проверяет SKILL/cross-file anchors, title/reference/root-relative links, frontmatter/body, fixture 64/32+32, semantic coverage, reading sets; contrast CLI tests exit 0/1/2; 64 pairs + 26 semantic combos AA; 45 external links PASS; 179 tests.
+- **Выполнено:** validator проверяет SKILL/cross-file anchors, title/reference/root-relative links, frontmatter/body, fixture 64/32+32, semantic coverage, reading sets; contrast CLI tests exit 0/1/2; 64 pairs + 26 semantic combos AA; 45 external links PASS; 181 tests.
 **Зависимости:** нет; AUD-02 (#15), AUD-04 (#17), AUD-06 (#19) — связанные. **Трекер:** #16. **Следующий шаг:** нет. **Выводы неудачных попыток:** нет.
 
 ### AUD-04 — CI toolchain and workflow hardening
@@ -101,10 +101,10 @@
 - **Влияние:** проверки дрейфуют, supply-chain, CI/local divergence, неверный security claim.
 - **Решение:** (1) pin runner/Python и pip, pip hashes, npm lock/cache/Dependabot, ShellCheck pin/remove, csstree pin; (2) один `make check`/CI entry point, contrast/bash once, читать файлы один раз, ShellCheck local or documented; (3) actionlint/zizmor/check-jsonschema, SHA/version/permissions/timeouts/persist-credentials/pull_request_target checks; (4) Dependency Review write в job scope, future changelog correction. Трудоёмкость 1–2 дня; риски: lockfile churn, tool allowlist, runner drift.
 - **Условие:** self-hosted сейчас нет; если появится — owner input о платформе/метках/ОС/архитектуре/группе/доступе, suitable jobs на self-hosted, fork code остаётся hosted, fork approval для self-hosted.
-- **Производительность:** путь `.github/workflows/ci.yml`; нагрузка — pip/npm acquisition и тестовый suite; baseline — старый `make check` 866 ms без pytest; сейчас `make validate` 0.16 s, полный `make check` 18.9 s, coverage 179 tests. Инвариант — те же проверки и coverage; старый лимит 810 ms к расширенному suite неприменим, при жёстком лимите нужно решение владельца; сравнение — per-step timing/cache hit; удалить — duplicate contrast/bash и лишние installs.
-- **Проверка:** одинаковые `pip freeze`/`npm ls` + cache hit; один проход; unsafe workflow fails; least privilege; runtime документирован (0.16 s validate / 18.9 s full check); Scorecard Pinned-Dependencies ≥9; смена версии требует commit.
-- **Приёмка:** reproducible toolchain с hash/lock; npm cache hit и npm Dependabot; нет unpinned install; один проход проверок; docs/CI согласованы; unsafe workflow не проходит static analysis; least privilege/job-scope write; runtime документирован (0.16 s validate / 18.9 s full check; старый 810 ms — baseline без pytest); coverage 179 tests; Python floor 3.12+ подтверждён CI.
-- **Выполнено:** CI на `ubuntu-24.04`, Python 3.12, pip 26.3, hash-locked Python/npm, `npm ci` cache; `make check` — единый вход; workflow policy проверяет 7 файлов; Dependency Review write в job scope; 179 tests. `make validate` 0.16 s, полный `make check` ~19 s; старый 810 ms относился к набору без pytest — при жёстком лимите нужно решение владельца.
+- **Производительность:** путь `.github/workflows/ci.yml`; нагрузка — pip/npm acquisition и тестовый suite; baseline — старый `make check` 866 ms без pytest; сейчас `make validate` ~0.3 s, полный `make check` ~20 s, coverage 181 tests. Инвариант — те же проверки и coverage; старый лимит 810 ms к расширенному suite неприменим, при жёстком лимите нужно решение владельца; сравнение — per-step timing/cache hit; удалить — duplicate contrast/bash и лишние installs.
+- **Проверка:** одинаковые `pip freeze`/`npm ls` + cache hit; один проход; unsafe workflow fails; least privilege; runtime документирован (~0.3 s validate / ~20 s full check); Scorecard Pinned-Dependencies ≥9; смена версии требует commit.
+- **Приёмка:** reproducible toolchain с hash/lock; npm cache hit и npm Dependabot; нет unpinned install; один проход проверок; docs/CI согласованы; unsafe workflow не проходит static analysis; least privilege/job-scope write; runtime документирован (~0.3 s validate / ~20 s full check; старый 810 ms — baseline без pytest); coverage 181 tests; Python floor 3.12+ подтверждён CI.
+- **Выполнено:** CI на `ubuntu-24.04`, Python 3.12, pip 26.3, hash-locked Python/npm, `npm ci` cache; `make check` — единый вход; workflow policy проверяет 7 файлов; Dependency Review write в job scope; 181 tests. `make validate` ~0.3 s, полный `make check` ~20 s; старый 810 ms относился к набору без pytest — при жёстком лимите нужно решение владельца.
 - **Зависимости:** AUD-03 (#16) — tests; AUD-01 (#14), AUD-02 (#15), AUD-06 (#19), AUD-07 (#20) — связанные. **Трекер:** #17. **Следующий шаг:** нет; при жёстком runtime-лимите — решение владельца. **Выводы неудачных попыток:** нет.
 
 ### AUD-05 — Secret handling and ignore guard
@@ -133,7 +133,7 @@
 - **Производительность:** путь `SKILL.md` routing + references; нагрузка — байты, загружаемые на задачу; baseline — design-direction 35 017 B, typical set 85 527 B; инвариант — все требования и progressive disclosure; цель — 32 KiB из AGENTS.md; сравнение — `wc -c` до/после; удалить — дубли/лишние разделы, worked example в asset при необходимости.
 - **Проверка:** documented set ≤32 KiB; no conflicting values; one template; parity; AGENTS; doc-test.
 - **Приёмка:** budget scope документирован; чтение ≤32 KiB; CI ловит oversize reference; references/tokens/motion/units/budgets не противоречат; doc-test зелёный; ровно один шаблон каждого артефакта; sources/attribution parity; AGENTS project info/plan/skill listing совпадают.
-- **Выполнено:** SKILL 6 941 B; visual-craft 9 201 B; 10 reading sets, new-page 32 355 B с design-brief; worked-example явно excluded; исправлены tokens/motion/units/budgets/templates/attribution; `make check` PASS, 179 tests. См. `assets/reading-sets.json`.
+- **Выполнено:** SKILL 6 941 B; visual-craft 9 201 B; 10 reading sets, new-page 32 368 B с design-brief; worked-example явно excluded; исправлены tokens/motion/units/budgets/templates/attribution; `make check` PASS, 181 tests. См. `assets/reading-sets.json`.
 **Зависимости:** AUD-03 (#16) — token test; AUD-04 (#17), AUD-07 (#20) — связанные. **Трекер:** #19. **Следующий шаг:** нет. **Выводы неудачных попыток:** нет.
 
 ### AUD-07 — Repository protections and evidence
@@ -157,7 +157,7 @@
 ## Гипотезы (не задачи)
 
 - Fork PR может не пройти `dependency-review` из-за `comment-summary-in-pr: always`; проверить контролируемым fork PR.
-- CI wall-time: локальный полный suite 18.9 s; per-step timing на hosted ещё не снят.
+- CI wall-time: локальный полный suite ~20 s; per-step timing на hosted ещё не снят.
 - CodeQL на docs-only PR может быть дорог; проверить paths-ignore без ослабления required checks.
 - Токенизация references может отличаться от bytes/4; проверить tokenizer.
 - Actions allowlist `verified_allowed` шире least privilege; сузить при необходимости.

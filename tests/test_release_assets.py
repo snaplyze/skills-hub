@@ -77,8 +77,28 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
         check=True,
     )
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    (tmp_path / "SHA256SUMS").write_text(f"{digest}  {archive.name}\n", encoding="utf-8")
-    assert hashlib.sha256(archive.read_bytes()).hexdigest() == digest
+    sums = tmp_path / "SHA256SUMS"
+    sums.write_text(f"{digest}  {archive.name}\n", encoding="utf-8")
+    checked = subprocess.run(
+        ["sha256sum", "--check", sums.name],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert checked.returncode == 0, checked.stderr
+
+    tampered = tmp_path / "tampered.tar.gz"
+    tampered.write_bytes(archive.read_bytes() + b"tamper")
+    sums.write_text(f"{digest}  {tampered.name}\n", encoding="utf-8")
+    rejected = subprocess.run(
+        ["sha256sum", "--check", sums.name],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert rejected.returncode != 0
 
     extracted = tmp_path / "extracted"
     with tarfile.open(archive) as bundle:

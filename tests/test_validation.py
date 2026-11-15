@@ -421,6 +421,22 @@ def test_reading_sets_missing_path_fails(tmp_path: Path) -> None:
     assert_validation_fails(repo, "path does not exist")
 
 
+def test_nested_markdown_not_covered_fails(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    nested = repo / "skills" / "frontend-design" / "references" / "nested"
+    nested.mkdir()
+    (nested / "extra.md").write_text("# Extra\n", encoding="utf-8")
+    assert_validation_fails(repo, "not covered by a set or excluded")
+
+
+def test_pair_theme_must_match_label(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    data = load_fixture(repo)
+    data["pairs"][0]["theme"] = "dark"
+    save_fixture(repo, data)
+    assert_validation_fails(repo, "does not match label theme")
+
+
 def test_reading_sets_unrouted_markdown_fails(tmp_path: Path) -> None:
     repo = copy_repo(tmp_path)
     extra = repo / "skills" / "frontend-design" / "assets" / "unrouted.md"
