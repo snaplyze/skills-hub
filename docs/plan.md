@@ -8,13 +8,13 @@
 
 | Документ | Роль | Было | После |
 |---|---|---|---|
-| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 181 строка / 29 441 B |
+| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 181 строка / 29 437 B |
 | `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 582 B |
 | `README.md` | вход и установка | 244 / 10 557 B | 318 / 15 331 B |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
 | `THIRD_PARTY_NOTICES.md`, `skills/frontend-design/references/sources.md` | атрибуция | две копии | sources canonical; notices pointer |
 
-Стартовый контекст задачи: `AGENTS.md` 6 582 B + раздел задачи 2 227–4 470 B + issue (`wc -c`) 712–1 990 B = 9 521–13 042 B. AGENTS + полный план + issue: 36 735–38 013 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 задач (5 DONE, 2 BLOCKED), 181 строка, 29 441 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
+Стартовый контекст задачи: `AGENTS.md` 6 582 B + раздел задачи 2 227–4 467 B + issue (`wc -c`) 712–1 990 B = 9 521–13 039 B. AGENTS + полный план + issue: 36 731–38 009 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 задач (5 DONE, 2 BLOCKED), 181 строка, 29 437 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
 
 ## Этапы
 
@@ -60,7 +60,7 @@
 - **Решение:** (1) `fetch-depth: 0`, ancestry `merge-base --is-ancestor`, check-runs `validate`/`Analyze (python)`, protected environment, draft; (2) SemVer regex, `--prerelease`/`--latest=false`, tag creation restriction/required signatures; (3) выбрать labels+`.github/release.yml` или `CHANGELOG`-notes, добавить labeler/проверку версии; (4) подписывать теги, verification в workflow, immutable releases, checksums/attestations. Трудоёмкость 4–6 ч; риски: full history, approval-клик, signing keys.
 - **Проверка:** тег вне `main`/без checks не создаёт release; notes воспроизводимы; `git tag -v` и immutable release.
 - **Приёмка:** gate работает; успешный release с green `main` сохраняется; draft + manual promotion; notes один источник и воспроизводимы; CI проверяет версию; `updated_at == published_at` для новых релизов, если нет документированного ручного шага; tags signed; immutable + provenance опубликован; `GOVERNANCE`/README описывают фактический gate и совпадают.
-- **Выполнено:** release workflow запускается только dispatch с `main`; проверяет подписанный annotated tag, ancestry `origin/main`, check-runs `validate`/`Analyze (python)` с ожидаемым workflow path, immutable releases, protected environment ref; notes из CHANGELOG, draft, archive/SHA256/attestation. `release_notes.py`/`release_checks.py` покрыты тестами. Внешний остаток: владелец создаёт/protects `release` environment, задаёт trust vars, включает immutable releases и tag rules; release не запускался end-to-end.
+- **Выполнено:** release workflow запускается только dispatch с `main`; проверяет подписанный annotated tag, ancestry `origin/main`, check-runs `validate`/`Analyze (python)` с ожидаемым workflow path, protected environment ref; immutable releases остаются owner-only (GITHUB_TOKEN не читает admin endpoint); notes из CHANGELOG, draft, archive/SHA256/attestation. `release_notes.py`/`release_checks.py` покрыты тестами. Внешний остаток: владелец создаёт/protects `release` environment, задаёт trust vars, включает immutable releases и tag rules; release не запускался end-to-end.
 **Зависимости:** нет; AUD-02 — связанная (#15). **Трекер:** #14. **Следующий шаг:** владелец: release environment, trust vars, immutable releases, tag rules; затем прогнать тег на scratch fork. **Выводы неудачных попыток:** нет.
 
 ### AUD-02 — Installer safety and verifiable install
@@ -145,7 +145,7 @@
 - **Доказательство:** `.github/CODEOWNERS:1-9`; ruleset 0 approvals/no codeowner/no signatures; `GOVERNANCE.md §Review and merge policy`; `scorecard.yml:4` `branch_protection_rule` dead при rulesets, no `repository_ruleset`; SARIF не в code scanning, artifact 5 дней; README/SECURITY/GOVERNANCE claims без in-repo evidence/даты.
 - **Влияние:** appearance of review; weekly protection regression; stale security claims.
 - **Решение:** (1) CODEOWNERS advisory comment; при втором maintainer — approvals=1, codeowner, signatures, emergency path; (2) `branch_protection_rule` + weekly schedule (Actions не поддерживает `repository_ruleset`), concurrency, SARIF и retention 30 дней; (3) `docs/repository-settings.md` setting/where/owner/verified date. Трудоёмкость 1–2 ч + второй maintainer; риски: solo block.
-- **Проверка:** ruleset/docs совпадают; ruleset edit triggers Scorecard; evidence date.
+- **Проверка:** ruleset/docs совпадают; branch-protection edit triggers Scorecard; rulesets — weekly; evidence date.
 - **Приёмка:** advisory/enforced clear; trigger works; claims/evidence/date совпадают; settings evidence.
 - **Выполнено:** CODEOWNERS явно advisory; Scorecard triggers `branch_protection_rule`, weekly, push; ruleset changes покрываются weekly, потому что Actions не поддерживает `repository_ruleset`; SARIF в code scanning, artifact 30 дней; `docs/repository-settings.md` фиксирует settings/date/owner actions; claims синхронизированы. Ruleset/approvals не менялись без владельца.
 **Зависимости:** AUD-01 (#14), AUD-04 (#17), AUD-06 (#19) — связанные. **Трекер:** #20. **Следующий шаг:** при втором maintainer включить approvals/code-owner review; сейчас advisory. **Выводы неудачных попыток:** нет.

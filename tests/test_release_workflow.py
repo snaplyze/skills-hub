@@ -30,14 +30,14 @@ def test_trust_checks_precede_tag_controlled_code() -> None:
     signature = names.index("Verify signed tag")
     ancestry = names.index("Verify tag commit is on main")
     checks = names.index("Verify required check-runs")
-    immutable = names.index("Require immutable releases")
     notes = names.index("Validate tag and extract release notes")
-    assert signature < ancestry < checks < immutable < notes
+    assert signature < ancestry < checks < notes
 
 
 def test_release_is_draft_and_has_provenance() -> None:
     _, text = load_workflow()
     assert "--draft" in text
     assert "actions/attest-build-provenance@" in text
-    assert "immutable-releases" in text
     assert "args+=(--latest)" not in text
+    assert "gate/scripts/release_checks.py" in text
+    assert "actions: read" in text

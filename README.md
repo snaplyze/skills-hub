@@ -100,7 +100,7 @@ cd skills-hub
 
 | Flag | Behavior |
 |---|---|
-| `--copy` | Copy the skill tree (default). Excludes `__pycache__`, `*.pyc`, `.ruff_cache`, and `node_modules`. |
+| `--copy` | Copy the skill tree (default). Excludes generated artifacts including `__pycache__`, `*.pyc`, `.ruff_cache`, `.pytest_cache`, `.mypy_cache`, `.venv`, `.git`, `.playwright-cli`, and `node_modules`. |
 | `--link` | Symlink the skill directory. Explicit opt-in; links follow the clone and break if it moves or is deleted. |
 | `--all` | Install every discovered skill. Invalid kebab-case IDs are rejected. |
 | `--force` | Move an existing installation to `<target>/.skills-hub-backups/` and atomically replace it. |

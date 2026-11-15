@@ -15,6 +15,9 @@ workflow code from the untrusted tag before the tag is verified.
 
 A release can proceed only when all of these are true:
 
+- The workflow is dispatched from a reviewed `main`; write collaborators are
+  trusted not to dispatch a modified workflow from a branch.
+
 - The dispatched tag matches `vX.Y.Z`, with an optional SemVer prerelease suffix
   such as `v1.2.3-rc.1`.
 - `CHANGELOG.md` contains exactly one non-empty `## [X.Y.Z]` section for the
@@ -73,7 +76,7 @@ Create an environment named `release` and add protection rules:
 
 - require reviewers, and prefer reviewers other than the person who pushed the
   tag;
-- restrict deployment branches and tags to `v*`;
+- allow deployments from `main` (the workflow is dispatched from `main`); add `v*` only if you also use tag-based deployment;
 - do not allow administrators to bypass the protection.
 
 The workflow references `environment: release`. If the environment does not
@@ -128,10 +131,11 @@ Rotate the variable when the signing key changes.
 ### Immutable releases
 
 Enable GitHub's immutable releases setting before the first release. This
-prevents assets from being replaced after publication. The workflow reads
-`/repos/{owner}/{repo}/immutable-releases` and fails before creating a release
-when the setting is disabled; the draft review and checksum are additional
-controls, not substitutes.
+prevents assets from being replaced after publication. The workflow's
+`GITHUB_TOKEN` cannot read the admin-only immutable-releases endpoint, so the
+owner must verify the setting with an admin token and record it in
+`docs/repository-settings.md` before dispatching. The draft review and checksum
+are additional controls, not substitutes.
 
 ### Actions allowlist and permissions
 
@@ -186,8 +190,8 @@ gh attestation verify "skills-hub-${VERSION}.tar.gz" --repo snaplyze/skills-hub
 ```
 
 The archive install is checksum-verified but has no `.git` directory, so the
-installer's `--verify` mode cannot inspect it. For a verified installer run,
-clone the signed tag and use `--verify --ref`:
+installer's `--verify` mode cannot inspect it. For a clean tag checkout (verify
+the signature separately), clone the signed tag and use `--verify --ref`:
 
 ```bash
 git clone --branch "$VERSION" --depth 1 \

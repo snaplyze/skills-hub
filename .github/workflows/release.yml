@@ -41,6 +41,7 @@ jobs:
       name: release
       url: https://github.com/${{ github.repository }}/releases
     permissions:
+      actions: read
       attestations: write
       checks: read
       contents: write
@@ -51,6 +52,14 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout release gate from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: gate
+          fetch-depth: 1
           persist-credentials: false
 
       - name: Verify signed tag
@@ -114,21 +123,10 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "repos/${GITHUB_REPOSITORY}/commits/${TAG_COMMIT}/check-runs?per_page=100&filter=all" \
             --jq '.check_runs[] | @json' > "$runs_file"
-          python3 scripts/release_checks.py \
+          python3 gate/scripts/release_checks.py \
             --runs-file "$runs_file" \
             --commit "$TAG_COMMIT" \
             --repo "$GITHUB_REPOSITORY"
-
-      - name: Require immutable releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          enabled="$(gh api "repos/${GITHUB_REPOSITORY}/immutable-releases" --jq '.enabled')"
-          if [[ "$enabled" != "true" ]]; then
-            echo "::error::Immutable releases are disabled. Enable them in repository settings before releasing; see docs/release-process.md." >&2
-            exit 1
-          fi
 
       - name: Validate tag and extract release notes
         id: notes

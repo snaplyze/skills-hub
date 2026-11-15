@@ -405,7 +405,7 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
         if total > READING_SET_NEW_PAGE_LIMIT:
             errors.append(
                 f"{manifest.relative_to(ROOT)}: new-page set {name!r} totals "
-                f"{total} B; soft limit is {READING_SET_NEW_PAGE_LIMIT} B"
+                f"{total} B; new-page limit is {READING_SET_NEW_PAGE_LIMIT} B"
             )
 
 
