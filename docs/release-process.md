@@ -101,11 +101,14 @@ with `git verify-tag`, so missing tag-rule support does not make an unsigned tag
 publishable.
 
 The current `tag-protection` ruleset restricts creation to the repository owner
-through its configured bypass actor. That bypass only allows the owner to create
-a tag; it does not bypass signature verification, main ancestry, required
-check-runs, the protected environment, or immutable-release controls. Keep the
-owner-only creation rule while there is one release manager; when a second
-release manager joins, replace the bypass with a non-bypass release role.
+through its configured bypass actor. A GitHub bypass actor can bypass the rules
+in that ruleset, including the signature rule. The release workflow is therefore
+the authoritative signature gate: it independently verifies the tag with
+`git verify-tag` against the public trust file and still enforces main ancestry,
+required check-runs, the protected environment, and immutable-release controls.
+Keep the owner-only creation rule while there is one release manager; when a
+second release manager joins, replace the bypass with a narrowly scoped release
+role and test that an unsigned tag is rejected.
 
 Tag creation itself is not the release trigger. A maintainer who can push a tag
 can provide it as the workflow input; the signature, ancestry, and check-run
