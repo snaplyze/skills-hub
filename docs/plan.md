@@ -12,7 +12,7 @@
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
 | `docs/release-process.md` | release gate и owner setup | 233 / 10 403 |
 | `docs/repository-settings.md` | settings evidence | 72 / 4 588 |
-| `docs/release-signing/` | публичный trust и ротация | 38 / 1 488 |
+| `docs/release-signing/` | публичный trust и ротация | 42 / 1 783 |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 375 / 15 466 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
 
