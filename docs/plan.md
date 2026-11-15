@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T11:00:00Z; вехи #1–#5; задачи #14–#20 закрыты; SKL-01–SKL-09 #27–#35 закрыты; PR #36; merge 0b2dcfc; release v1.1.0. До сверки открытых продуктовых задач/вех не было; созданы по одной, дублей нет.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T11:00:00Z; вехи #1–#6; задачи #14–#20 закрыты; SKL-01–SKL-09 #27–#35 закрыты; ORC-01 #38; PR #36; merge 0b2dcfc; release v1.1.0. До сверки открытых продуктовых задач/вех не было; созданы по одной, дублей нет.
 
 Реестр: этот файл. План — owner-facing registry на русском; он не загружается как инструкции агентов и не входит в бюджет 32 КиБ.
 
@@ -8,13 +8,13 @@
 
 | Документ | Роль | Было | После |
 |---|---|---|---|
-| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 251 строка / 37 349 B |
-| `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 743 B |
+| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 263 строки / 39 074 B |
+| `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 758 B |
 | `README.md` | вход и установка | 244 / 10 557 B | 335 / 17 717 B |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
 | `THIRD_PARTY_NOTICES.md`, `skills/frontend-design/references/sources.md` | атрибуция | две копии | sources canonical; notices pointer |
 
-Стартовый контекст задачи: `AGENTS.md` 6 743 B + раздел задачи 600–4 502 B + issue (`wc -c`) 712–1 990 B = 8 055–13 235 B. AGENTS + полный план + issue: 44 804–46 082 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks + 9 skills, 16 DONE, 251 строка, 37 349 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
+Стартовый контекст задачи: `AGENTS.md` 6 743 B + раздел задачи 600–4 502 B + issue (`wc -c`) 712–1 990 B = 8 055–13 235 B. AGENTS + полный план + issue: 44 804–46 082 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks + 10 skills, 16 DONE + 1 IN_REVIEW, 258 строк, 38 000 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
 
 ## Этапы
 
@@ -25,6 +25,7 @@
 | 03 | Protections (веха #3) | AUD-07 #20 |
 | 04 | Agent workflow skills (веха #4) | SKL-01 #27, SKL-02 #28, SKL-03 #29 |
 | 05 | Quality and delivery skills (веха #5) | SKL-04 #30, SKL-05 #31, SKL-06 #32, SKL-07 #33, SKL-08 #34, SKL-09 #35 |
+| 06 | Native orchestration (веха #6) | ORC-01 #38 |
 
 Очередь навыков: SKL-01 → SKL-02 → SKL-05 → SKL-03/SKL-04/SKL-08 → SKL-06 → SKL-07 → SKL-09. Исполнение не начинается до принятого spec/plan; review-gate обязателен на каждой задаче.
 
@@ -219,6 +220,17 @@
 - **Результат:** новый OpenCode-навык имеет trigger-rich description, компактный workflow, progressive disclosure, tabletop trigger matrix и repo integration.
 - **Приёмка:** шаблон, baseline-vs-skill test, tabletop trigger matrix, link/validation, attribution; поведенческие evals не заявляются без прогона. **Зависимости:** SKL-01–SKL-08. **Статус:** DONE. **Трекер:** #35. **Проверка:** tabletop trigger matrix; behavioral evals не запускались, это указано как ограничение.
 - **Выполнено:** Инструкция в `skills/skill-authoring/SKILL.md`; tabletop trigger matrix, repo integration; behavioral evals не запускались.
+
+## Native orchestration 2026-11-15
+
+Источники: [alvinunreal/oh-my-opencode-slim](https://github.com/alvinunreal/oh-my-opencode-slim) и [snaplyze/claude-orchestration](https://github.com/snaplyze/claude-orchestration). Цель — сохранить маршрутизацию и quality gates, но не добавлять плагин, hooks, background job scheduler, marketplace, TUI и профили моделей.
+
+### ORC-01 — Native OpenCode orchestration skill
+
+- **Результат:** один компактный `orchestration` skill, который решает: работать напрямую, отдать один bounded brief нативному `explore`/`general`, или запустить параллельные read-only исследования; фиксирует ownership, review-gate и verification.
+- **Приёмка:** routing matrix; шаблон brief; правила parallel/write ownership; native `subagent` без plugin/hooks; optional model profiles не обязательны; docs сравнения с двумя источниками; тест контракта.
+- **Границы:** не устанавливать плагины/агенты, не менять глобальный `opencode.json`, не использовать hooks/background orchestration. **Зависимости:** SKL-03, SKL-06, SKL-07. **Статус:** IN_REVIEW. **Трекер:** #38.
+- **Выполнено:** `skills/orchestration/SKILL.md`, `docs/opencode-orchestration.md`, routing/brief/ownership tests; native `subagent` only, без plugin/hooks/background scheduler/model profiles.
 
 ## Выполнено
 

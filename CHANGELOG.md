@@ -9,6 +9,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
+- Add a native `orchestration` skill that routes complex work over `explore`/`general` subagents without a plugin, hooks, or background scheduler.
 - Add a compact OpenCode workflow skill suite: specification, implementation
   planning, autonomous execution, systematic debugging, TDD, code review,
   delivery, clean code, and skill authoring. The skills are portable Markdown
