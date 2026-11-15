@@ -9,7 +9,7 @@
 
 Portable, high-craft skills for AI coding agents. Each skill is a self-contained directory with a `SKILL.md`, optional references, assets, and deterministic scripts. Install it globally into the agent you use; keep it versioned here.
 
-The first skill is **Frontend Design** for **OpenCode**. Support for Claude Code, Codex, and other harnesses will follow without rewriting the skill content.
+The repository includes **Frontend Design** plus a compact agent workflow suite for **OpenCode**: specification, planning, execution, debugging, TDD, review, delivery, clean code, and skill authoring. The workflow skills are deliberately smaller than hook-heavy frameworks: they use ordinary skill descriptions and portable Markdown, with no plugin or session bootstrap.
 
 ## Status
 
@@ -25,6 +25,15 @@ The first skill is **Frontend Design** for **OpenCode**. Support for Claude Code
 | Skill | Purpose | Harness |
 |---|---|---|
 | [`frontend-design`](skills/frontend-design/SKILL.md) | Distinctive, accessible web interface design and frontend quality | OpenCode |
+| [`specification`](skills/specification/SKILL.md) | Turn ambiguous requests into testable specs with non-goals and acceptance | OpenCode |
+| [`implementation-planning`](skills/implementation-planning/SKILL.md) | Turn a spec into small, testable, dependency-aware tasks | OpenCode |
+| [`autonomous-execution`](skills/autonomous-execution/SKILL.md) | Execute approved plans with subagents, worktrees, TDD gates, and a ledger | OpenCode |
+| [`systematic-debugging`](skills/systematic-debugging/SKILL.md) | Reproduce, locate root cause, fix, and prove with a regression test | OpenCode |
+| [`test-driven-development`](skills/test-driven-development/SKILL.md) | Red-green-refactor with behavior-focused tests | OpenCode |
+| [`code-review`](skills/code-review/SKILL.md) | Request fresh-context review and evaluate feedback with evidence | OpenCode |
+| [`delivery`](skills/delivery/SKILL.md) | Verify, open a scoped PR, merge without bypass, and report evidence | OpenCode |
+| [`clean-code`](skills/clean-code/SKILL.md) | Language-agnostic readability, boundaries, errors, and refactoring | OpenCode |
+| [`skill-authoring`](skills/skill-authoring/SKILL.md) | Design, test, and integrate new OpenCode skills | OpenCode |
 
 ### `frontend-design`
 
@@ -40,6 +49,12 @@ Use it when you want:
 - a visual direction grounded in the subject, not a generic SaaS template.
 
 It is deliberately opinionated about craft and deliberately neutral about style. The brief and the existing product outrank its defaults.
+
+### Agent workflow suite
+
+These skills cover the path from an ambiguous request to a verified merge. They are independent enough to load on demand, but designed to hand off to one another: `specification` → `implementation-planning` → `autonomous-execution` → `code-review` → `delivery`, with `systematic-debugging`, `test-driven-development`, and `clean-code` available at the points where they change the outcome. `skill-authoring` is the meta-skill for extending the suite.
+
+No hooks, plugin bootstrap, or session injection are required. Trigger quality comes from each skill description and explicit routing. Each skill is loaded independently; the suite is not a single context load.
 
 ## Install
 

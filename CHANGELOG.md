@@ -7,6 +7,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+
+- Add a compact OpenCode workflow skill suite: specification, implementation
+  planning, autonomous execution, systematic debugging, TDD, code review,
+  delivery, clean code, and skill authoring. The skills are portable Markdown
+  with no hooks or plugin bootstrap.
+
 ## [1.1.0] - 2026-11-15
 
 ### Added

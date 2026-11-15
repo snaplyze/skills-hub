@@ -33,7 +33,7 @@
 
 ## Оркестрация
 
-- `Оркестрация (обнаружено, 2026-11-14): встроенные подагенты general/explore и skill opencode; subagent_depth=2; кастомных ролей нет; skills: frontend-design (проект), playwright-cli, report (глобально); MCP: context7, gh_grep (глобально); плагинов нет; managed /etc/opencode отсутствует; глобальные skills/MCP доступны только пользователю.`
+- `Оркестрация (обнаружено, 2026-11-14): встроенные подагенты general/explore и skill opencode; subagent_depth=2; кастомных ролей нет; skills: frontend-design, specification, implementation-planning, autonomous-execution, systematic-debugging, test-driven-development, code-review, delivery, clean-code, skill-authoring (проект); playwright-cli, report (глобально); MCP: context7, gh_grep (глобально); плагинов нет; managed /etc/opencode отсутствует; глобальные skills/MCP доступны только пользователю.`
 
 ## Доступ
 

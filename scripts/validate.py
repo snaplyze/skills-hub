@@ -295,8 +295,20 @@ def is_new_page_set(name: str) -> bool:
 
 def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
     manifest = skill_dir / "assets" / "reading-sets.json"
+    referenced = [
+        *((skill_dir / "references").rglob("*.md")),
+        *((skill_dir / "assets").rglob("*.md")),
+    ]
     if not manifest.is_file():
-        errors.append(f"{manifest.relative_to(ROOT)}: missing reading-set manifest")
+        if referenced:
+            errors.append(f"{manifest.relative_to(ROOT)}: missing reading-set manifest")
+            return
+        skill_file = skill_dir / "SKILL.md"
+        if skill_file.stat().st_size > READING_SET_HARD_LIMIT:
+            errors.append(
+                f"{skill_file.relative_to(ROOT)}: {skill_file.stat().st_size} B; "
+                f"hard limit is {READING_SET_HARD_LIMIT} B"
+            )
         return
 
     try:
