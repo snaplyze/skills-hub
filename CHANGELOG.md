@@ -7,6 +7,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-15
+
 ### Added
 
 - Add `AGENTS.md` with project information for agents and a skills table in
@@ -18,6 +20,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Add a checksum-verified `Secret Scan` workflow and a scheduled Link Audit.
 - Add `docs/release-process.md` and `docs/repository-settings.md` with release
   controls, settings evidence, and owner-only actions.
+- Add the deterministic `katex` security override and a real release-archive
+  checksum test.
 
 ### Changed
 
