@@ -14,8 +14,8 @@ file is the repository-level pointer so the lists cannot drift.
 
 The `specification`, `implementation-planning`, `autonomous-execution`,
 `systematic-debugging`, `test-driven-development`, `code-review`, `delivery`,
-`clean-code`, and `skill-authoring` skills are original synthesis, not copied
-text. They are informed by:
+`clean-code`, and `skill-authoring` skills are original synthesis; no upstream text is reproduced wholesale, although
+short standard phrases may coincide. They are informed by:
 
 - [obra/superpowers](https://github.com/obra/superpowers) — MIT, copyright
   Jesse Vincent;
@@ -31,4 +31,4 @@ their ideas are expressed in new Markdown and tested as OpenCode skills.
 - WCAG, WAI-ARIA, and W3C documents are referenced as standards. Their text is not reproduced here. Consult the W3C document license for redistribution of their text.
 - Product names, trademarks, and brand assets belong to their respective owners.
 - Fonts named in examples are suggestions, not bundled assets. Check each font's license before shipping.
-- If you contribute adapted text from another source, add it to `skills/frontend-design/references/sources.md` with the license and a link; this file only points to that registry.
+- If you contribute adapted text, add it to the relevant registry: frontend-design material in `skills/frontend-design/references/sources.md`; workflow-skill material in this file or `docs/plan.md`, with the license and a link.

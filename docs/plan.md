@@ -8,13 +8,13 @@
 
 | Документ | Роль | Было | После |
 |---|---|---|---|
-| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 251 строка / 37 313 B |
+| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 251 строка / 37 362 B |
 | `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 743 B |
-| `README.md` | вход и установка | 244 / 10 557 B | 335 / 17 641 B |
+| `README.md` | вход и установка | 244 / 10 557 B | 335 / 17 717 B |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
 | `THIRD_PARTY_NOTICES.md`, `skills/frontend-design/references/sources.md` | атрибуция | две копии | sources canonical; notices pointer |
 
-Стартовый контекст задачи: `AGENTS.md` 6 743 B + раздел задачи 600–4 502 B + issue (`wc -c`) 712–1 990 B = 8 055–13 235 B. AGENTS + полный план + issue: 44 768–46 046 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks DONE + 9 skills IN_REVIEW, 251 строка, 37 313 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
+Стартовый контекст задачи: `AGENTS.md` 6 743 B + раздел задачи 600–4 502 B + issue (`wc -c`) 712–1 990 B = 8 055–13 235 B. AGENTS + полный план + issue: 44 817–46 095 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks DONE + 9 skills IN_REVIEW, 251 строка, 37 362 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
 
 ## Этапы
 
@@ -216,9 +216,9 @@
 ### SKL-09 — Skill authoring
 
 - **Источник:** writing-skills.
-- **Результат:** новый OpenCode-навык имеет trigger-rich description, компактный workflow, progressive disclosure, pressure tests и repo integration.
+- **Результат:** новый OpenCode-навык имеет trigger-rich description, компактный workflow, progressive disclosure, tabletop trigger matrix и repo integration.
 - **Приёмка:** шаблон, baseline-vs-skill test, tabletop trigger matrix, link/validation, attribution; поведенческие evals не заявляются без прогона. **Зависимости:** SKL-01–SKL-08. **Статус:** IN_REVIEW. **Трекер:** #35. **Проверка:** tabletop trigger matrix; behavioral evals не запускались, это указано как ограничение.
-- **Выполнено:** Инструкция в `skills/skill-authoring/SKILL.md`; trigger tests, pressure tests, repo integration.
+- **Выполнено:** Инструкция в `skills/skill-authoring/SKILL.md`; tabletop trigger matrix, repo integration; behavioral evals не запускались.
 
 ## Выполнено
 

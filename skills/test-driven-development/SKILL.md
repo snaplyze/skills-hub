@@ -15,7 +15,7 @@ The three laws:
 
 1. Do not write production code until a failing test exists.
 2. Do not write more test than is sufficient to fail.
-3. Do not write more production code than is sufficient to pass.
+3. Do not add more production code than the current failing test needs.
 
 ## The cycle
 
