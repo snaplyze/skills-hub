@@ -83,6 +83,7 @@ If you are unsure whether a test is acceptable, ask first.
 - Workflows from external forks require maintainer approval; there are no
   self-hosted runners.
 - CODEOWNERS is advisory under the current solo-maintainer ruleset.
-- Tag signing, immutable releases, and the protected release environment are
-  owner-only setup actions recorded in
+- Release tags require signatures; immutable releases and the protected
+  `release` environment are enabled. Key rotation and any changes to these
+  settings remain owner actions recorded in
   [`docs/repository-settings.md`](docs/repository-settings.md).

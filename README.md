@@ -47,10 +47,11 @@ It is deliberately opinionated about craft and deliberately neutral about style.
 
 The installer copies skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default. Copy mode snapshots content and never writes into this checkout. Use `--link` only when you want a live link to the clone. It requires Bash and GNU `realpath -m`; on systems without that command, use the minimal manual copy below.
 
-New releases use signed `vX.Y.Z` tags. Tags published before the release gate
-(`v1.0.1` and earlier) are unsigned and have no source-archive assets; do not
-treat them as signed releases. Owner setup for the protected `release`
-environment, tag-signature trust, and immutable releases is documented in
+Release `v1.1.0` is signed and immutable. Tags published before the release
+gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do
+not treat them as signed releases. The protected `release` environment,
+tag-signature trust, tag rules, and immutable-release setup are recorded in
+[docs/repository-settings.md](docs/repository-settings.md) and
 [docs/release-process.md](docs/release-process.md).
 
 #### Install from a release

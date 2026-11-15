@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T02:15:00Z; вехи #1–#3; задачи #14–#20; PR #22. До сверки открытых продуктовых задач/вех не было; созданы по одной, дублей нет.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T10:45:00Z; вехи #1–#3; задачи #14–#20; PR #22; release v1.1.0. До сверки открытых продуктовых задач/вех не было; созданы по одной, дублей нет.
 
 Реестр: этот файл. План — owner-facing registry на русском; он не загружается как инструкции агентов и не входит в бюджет 32 КиБ.
 
@@ -8,13 +8,13 @@
 
 | Документ | Роль | Было | После |
 |---|---|---|---|
-| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 181 строка / 29 685 B |
+| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 181 строка / 29 638 B |
 | `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 582 B |
 | `README.md` | вход и установка | 244 / 10 557 B | 319 / 15 527 B |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
 | `THIRD_PARTY_NOTICES.md`, `skills/frontend-design/references/sources.md` | атрибуция | две копии | sources canonical; notices pointer |
 
-Стартовый контекст задачи: `AGENTS.md` 6 582 B + раздел задачи (до следующего `##`/`###`) 2 227–4 522 B; AUD-07 — 2 476 B до «Выполнено»; issue (`wc -c`) 712–1 990 B = 9 521–13 094 B. AGENTS + полный план + issue: 36 979–38 257 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 задач (5 DONE, 2 BLOCKED), 181 строка, 29 685 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
+Стартовый контекст задачи: `AGENTS.md` 6 582 B + раздел задачи (до следующего `##`/`###`) 2 229–4 522 B; AUD-07 — 2 476 B до «Выполнено»; issue (`wc -c`) 712–1 990 B = 9 523–13 094 B. AGENTS + полный план + issue: 36 932–38 210 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 задач (7 DONE, 0 BLOCKED), 181 строка, 29 638 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
 
 ## Этапы
 
@@ -52,7 +52,7 @@
 ### AUD-01 — Release pipeline integrity
 
 - **Было:** AUD-01, AUD-06, AUD-09.
-- **Аудит:** 2026-11-15. **Тип:** security/release. **Приоритет:** P1. **Уверенность:** высокая. **Статус:** BLOCKED.
+- **Аудит:** 2026-11-15. **Тип:** security/release. **Приоритет:** P1. **Уверенность:** высокая. **Статус:** DONE.
 - **Границы:** release workflow/tags/notes/provenance; no skill content or product behavior; no branch/runner settings without owner. **Исполнитель:** не назначен.
 - **Результат:** релиз создаётся только с `main` и зелёными обязательными проверками; notes имеют один источник; теги подписаны/immutable; нет обхода PR/CI.
 - **Доказательство:** `.github/workflows/release.yml:4-6,16-27` — любой `v*`, `contents: write`, `--verify-tag` (только existence), без ancestry/check-run и environment; tag ruleset `27259245` — только deletion/non-ff, creation не gated; releases assets 0, immutable false, теги без подписи; `.github/release.yml` labels не используются (на `2b4be4f` — 9 PR без labels), notes переписаны вручную; `GOVERNANCE.md §Releases` заявляет `main`; tag creation не gated.
@@ -60,13 +60,13 @@
 - **Решение:** (1) `fetch-depth: 0`, ancestry `merge-base --is-ancestor`, check-runs `validate`/`Analyze (python)`, protected environment, draft; (2) SemVer regex, `--prerelease`/`--latest=false`, tag creation restriction/required signatures; (3) выбрать labels+`.github/release.yml` или `CHANGELOG`-notes, добавить labeler/проверку версии; (4) подписывать теги, verification в workflow, immutable releases, checksums/attestations. Трудоёмкость 4–6 ч; риски: full history, approval-клик, signing keys.
 - **Проверка:** тег вне `main`/без checks не создаёт release; notes воспроизводимы; `git tag -v` и immutable release.
 - **Приёмка:** gate работает; успешный release с green `main` сохраняется; draft + manual promotion; notes один источник и воспроизводимы; CI проверяет версию; `updated_at == published_at` для новых релизов, если нет документированного ручного шага; tags signed; immutable + provenance опубликован; `GOVERNANCE`/README описывают фактический gate и совпадают.
-- **Выполнено:** release workflow запускается только dispatch с `main`; проверяет подписанный annotated tag, ancestry `origin/main`, check-runs `validate`/`Analyze (python)` с ожидаемым workflow path, protected environment ref; immutable releases остаются owner-only (GITHUB_TOKEN не читает admin endpoint); notes из CHANGELOG, draft, archive/SHA256/attestation. `release_notes.py`/`release_checks.py` покрыты тестами. Внешний остаток: владелец создаёт/protects `release` environment, задаёт trust vars, включает immutable releases и tag rules; release не запускался end-to-end.
-**Зависимости:** нет; AUD-02 — связанная (#15). **Трекер:** #14. **Следующий шаг:** владелец: release environment, trust vars, immutable releases, tag rules; затем прогнать тег на scratch fork. **Выводы неудачных попыток:** нет.
+- **Выполнено:** release workflow запускается только dispatch с `main`; проверяет подписанный annotated tag, ancestry `origin/main`, check-runs `validate`/`Analyze (python)` с ожидаемым workflow path, protected environment ref; immutable releases включены, release immutable=true; workflow не читает admin endpoint, настройка подтверждена владельцем; notes из CHANGELOG, draft, archive/SHA256/attestation. `release_notes.py`/`release_checks.py` покрыты тестами. Release v1.1.0 опубликован из signed tag `v1.1.0` (commit `b1f438d`), immutable=true; environment, trust variable, tag rules и checksum/attestation проверены.
+- **Зависимости:** нет; AUD-02 — связанная (#15). **Трекер:** #14. **Следующий шаг:** нет. Signed release v1.1.0 опубликован, immutable=true. **Выводы неудачных попыток:** нет.
 
 ### AUD-02 — Installer safety and verifiable install
 
 - **Было:** AUD-02, AUD-03, installer tests из AUD-11.
-- **Аудит:** 2026-11-15. **Тип:** security/delivery. **Приоритет:** P2. **Уверенность:** высокая. **Статус:** BLOCKED.
+- **Аудит:** 2026-11-15. **Тип:** security/delivery. **Приоритет:** P2. **Уверенность:** высокая. **Статус:** DONE.
 - **Границы:** installer and install docs; no skill content; tests only temp HOME/target; no real user config writes. **Исполнитель:** не назначен.
 - **Результат:** installer не удаляет source/чужие каталоги; copy/force/list работают; есть tests; установка verifiable и versioned.
 - **Доказательство:** `install/opencode.sh:98-100` guard только `""`/`/`/`$HOME`; `:180` `rm -rf`; `--target repo/skills` = source; `:168-172` `--copy --force` над symlink — no-op; `:128-137` `--all` без kebab regex; `:195` copy ignored artifacts; `:79-83` `~/` literal; `:116-118` folded `>`; symlink default `:192-193`; releases без assets; `v1.0.1` (`6c24112`) отстаёт от `main`.
@@ -74,8 +74,8 @@
 - **Решение:** (1) `realpath -m`, refuse `/`/`$HOME`/repo/source/ancestors, symlink targets, control characters, NUL-safe `find`/`read`, `--` flags, temp+atomic, backup; (2) `--copy` заменяет symlink, `--all` regex, whitelist copy, `~/`, YAML description; (3) bats/plain-bash tests temp HOME/target для link/copy/force/conflict/list/refusal; (4) copy/verify default, release tar+sha/attestation, `--ref`, docs update. Трудоёмкость 1–1.5 дня; риски: cross-platform realpath, update friction.
 - **Проверка:** target matrix отказывает; source tree неизменен; copy/force работают; tests; установка с тега/checksum.
 - **Приёмка:** destructive target-кейсы не пишут вне target; source tree неизменен; `--copy --force` действительно копирует; `--all` отвергает невалидные ID; copy без ignored artifacts; `~/` раскрывается; folded description читается; tests покрывают link/copy/force/conflict/list/refusal; установка воспроизводима из тега и checksum проверяется; README различает main/release.
-- **Выполнено:** `install/opencode.sh` — copy default, realpath/refuse guards, atomic staging/backups, `--copy` over symlink, `--all` IDs, ignored artifacts, `~/`, folded YAML, `--verify/--ref`; installer + release-archive/checksum/copy tests. Остаток: первый signed release публикует владелец.
-**Зависимости:** AUD-01 (#14) — release assets; AUD-03 (#16), AUD-04 (#17) — связанные. **Трекер:** #15. **Следующий шаг:** после первого signed release проверить install/checksum на реальном asset. **Выводы неудачных попыток:** нет.
+- **Выполнено:** `install/opencode.sh` — copy default, realpath/refuse guards, atomic staging/backups, `--copy` over symlink, `--all` IDs, ignored artifacts, `~/`, folded YAML, `--verify/--ref`; installer + release-archive/checksum/copy tests. Остаток: нет; archive/checksum/install проверены на v1.1.0.
+- **Зависимости:** AUD-01 (#14) — release assets; AUD-03 (#16), AUD-04 (#17) — связанные. **Трекер:** #15. **Следующий шаг:** нет. Asset checksum/install проверены на v1.1.0. **Выводы неудачных попыток:** нет.
 
 ### AUD-03 — Validation correctness and token fixture
 
@@ -89,7 +89,7 @@
 - **Проверка:** mutations падают; 106 local links; AA supported; fixture/token parity; external broken link ловится.
 - **Приёмка:** каждый документированный формат/ссылка и каждая проверка имеют pass/fail fixture; CI запускает suite; mutation любого guard обнаруживается; SKILL/AGENTS/PR template; 106 локальных ссылок staged tree; 64 pairs/AA; fixture/tokens parity; coverage gate — новый semantic token без пары валит validate; external link.
 - **Выполнено:** validator проверяет SKILL/cross-file anchors, title/reference/root-relative links, frontmatter/body, fixture 64/32+32, semantic coverage, reading sets; contrast CLI tests exit 0/1/2; 64 pairs + 26 semantic combos AA; 45 external links PASS; 182 tests.
-**Зависимости:** нет; AUD-02 (#15), AUD-04 (#17), AUD-06 (#19) — связанные. **Трекер:** #16. **Следующий шаг:** нет. **Выводы неудачных попыток:** нет.
+- **Зависимости:** нет; AUD-02 (#15), AUD-04 (#17), AUD-06 (#19) — связанные. **Трекер:** #16. **Следующий шаг:** нет. **Выводы неудачных попыток:** нет.
 
 ### AUD-04 — CI toolchain and workflow hardening
 
@@ -119,7 +119,7 @@
 - **Проверка:** `git check-ignore`; secret scan; нет tracked secret-like files.
 - **Приёмка:** пути ignored; `.env.example` разрешён; CI scan; AGENTS caveat снят.
 - **Выполнено:** `.gitignore` покрывает `.env*`, ключи, `secrets/`, `credentials*`, agent dirs; `Secret Scan` скачивает gitleaks 8.30.1 по HTTPS с SHA-256, сканирует историю; 41 CI/secret test; `git check-ignore` PASS. Non-provider/validity scanning остаются owner-only и записаны в `docs/repository-settings.md`.
-**Зависимости:** нет; AUD-03 (#16) — связанная. **Трекер:** #18. **Следующий шаг:** владелец может включить non-provider/validity scanning; кодовая часть завершена. **Выводы неудачных попыток:** нет.
+- **Зависимости:** нет; AUD-03 (#16) — связанная. **Трекер:** #18. **Следующий шаг:** владелец может включить non-provider/validity scanning; кодовая часть завершена. **Выводы неудачных попыток:** нет.
 
 ### AUD-06 — Skill content and instruction budget
 
@@ -134,7 +134,7 @@
 - **Проверка:** documented set ≤32 KiB; no conflicting values; one template; parity; AGENTS; doc-test.
 - **Приёмка:** budget scope документирован; чтение ≤32 KiB; CI ловит oversize reference; references/tokens/motion/units/budgets не противоречат; doc-test зелёный; ровно один шаблон каждого артефакта; sources/attribution parity; AGENTS project info/plan/skill listing совпадают.
 - **Выполнено:** SKILL 7 035 B; visual-craft 9 201 B; 10 reading sets, new-page 32 462 B с design-brief; worked-example явно excluded; исправлены tokens/motion/units/budgets/templates/attribution; `make check` PASS, 182 tests. См. `assets/reading-sets.json`.
-**Зависимости:** AUD-03 (#16) — token test; AUD-04 (#17), AUD-07 (#20) — связанные. **Трекер:** #19. **Следующий шаг:** нет. **Выводы неудачных попыток:** нет.
+- **Зависимости:** AUD-03 (#16) — token test; AUD-04 (#17), AUD-07 (#20) — связанные. **Трекер:** #19. **Следующий шаг:** нет. **Выводы неудачных попыток:** нет.
 
 ### AUD-07 — Repository protections and evidence
 
@@ -148,7 +148,7 @@
 - **Проверка:** ruleset/docs совпадают; branch-protection edit triggers Scorecard; rulesets — weekly; evidence date.
 - **Приёмка:** advisory/enforced clear; trigger works; claims/evidence/date совпадают; settings evidence.
 - **Выполнено:** CODEOWNERS явно advisory; Scorecard triggers `branch_protection_rule`, weekly, push; ruleset changes покрываются weekly, потому что Actions не поддерживает `repository_ruleset`; SARIF в code scanning, artifact 30 дней; `docs/repository-settings.md` фиксирует settings/date/owner actions; claims синхронизированы. Ruleset/approvals не менялись без владельца.
-**Зависимости:** AUD-01 (#14), AUD-04 (#17), AUD-06 (#19) — связанные. **Трекер:** #20. **Следующий шаг:** при втором maintainer включить approvals/code-owner review; сейчас advisory. **Выводы неудачных попыток:** нет.
+- **Зависимости:** AUD-01 (#14), AUD-04 (#17), AUD-06 (#19) — связанные. **Трекер:** #20. **Следующий шаг:** при втором maintainer включить approvals/code-owner review; сейчас advisory. **Выводы неудачных попыток:** нет.
 
 ## Выполнено
 
