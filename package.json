@@ -13,5 +13,8 @@
   "devDependencies": {
     "csstree-validator": "4.0.1",
     "markdownlint-cli2": "0.24.1"
+  },
+  "overrides": {
+    "katex": "0.18.2"
   }
 }
