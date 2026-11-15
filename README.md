@@ -9,7 +9,7 @@
 
 Portable, high-craft skills for AI coding agents. Each skill is a self-contained directory with a `SKILL.md`, optional references, assets, and deterministic scripts. Install it globally into the agent you use; keep it versioned here.
 
-The repository includes **Frontend Design** plus a compact agent workflow suite for **OpenCode**: specification, planning, execution, debugging, TDD, review, delivery, clean code, and skill authoring. The workflow skills are deliberately smaller than hook-heavy frameworks: they use ordinary skill descriptions and portable Markdown, with no plugin or session bootstrap.
+The repository includes **Frontend Design** plus a compact agent workflow suite for **OpenCode**: specification, planning, orchestration, execution, debugging, TDD, review, delivery, clean code, and skill authoring. The workflow skills are deliberately smaller than hook-heavy frameworks: they use ordinary skill descriptions and portable Markdown, with no plugin or session bootstrap.
 
 ## Status
 
@@ -176,6 +176,7 @@ skills-hub/
 ├── .github/                     # CI, security, issue/PR templates
 ├── docs/
 │   ├── plan.md                  # audit and remediation registry
+│   ├── opencode-orchestration.md # native routing architecture and limits
 │   ├── release-process.md       # release gate and owner setup
 │   └── repository-settings.md   # settings evidence and owner actions
 ├── install/
@@ -187,14 +188,10 @@ skills-hub/
 │   ├── release_notes.py         # SemVer/changelog release notes
 │   └── release_checks.py        # required check-run gate
 ├── tests/                       # validator, installer, release, workflow tests
-└── skills/
-    └── frontend-design/
-        ├── SKILL.md             # workflow, principles, hard rules
-        ├── LICENSE              # MIT for the portable skill
-        ├── references/          # design, UX, accessibility, implementation
-        ├── assets/              # tokens, contrast pairs, templates
-        └── scripts/
-            └── contrast.py      # dependency-free WCAG contrast checker
+└── skills/                      # 11 portable skills; see the Skills table
+    ├── frontend-design/         # design references, assets, contrast script
+    ├── orchestration/           # native subagent routing
+    └── ...                      # nine workflow skills
 ```
 
 ## Using the skill

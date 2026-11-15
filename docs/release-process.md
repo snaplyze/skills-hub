@@ -92,8 +92,8 @@ with `git verify-tag`, so missing tag-rule support does not make an unsigned tag
 publishable.
 
 Tag creation itself is not the release trigger. A maintainer who can push a tag
-can provide it as the workflow input; the signature, ancestry, check-run, and
-signature, ancestry, and check-run checks still apply; the immutable setting is owner-verified.
+can provide it as the workflow input; the signature, ancestry, and check-run
+checks still apply, and the immutable setting is owner-verified.
 
 ### Tag signature trust
 

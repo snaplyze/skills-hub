@@ -8,13 +8,13 @@
 
 | Документ | Роль | Было | После |
 |---|---|---|---|
-| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 326 строк / 50 317 B |
+| `docs/plan.md` | реестр плана | 421 строка / 63 743 B | 328 строк / 51 255 B |
 | `AGENTS.md` | project info | 47 / 5 834 B | 47 / 6 758 B |
-| `README.md` | вход и установка | 244 / 10 557 B | 336 / 17 937 B |
+| `README.md` | вход и установка | 244 / 10 557 B | 333 / 17 873 B |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | без изменений | обновлены по задачам |
 | `THIRD_PARTY_NOTICES.md`, `skills/frontend-design/references/sources.md` | атрибуция | две копии | sources canonical; notices pointer |
 
-Стартовый контекст задачи: `AGENTS.md` 6 758 B + раздел задачи 595–4 502 B + issue (`wc -c`) 712–1 990 B = 8 065–13 250 B. AGENTS + полный план + issue: 57 787–59 065 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks + 10 skills DONE + 8 audit tasks OPEN, 326 строк, 50 317 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
+Стартовый контекст задачи: `AGENTS.md` 6 758 B + раздел задачи 595–4 502 B + issue (`wc -c`) 712–1 990 B = 8 065–13 250 B. AGENTS + полный план + issue: 58 725–60 003 B; план не входит в бюджет инструкций. Было: 21 задача, 421 строка, 63 743 B; стало: 7 audit tasks + 10 workflow skills DONE + 8 audit tasks OPEN, 328 строк, 51 255 B. Исходный коммит правки плана: `9a7804ea459555105166b4e874c3c94a5fbe7284`; аудит-база: `2b4be4f`.
 
 ## Этапы
 
@@ -156,7 +156,7 @@
 
 ## Навыки 2026-11-15
 
-Источники: [obra/superpowers](https://github.com/obra/superpowers) (MIT, Jesse Vincent) и [sickn33/agentic-awesome-skills clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code) (MIT/CC BY 4.0). Навыки — оригинальный синтез; без хуков, плагинов и копирования текста. Проверка: `python3 scripts/validate.py` (10 skills), `tests/test_skill_suite.py`, `make check` 188 tests.
+Источники: [obra/superpowers](https://github.com/obra/superpowers) (MIT, Jesse Vincent) и [sickn33/agentic-awesome-skills clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code) (MIT/CC BY 4.0). Навыки — оригинальный синтез; без хуков, плагинов и копирования текста. Проверка: `python3 scripts/validate.py` (11 skills), `tests/test_skill_suite.py`, `make check` 188 tests.
 
 ### SKL-01 — Specification
 
@@ -236,8 +236,9 @@
 ## Аудит 2026-11-15 — повторный
 
 - Исходный коммит: `977e2f257e633dc811d2dfc2b32479dc37f7871a`; дата: 2026-11-15; репозиторий и трекер публичные.
-- Охват: архитектура, безопасность, данные, производительность, тесты, сборка/доставка, документация. Снимок: `git archive` в `/tmp/opencode/audit-977e2f2`; в нём `make check` PASS (188 tests), `validate` PASS (11 skills), 49/49 внешних ссылок.
-- Архитектура: проверена; 1 находка (AUD-27). Безопасность: проверена; 1 находка (AUD-23). Данные: проверены, новых дефектов нет; fixture 64 пары + 26 combos. Производительность: проверена; 1 находка (AUD-29), продуктовых регрессий не найдено. Тесты: проверены; 2 находки (AUD-25, AUD-26). Сборка/доставка: проверена; 1 находка (AUD-22). Документация: проверена; 2 находки (AUD-24, AUD-28).
+- Охват: архитектура, безопасность, данные, производительность, тесты, сборка/доставка, документация. Снимок: `git archive` в `/tmp/opencode/audit-977e2f2`; в нём `make check` PASS (188 tests), `validate` PASS (11 skills), 49/49 внешних ссылок; tag `v1.1.0` проверен публичным allowed-signers из пользовательского хранилища.
+- Архитектура: проверена; 1 находка (AUD-27). Безопасность: проверена; 1 находка (AUD-23). Данные: проверены, новых дефектов нет; fixture 64 пары + 26 combos. Производительность: проверена стоимость тестов, продуктовых путей с исполняемым кодом нет; 1 находка (AUD-29). Тесты: проверены; 2 находки (AUD-25, AUD-26). Сборка/доставка: проверена; 1 находка (AUD-22). Документация: проверена; 2 находки (AUD-24, AUD-28).
+- Не проверено: fork PR, dispatch/создание тега и релиза, destructive installer, UI WCAG, upstream legal review, wall-time CI; это внешние или необратимые сценарии, для них дана лучшая доступная проверка.
 
 ### AUD-22 — Latest release does not contain the skill suite
 
@@ -256,9 +257,10 @@
 ### AUD-24 — Documentation references and skill counts drift
 
 - **Аудит:** 2026-11-15. **Тип:** documentation. **Приоритет:** P3 — ломает навигацию, не влияет на исполнение. **Уверенность:** высокая.
-- **Доказательство:** `docs/opencode-orchestration.md:76` ссылается на несуществующий `tests/test_orchestration.py` (реальный тест — `tests/test_skill_suite.py`); `docs/plan.md:17,158` говорит «10 skills», фактически 11; README intro перечисляет suite без `orchestration`. **Влияние:** следующий исполнитель ищет несуществующий тест, неверно оценивает состав.
-- **Решение:** исправить ссылки/числа, добавить проверку существования указанных test paths и количества skills. Трудоёмкость 15–30 мин. **Проверка:** `rg` не находит `test_orchestration.py`; README/plan/AGENTS говорят 11; validate/link audit PASS.
-- **Приёмка:** нет ложных путей/счётчиков. **Зависимости:** ORC-01. **Статус:** OPEN. **Трекер:** #43.
+- **Доказательство:** `docs/opencode-orchestration.md:76` указывал на несуществующий `tests/test_orchestration.py` (реальный тест — `tests/test_skill_suite.py`); проверка в `docs/plan.md` называла 10 навыков при 11 в `validate.py`; README intro и layout не отражали `orchestration` и новые skills; `THIRD_PARTY_NOTICES.md` не перечислял `orchestration`; в `docs/release-process.md` был дублирован фрагмент про signature/ancestry/check-run. **Влияние:** следующий исполнитель ищет несуществующий тест, неверно оценивает состав.
+- **Исправлено (аудит 2026-11-15):** README intro/layout, путь теста, счётчик validate, notices и дубль в release-process исправлены в PR аудита.
+- **Остаётся:** автоматическая проверка, что пути тестов из docs существуют и счётчики навыков совпадают с `skills/`; без неё drift вернётся. Трудоёмкость 30–60 мин. **Проверка:** mutation docs path/count fails; `make check` PASS.
+- **Приёмка:** нет ложных путей/счётчиков; проверка ловит подмену path/count. **Зависимости:** ORC-01. **Статус:** OPEN. **Трекер:** #43.
 
 ### AUD-25 — Skill suite contract tests are too weak
 
@@ -284,7 +286,7 @@
 ### AUD-28 — Plan is oversized for its startup role
 
 - **Аудит:** 2026-11-15. **Тип:** documentation/process. **Приоритет:** P3 — план owner-facing, но полный контекст 46–48 KB и старые evidence-блоки затрудняют навигацию. **Уверенность:** высокая.
-- **Доказательство:** `docs/plan.md` 326 строк / 50 317 B; `AGENTS.md` + plan + issue 57 789–59 067 B; в плане сохраняются длинные evidence и старые done-блоки. **Влияние:** следующий исполнитель тратит контекст; риск повторного аудита/дублей.
+- **Доказательство:** `docs/plan.md` 328 строк / 51 255 B; `AGENTS.md` + plan + issue 58 725–60 003 B; в плане сохраняются длинные evidence и старые done-блоки. **Влияние:** следующий исполнитель тратит контекст; риск повторного аудита/дублей.
 - **Решение:** отдельный проход «Порядок в плане»: оставить один аудит-раздел, компактные evidence, удалить устаревшие narrative-блоки после переноса уникального. Это вне текущего аудита, поэтому только задача. **Проверка:** измеренный startup context, отсутствие дублей ID.
 - **Приёмка:** план компактнее, ID/статусы/ссылки сохранены. **Зависимости:** завершение аудита. **Статус:** OPEN. **Трекер:** #47.
 
