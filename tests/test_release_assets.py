@@ -123,3 +123,35 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert (target / "frontend-design" / "asset.txt").read_text() == "archive payload\n"
+
+def test_current_head_archive_contains_all_skills(tmp_path: Path) -> None:
+    archive = tmp_path / "current.tar.gz"
+    result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(ROOT),
+            "archive",
+            "--format=tar.gz",
+            "--prefix=skills-hub-test/",
+            "-o",
+            str(archive),
+            "HEAD",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    expected = {
+        f"skills/{path.parent.name}/SKILL.md"
+        for path in (ROOT / "skills").glob("*/SKILL.md")
+    }
+    with tarfile.open(archive) as bundle:
+        names = set(bundle.getnames())
+    missing = {
+        relative
+        for relative in expected
+        if f"skills-hub-test/{relative}" not in names
+    }
+    assert not missing, missing

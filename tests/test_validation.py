@@ -392,6 +392,47 @@ def test_missing_coverage_mapping_fails(tmp_path: Path) -> None:
     assert_validation_fails(repo, "needs a 'coverage' mapping")
 
 
+def write_simple_skill(
+    repo: Path,
+    skill_id: str = "simple-skill",
+    body: str = "# Simple\n\nKeep this skill small.\n",
+) -> Path:
+    skill = repo / "skills" / skill_id
+    skill.mkdir()
+    (skill / "SKILL.md").write_text(
+        "---\n"
+        "name: Simple Skill\n"
+        "description: Use when a small test skill needs a deterministic validator contract.\n"
+        "license: MIT\n"
+        "compatibility: opencode\n"
+        "---\n\n"
+        f"{body}",
+        encoding="utf-8",
+    )
+    return skill
+
+
+def test_simple_skill_without_manifest_passes(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    write_simple_skill(repo)
+    assert_validation_passes(repo)
+
+
+def test_simple_skill_oversize_fails(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    write_simple_skill(repo, body="#" + ("x" * 32769))
+    assert_validation_fails(repo, "hard limit is 32768 B")
+
+
+def test_simple_skill_references_without_manifest_fails(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    skill = write_simple_skill(repo, body="# Simple\n\nRead `references/extra.md`.\n")
+    references = skill / "references"
+    references.mkdir()
+    (references / "extra.md").write_text("# Extra\n", encoding="utf-8")
+    assert_validation_fails(repo, "missing reading-set manifest")
+
+
 def test_reading_sets_missing_manifest_fails(tmp_path: Path) -> None:
     repo = copy_repo(tmp_path)
     (repo / "skills" / "frontend-design" / "assets" / "reading-sets.json").unlink()
