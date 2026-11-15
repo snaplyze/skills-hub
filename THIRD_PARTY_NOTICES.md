@@ -10,6 +10,22 @@ It lists the eight source skills, thirteen standards and references, the
 license status of each source, and the unresolved upstream-license notes. This
 file is the repository-level pointer so the lists cannot drift.
 
+## Agent workflow skills
+
+The `specification`, `implementation-planning`, `autonomous-execution`,
+`systematic-debugging`, `test-driven-development`, `code-review`, `delivery`,
+`clean-code`, and `skill-authoring` skills are original synthesis, not copied
+text. They are informed by:
+
+- [obra/superpowers](https://github.com/obra/superpowers) — MIT, copyright
+  Jesse Vincent;
+- [sickn33/agentic-awesome-skills — clean-code](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/clean-code)
+  — repository code MIT, original content CC BY 4.0; upstream terms should be
+  rechecked before redistributing substantial text.
+
+The workflow skills deliberately avoid hooks, plugins, and session bootstrap;
+their ideas are expressed in new Markdown and tested as OpenCode skills.
+
 ## Notes
 
 - WCAG, WAI-ARIA, and W3C documents are referenced as standards. Their text is not reproduced here. Consult the W3C document license for redistribution of their text.
