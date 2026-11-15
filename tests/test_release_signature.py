@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SIGNERS = ROOT / "docs" / "release-signing" / "allowed_signers"
 SIGNERS_README = ROOT / "docs" / "release-signing" / "README.md"
 RELEASE_PROCESS = ROOT / "docs" / "release-process.md"
-TAG = "v1.1.0"
+
 
 
 def run_git(*args: str, signers: Path = SIGNERS) -> subprocess.CompletedProcess[str]:
@@ -33,16 +33,17 @@ def run_git(*args: str, signers: Path = SIGNERS) -> subprocess.CompletedProcess[
     )
 
 
-def tag_available() -> bool:
+def release_tag() -> str | None:
     result = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{TAG}"],
+        ["git", "tag", "--list", "v*", "--sort=-v:refname"],
         cwd=ROOT,
         capture_output=True,
         text=True,
         timeout=10,
         check=False,
     )
-    return result.returncode == 0
+    tags = [tag for tag in result.stdout.splitlines() if tag]
+    return tags[0] if tags else None
 
 
 def test_allowed_signers_is_public_and_well_formed() -> None:
@@ -63,20 +64,22 @@ def test_allowed_signers_is_public_and_well_formed() -> None:
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git is required")
 def test_current_release_tag_verifies_with_repo_trust() -> None:
-    if not tag_available():
-        pytest.skip(f"{TAG} is not present in this checkout")
-    result = run_git("verify-tag", TAG)
+    tag = release_tag()
+    if tag is None:
+        pytest.skip("no release tag is present in this checkout")
+    result = run_git("verify-tag", tag)
     assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git is required")
 def test_tampered_trust_fails(tmp_path: Path) -> None:
-    if not tag_available():
-        pytest.skip(f"{TAG} is not present in this checkout")
+    tag = release_tag()
+    if tag is None:
+        pytest.skip("no release tag is present in this checkout")
     text = SIGNERS.read_text(encoding="utf-8").strip()
     principal, key_type, key, *_ = text.split()
     tampered_key = key[:-1] + ("A" if key[-1] != "A" else "B")
     tampered = tmp_path / "allowed_signers"
     tampered.write_text(f"{principal} {key_type} {tampered_key}\n", encoding="utf-8")
-    result = run_git("verify-tag", TAG, signers=tampered)
+    result = run_git("verify-tag", tag, signers=tampered)
     assert result.returncode != 0

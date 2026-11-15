@@ -99,6 +99,11 @@ def skill_text(skill_id: str) -> str:
     return (SKILLS / skill_id / "SKILL.md").read_text(encoding="utf-8")
 
 
+def skill_body(text: str) -> str:
+    end = text.find("\n---\n", 4)
+    return text[end + 5 :] if text.startswith("---\n") and end != -1 else text
+
+
 def frontmatter(text: str) -> dict:
     assert text.startswith("---\n")
     end = text.find("\n---\n", 4)
@@ -144,14 +149,30 @@ def workflow_body(text: str) -> str:
     return (text[start : start + following.start()] if following else text[start:]).strip()
 
 
+def assert_workflow_content(skill_id: str, text: str) -> None:
+    assert len(workflow_body(text)) >= 120, f"{skill_id} workflow is too thin"
+
+
 def test_suite_workflow_sections_have_content() -> None:
     for skill_id in EXPECTED:
-        assert len(workflow_body(skill_text(skill_id))) >= 120, f"{skill_id} workflow is too thin"
+        assert_workflow_content(skill_id, skill_text(skill_id))
 
 
 def test_empty_workflow_body_is_rejected() -> None:
+    text = skill_text("orchestration")
+    match = re.search(
+        r"^## (Workflow|Process|The cycle|Design before prose|Decision order|Two modes|"
+        r"Evidence before claims|The task loop|Phase 1|Routing matrix).*$",
+        text,
+        re.M,
+    )
+    assert match
+    start = match.end()
+    following = re.search(r"^## ", text[start:], re.M)
+    end = start + following.start() if following else len(text)
+    mutated = text[:start] + "\n\n" + text[end:]
     with pytest.raises(AssertionError):
-        assert len(workflow_body("## Routing matrix\n\n## Output\n")) >= 120
+        assert_workflow_content("orchestration", mutated)
 
 
 def test_suite_is_portable_markdown() -> None:
@@ -178,11 +199,12 @@ def test_suite_tabletop_trigger_matrix() -> None:
 
 
 def test_orchestration_hands_off_approved_plan() -> None:
-    description = frontmatter(skill_text("orchestration"))["description"].casefold()
     text = skill_text("orchestration")
-    assert "executing an approved implementation plan" in description
+    description = frontmatter(text)["description"].casefold()
+    not_for = description.split("not for", 1)[1]
+    assert "executing an approved implementation plan" in not_for
     assert "autonomous-execution" in description
-    assert "autonomous-execution" in text
+    assert "autonomous-execution" in skill_body(text)
 
 
 def test_suite_handoff_targets_exist() -> None:

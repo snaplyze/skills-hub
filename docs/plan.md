@@ -6,16 +6,17 @@
 
 | Документ | Роль | Строк / байт |
 |---|---|---|
-| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 35 072 |
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 298 / 35 194 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
-| `README.md` | вход и установка | 333 / 17 873 |
+| `README.md` | вход и установка | 335 / 18 013 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
-| `docs/release-process.md` | release gate и owner setup | 226 / 10 004 |
+| `docs/release-process.md` | release gate и owner setup | 233 / 10 403 |
 | `docs/repository-settings.md` | settings evidence | 72 / 4 588 |
+| `docs/release-signing/` | публичный trust и ротация | 38 / 1 488 |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 375 / 15 466 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
 
-Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 1 172 B + issue #41 653 B = 8 583 B. Полный план + issue: 35 072 + 653 = 35 725 B. План не входит в бюджет инструкций 32 KiB.
+Документы, изменённые задачами аудита: `README.md`, `docs/release-process.md`, `docs/release-signing/`; план обновлён; остальные не менялись. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 1 172 B + issue #41 653 B = 8 583 B. Полный план + issue: 35 194 + 653 = 35 847 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
