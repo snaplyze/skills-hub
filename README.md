@@ -63,7 +63,7 @@ No hooks, plugin bootstrap, or session injection are required. Trigger quality c
 
 The installer copies skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default. Copy mode snapshots content and never writes into this checkout. Use `--link` only when you want a live link to the clone. It requires Bash and GNU `realpath -m`; on systems without that command, use the minimal manual copy below.
 
-Release `v1.1.0` is signed and immutable. Tags published before the release
+Release `v1.1.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release
 gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do
 not treat them as signed releases. The protected `release` environment,
 tag-signature trust, tag rules, and immutable-release setup are recorded in
@@ -79,7 +79,9 @@ let the installer check that the checkout is clean and at exactly that tag:
 VERSION=vX.Y.Z  # replace with a signed release tag
 git clone --branch "$VERSION" --depth 1 https://github.com/snaplyze/skills-hub.git
 cd skills-hub
-git tag -v "$VERSION"          # verifies the signature with your local trust store
+git -c gpg.format=ssh \
+  -c gpg.ssh.allowedSignersFile=docs/release-signing/allowed_signers \
+  verify-tag "$VERSION"
 ./install/opencode.sh --verify --ref "$VERSION"
 ```
 

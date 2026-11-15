@@ -1,6 +1,6 @@
 ---
 name: Orchestration
-description: Use for complex, cross-cutting, or multi-step coding work when deciding whether to work directly, delegate one bounded task, or run parallel read-only investigation with native OpenCode subagents. Covers routing, briefs, file ownership, parallel work, review, and final integration without plugins, hooks, or background schedulers. Not for a small sequential edit, a single obvious file, or installing an agent framework.
+description: Use for complex, cross-cutting, or multi-step coding work when deciding whether to work directly, delegate one bounded task, or run parallel read-only investigation with native OpenCode subagents. Covers routing, briefs, file ownership, parallel work, review, and final integration without plugins, hooks, or background schedulers. Not for a small sequential edit, a single obvious file, executing an approved implementation plan, or installing an agent framework; use autonomous-execution for approved plan execution.
 license: MIT
 compatibility: opencode
 ---
@@ -12,6 +12,8 @@ compatibility: opencode
 Orchestration is a decision layer, not a runtime. The main session owns the conversation, plan, Git, and final judgment. It uses OpenCode's native `subagent` tool when a bounded specialist saves context or exposes independent work; otherwise it works directly.
 
 Do not add a plugin, hook, background job service, marketplace, TUI, or model profile to use this skill. `explore` is the read-only mapper; `general` is the writer/reviewer/tester when the brief says so.
+
+When a plan is already approved and the user asked to execute it, hand off to `autonomous-execution`; do not re-plan or orchestrate the same work.
 
 ## Routing matrix
 

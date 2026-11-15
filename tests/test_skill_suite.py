@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +21,77 @@ EXPECTED = {
     "clean-code",
     "skill-authoring",
     "orchestration",
+}
+
+DOCS_WITH_TEST_REFERENCES = (
+    ROOT / "README.md",
+    ROOT / "AGENTS.md",
+    ROOT / "docs" / "opencode-orchestration.md",
+    ROOT / "docs" / "release-process.md",
+    ROOT / "docs" / "repository-settings.md",
+)
+
+TRIGGER_MATRIX = {
+    "specification": {
+        "positive": "turn this vague request into a testable specification; define non-goals and acceptance",
+        "positive_terms": ("specification", "non-goals", "acceptance"),
+        "negative": "fix this tiny, obvious CSS typo; the requirement is concrete",
+        "negative_terms": ("tiny", "obvious", "concrete"),
+    },
+    "implementation-planning": {
+        "positive": "produce an execution plan with small tasks and dependencies",
+        "positive_terms": ("execution plan", "small tasks", "dependencies"),
+        "negative": "make this trivial one-step edit",
+        "negative_terms": ("trivial", "one-step"),
+    },
+    "autonomous-execution": {
+        "positive": "execute the approved implementation plan and keep a ledger",
+        "positive_terms": ("approved implementation plan", "ledger"),
+        "negative": "do planning, spec discovery, or debugging an unknown cause",
+        "negative_terms": ("planning", "spec discovery", "debugging"),
+    },
+    "systematic-debugging": {
+        "positive": "find the root-cause and add a regression test",
+        "positive_terms": ("root-cause", "regression test"),
+        "negative": "do feature work or start guessing at symptoms",
+        "negative_terms": ("feature work", "guessing"),
+    },
+    "test-driven-development": {
+        "positive": "use red-green-refactor and watch the failing test",
+        "positive_terms": ("red-green-refactor", "failing test"),
+        "negative": "make a documentation-only or purely visual change",
+        "negative_terms": ("documentation-only", "purely visual"),
+    },
+    "code-review": {
+        "positive": "request a fresh-context review with P0/P1/P2 findings",
+        "positive_terms": ("fresh-context review", "p0/p1/p2"),
+        "negative": "give performative agreement or review your own work",
+        "negative_terms": ("performative agreement", "own work"),
+    },
+    "delivery": {
+        "positive": "merge the PR after cleanup with evidence",
+        "positive_terms": ("pr", "merge", "cleanup"),
+        "negative": "starting implementation or merging unverified work",
+        "negative_terms": ("starting implementation", "unverified"),
+    },
+    "clean-code": {
+        "positive": "refactor for readability and remove duplication",
+        "positive_terms": ("refactor", "readability", "duplication"),
+        "negative": "implement a new feature, review correctness, or do cosmetic rewrites",
+        "negative_terms": ("new feature", "correctness", "cosmetic"),
+    },
+    "skill-authoring": {
+        "positive": "write an OpenCode skill with a trigger description and baseline-vs-skill test",
+        "positive_terms": ("opencode skill", "trigger description", "baseline-vs-skill"),
+        "negative": "write application documentation or general agent rules",
+        "negative_terms": ("application documentation", "general agent rules"),
+    },
+    "orchestration": {
+        "positive": "route complex work; delegate and run parallel read-only investigation",
+        "positive_terms": ("complex", "delegate", "parallel read-only"),
+        "negative": "make a small sequential edit to a single obvious file",
+        "negative_terms": ("small sequential", "single obvious file"),
+    },
 }
 
 
@@ -59,6 +131,29 @@ def test_suite_has_workflow_and_handoff() -> None:
         )
 
 
+def workflow_body(text: str) -> str:
+    match = re.search(
+        r"^## (Workflow|Process|The cycle|Design before prose|Decision order|Two modes|"
+        r"Evidence before claims|The task loop|Phase 1|Routing matrix).*$",
+        text,
+        re.M,
+    )
+    assert match
+    start = match.end()
+    following = re.search(r"^## ", text[start:], re.M)
+    return (text[start : start + following.start()] if following else text[start:]).strip()
+
+
+def test_suite_workflow_sections_have_content() -> None:
+    for skill_id in EXPECTED:
+        assert len(workflow_body(skill_text(skill_id))) >= 120, f"{skill_id} workflow is too thin"
+
+
+def test_empty_workflow_body_is_rejected() -> None:
+    with pytest.raises(AssertionError):
+        assert len(workflow_body("## Routing matrix\n\n## Output\n")) >= 120
+
+
 def test_suite_is_portable_markdown() -> None:
     forbidden = ("plugin install", "bootstrap", "session-start", "opencode.json", "hooks/", "~/.claude")
     for skill_id in EXPECTED:
@@ -69,21 +164,25 @@ def test_suite_is_portable_markdown() -> None:
 
 
 def test_suite_tabletop_trigger_matrix() -> None:
-    triggers = {
-        "specification": ("request", "specification"),
-        "implementation-planning": ("plan", "tasks"),
-        "autonomous-execution": ("execute", "plan"),
-        "systematic-debugging": ("bug", "root-cause"),
-        "test-driven-development": ("test", "red-green-refactor"),
-        "code-review": ("review", "feedback"),
-        "delivery": ("deliver", "merge"),
-        "clean-code": ("refactor", "readability"),
-        "skill-authoring": ("skill", "trigger"),
-        "orchestration": ("complex", "native"),
-    }
-    for skill_id, words in triggers.items():
-        description = frontmatter(skill_text(skill_id))["description"].lower()
-        assert all(word in description for word in words), (skill_id, words)
+    for skill_id, matrix in TRIGGER_MATRIX.items():
+        description = frontmatter(skill_text(skill_id))["description"].casefold()
+        positive_prompt = matrix["positive"].casefold()
+        negative_prompt = matrix["negative"].casefold()
+        for term in matrix["positive_terms"]:
+            assert term in positive_prompt, (skill_id, "positive prompt", term)
+            assert term in description, (skill_id, "positive trigger", term)
+        not_for = description.split("not for", 1)[1]
+        for term in matrix["negative_terms"]:
+            assert term in negative_prompt, (skill_id, "negative prompt", term)
+            assert term in not_for, (skill_id, "negative trigger", term)
+
+
+def test_orchestration_hands_off_approved_plan() -> None:
+    description = frontmatter(skill_text("orchestration"))["description"].casefold()
+    text = skill_text("orchestration")
+    assert "executing an approved implementation plan" in description
+    assert "autonomous-execution" in description
+    assert "autonomous-execution" in text
 
 
 def test_suite_handoff_targets_exist() -> None:
@@ -104,6 +203,22 @@ def test_suite_handoff_targets_exist() -> None:
 def test_suite_is_listed_in_readme_and_agents() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    for skill_id in EXPECTED:
-        assert f"skills/{skill_id}/SKILL.md" in readme
+    actual = {
+        path.name
+        for path in SKILLS.iterdir()
+        if path.is_dir() and (path / "SKILL.md").is_file()
+    }
+    listed = set(
+        re.findall(r"\[`([a-z0-9-]+)`\]\(skills/\1/SKILL\.md\)", readme)
+    )
+    assert listed == actual
+    assert f"{len(actual)} portable skills" in readme
+    for skill_id in actual:
         assert skill_id in agents
+
+
+def test_docs_test_paths_exist() -> None:
+    for path in DOCS_WITH_TEST_REFERENCES:
+        text = path.read_text(encoding="utf-8")
+        for relative in set(re.findall(r"`(tests/[^`\s]+\.py)`", text)):
+            assert (ROOT / relative).is_file(), (path.relative_to(ROOT), relative)
