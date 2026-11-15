@@ -6,7 +6,7 @@
 
 | Документ | Роль | Строк / байт |
 |---|---|---|
-| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 33 940 |
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 34 041 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
 | `README.md` | вход и установка | 333 / 17 873 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
@@ -15,7 +15,7 @@
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 375 / 15 466 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
 
-Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 610 B + issue 545–1 135 B = 8 223–9 503 B. Полный план + issue: 33 940 + 545–1 135 = 34 485–35 075 B. План не входит в бюджет инструкций 32 KiB.
+Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 610 B + issue 545–1 135 B = 8 223–9 503 B. Полный план + issue: 34 041 + 545–1 135 = 34 586–35 176 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
@@ -101,7 +101,7 @@
 
 - `DONE` · P1 · security/release · #14 · deps: none (AUD-02 related) · **Границы:** release workflow/tags/notes/provenance; no product behavior; settings only by owner.
 - **Было:** release workflow принимал любой `v*` без ancestry/check-run/env; теги без подписи; notes вручную; assets 0.
-- **Результат/решение:** dispatch only from `main`; signed annotated tag verified against owner trust, ancestry `origin/main`, required `validate`/`Analyze (python)` check-runs with workflow path, protected `release` env; notes single-source from `CHANGELOG`; draft + manual promotion; prerelease uses `--prerelease --latest=false`; archive/SHA-256/provenance; `v1.1.0` signed/immutable (`b1f438d`); labels rejected; `README`/`GOVERNANCE §Releases` match the gate; `updated_at == published_at` для новых релизов, если ручной шаг не задокументирован.
+- **Результат/решение:** dispatch only from `main`; signed annotated tag verified against owner trust, ancestry `origin/main`, required `validate`/`Analyze (python)` check-runs with workflow path, protected `release` env; notes single-source from `CHANGELOG`; draft + manual promotion; prerelease uses `--prerelease --latest=false`; archive/SHA-256/provenance; `v1.1.0` signed/immutable (`b1f438d`); labels rejected; `README`/`GOVERNANCE §Releases` match the gate; `updated_at == published_at` для новых релизов, если ручной шаг не задокументирован; immutable setting owner-verified, workflow не читает admin endpoint.
 - **Приёмка/доказательство:** `.github/workflows/release.yml`, `scripts/release_notes.py`, `scripts/release_checks.py`, `tests/test_release_*`, `docs/release-process.md`; `make check`; `git tag -v v1.1.0` PASS with allowed-signers.
 
 ### AUD-02 — Installer safety and verifiable install
@@ -130,7 +130,7 @@
 
 - `DONE` · P2 · security · #18 · deps: none (AUD-03 related) · **Границы:** `.gitignore`/secret scan; секретные значения не читаются и не публикуются.
 - **Было:** `.env*`, ключи, `secrets/`, `credentials*`, agent dirs не игнорировались; secret scan отсутствовал.
-- **Результат/решение:** `.gitignore` covers `.env*` (with `!.env.example`), `*.pem`/`*.key`/`*.p12`, `secrets/`, `credentials*`, `.opencode/`, `.claude/`, `.agents/`; gitleaks 8.30.1 pinned by SHA scans history; non-provider/validity scanning owner-only.
+- **Результат/решение:** `.gitignore` covers `.env*` (with `!.env.example`), `*.pem`/`*.key`/`*.p12`, `secrets/`, `credentials*`, `.opencode/`, `.claude/`, `.agents/`; gitleaks 8.30.1 pinned by SHA scans history; non-provider/validity scanning owner-only; AGENTS caveat снят.
 - **Приёмка/доказательство:** `.gitignore`, `.github/workflows/secret-scan.yml`, `tests/test_secrets.py`, `docs/repository-settings.md`; `git check-ignore` PASS.
 
 ### AUD-06 — Skill content and instruction budget
@@ -217,7 +217,7 @@
 ### AUD-28 — Plan is oversized for its startup role
 
 - `DONE` · P3 · documentation/process · #47 · deps: audit complete · **Границы:** план и связанные документы; продукт не меняется.
-- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 33 940; стартовый контекст 8 223–9 503 B.
+- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 34 041; стартовый контекст 8 223–9 503 B.
 - **Доказательство:** этот файл; `make check` PASS; ссылки/якоря validate PASS; PR этой задачи закрывает #47.
 
 ## Решения владельца
