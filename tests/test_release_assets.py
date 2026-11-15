@@ -48,7 +48,18 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
         "-qm",
         "fixture",
     )
-    git(repo, "tag", "-a", "v1.2.3", "-m", "v1.2.3")
+    git(
+        repo,
+        "-c",
+        "user.name=Release Test",
+        "-c",
+        "user.email=release@example.test",
+        "tag",
+        "-a",
+        "v1.2.3",
+        "-m",
+        "v1.2.3",
+    )
 
     archive = tmp_path / "skills-hub-v1.2.3.tar.gz"
     subprocess.run(

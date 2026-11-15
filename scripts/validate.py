@@ -54,7 +54,8 @@ REF_DEF_RE = re.compile(
     r"(?:[ \t]+(?:\"[^\"\n]*\"|'[^'\n]*'|\([^)\n]*\)))?[ \t]*$"
 )
 INLINE_LINK_RE = re.compile(
-    r"!?\[(?:[^\[\]\n]|\\.)*\]\("
+    # Possessive repetition avoids exponential backtracking on escaped brackets.
+    r"!?\[(?:[^\[\]\n]|\\.)*+\]\("
     r"[ \t]*(?P<dest><[^>\n]*>|(?:[^\s()\\]|\\.|\([^()\n]*\))+)"
     r"(?:[ \t]+(?:\"[^\"\n]*\"|'[^'\n]*'|\([^)\n]*\)))?"
     r"[ \t]*\)"
@@ -617,7 +618,6 @@ def check_contrast_fixture(
             errors.append(f"{where} missing field(s): {', '.join(missing)}")
             continue
         label = item["label"]
-        theme = item["theme"]
         fg, bg, size = item["fg"], item["bg"], item["size"]
         if not isinstance(label, str) or not label.strip():
             errors.append(f"{where} needs a non-empty label")
