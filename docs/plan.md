@@ -6,7 +6,7 @@
 
 | Документ | Роль | Строк / байт |
 |---|---|---|
-| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 33 852 |
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 33 940 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
 | `README.md` | вход и установка | 333 / 17 873 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
@@ -15,7 +15,7 @@
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 375 / 15 466 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
 
-Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 686 B + issue 545–1 135 B = 8 223–9 579 B. Полный план + issue: 33 852 + 545–1 135 = 34 397–34 987 B. План не входит в бюджет инструкций 32 KiB.
+Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 686 B + issue 545–1 135 B = 8 223–9 579 B. Полный план + issue: 33 940 + 545–1 135 = 34 485–35 075 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
@@ -101,7 +101,7 @@
 
 - `DONE` · P1 · security/release · #14 · deps: none (AUD-02 related) · **Границы:** release workflow/tags/notes/provenance; no product behavior; settings only by owner.
 - **Было:** release workflow принимал любой `v*` без ancestry/check-run/env; теги без подписи; notes вручную; assets 0.
-- **Результат/решение:** dispatch only from `main`; signed annotated tag verified against owner trust, ancestry `origin/main`, required `validate`/`Analyze (python)` check-runs with workflow path, protected `release` env; notes single-source from `CHANGELOG`; draft + manual promotion; archive/SHA-256/provenance; `v1.1.0` signed/immutable (`b1f438d`); labels rejected; `README`/`GOVERNANCE` match the gate; `updated_at == published_at` для новых релизов, если ручной шаг не задокументирован.
+- **Результат/решение:** dispatch only from `main`; signed annotated tag verified against owner trust, ancestry `origin/main`, required `validate`/`Analyze (python)` check-runs with workflow path, protected `release` env; notes single-source from `CHANGELOG`; draft + manual promotion; prerelease uses `--prerelease --latest=false`; archive/SHA-256/provenance; `v1.1.0` signed/immutable (`b1f438d`); labels rejected; `README`/`GOVERNANCE §Releases` match the gate; `updated_at == published_at` для новых релизов, если ручной шаг не задокументирован.
 - **Приёмка/доказательство:** `.github/workflows/release.yml`, `scripts/release_notes.py`, `scripts/release_checks.py`, `tests/test_release_*`, `docs/release-process.md`; `make check`; `git tag -v v1.1.0` PASS with allowed-signers.
 
 ### AUD-02 — Installer safety and verifiable install
@@ -137,7 +137,7 @@
 
 - `DONE` · P2 · content/performance/docs · #19 · deps: AUD-03; related AUD-04/AUD-07 · **Границы:** skill docs/assets/AGENTS project info; no product behavior or code/CI.
 - **Было:** `design-direction.md` 35 017 B, typical set 85 527 B; tokens/motion/units/budgets расходились; дубли шаблонов и attribution.
-- **Результат/решение:** 32 KiB reading budget; tokens canonical; motion/units/budgets fixed; `quality-gates.md`/`assets/audit-report.md` one template; `skills/frontend-design/references/sources.md` canonical; `AGENTS.md` project info/plan/listing aligned; `SKILL.md` 7 035 B; 10 reading sets; new-page 32 462 B; worked example excluded.
+- **Результат/решение:** 32 KiB reading budget; tokens canonical; motion/units/budgets fixed; `quality-gates.md`/`assets/audit-report.md` one template; `skills/frontend-design/references/sources.md` canonical; `AGENTS.md §План`/project info/listing aligned; `SKILL.md` 7 035 B; 10 reading sets; new-page 32 462 B; worked example excluded.
 - **Производительность:** путь `SKILL.md` routing + references; нагрузка — загружаемые байты; baseline 35 017 B / 85 527 B; цель 32 KiB; сравнение `wc -c`; дубли/лишние разделы удалены.
 - **Приёмка/доказательство:** `skills/frontend-design/assets/reading-sets.json`, references, `scripts/validate.py`; `make check` PASS.
 
@@ -145,7 +145,7 @@
 
 - `DONE` · P3 · security/docs · #20 · deps: related AUD-01/AUD-04/AUD-06 · **Границы:** CODEOWNERS/ruleset docs/settings evidence; access changes only by owner.
 - **Было:** ruleset 0 approvals/no codeowner; `branch_protection_rule` не срабатывает на rulesets; settings evidence отсутствовал.
-- **Результат/решение:** CODEOWNERS advisory; Scorecard triggers `branch_protection_rule`/weekly/push; SARIF in code scanning; artifact 30 days; settings/date/owner actions in `docs/repository-settings.md`; claims/evidence/date match; approvals/code-owner review deferred to second maintainer.
+- **Результат/решение:** CODEOWNERS advisory; Scorecard triggers `branch_protection_rule`/weekly/push; SARIF in code scanning; artifact 30 days; settings/date/owner actions in `docs/repository-settings.md`; `GOVERNANCE §Review`/settings evidence/date match; approvals/code-owner review deferred to second maintainer.
 - **Приёмка/доказательство:** `.github/CODEOWNERS`, `.github/workflows/scorecard.yml`, `docs/repository-settings.md`; claims synchronized.
 
 ### SKL-01 — Specification
@@ -217,7 +217,7 @@
 ### AUD-28 — Plan is oversized for its startup role
 
 - `DONE` · P3 · documentation/process · #47 · deps: audit complete · **Границы:** план и связанные документы; продукт не меняется.
-- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 33 852; стартовый контекст 8 223–9 579 B.
+- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 33 940; стартовый контекст 8 223–9 579 B.
 - **Доказательство:** этот файл; `make check` PASS; ссылки/якоря validate PASS; PR этой задачи закрывает #47.
 
 ## Решения владельца
