@@ -6,7 +6,7 @@
 
 | Документ | Роль | Строк / байт |
 |---|---|---|
-| `docs/plan.md` | реестр плана | 328 / 51 255 → 295 / 33 262 |
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 297 / 33 804 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
 | `README.md` | вход и установка | 333 / 17 873 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
@@ -15,7 +15,7 @@
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 375 / 15 466 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
 
-Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 686 B + issue 545–1 135 B = 8 223–9 579 B. Полный план + issue: 33 262 + 545–1 135 = 33 807–34 397 B. План не входит в бюджет инструкций 32 KiB.
+Остальные документы не менялись; `docs/plan.md` — единственный изменённый документ этого прохода. Стартовый контекст открытой задачи: `AGENTS.md` 6 758 B + раздел задачи 920–1 686 B + issue 545–1 135 B = 8 223–9 579 B. Полный план + issue: 33 804 + 545–1 135 = 34 349–34 939 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
@@ -123,6 +123,7 @@
 - `DONE` · P2 · CI/security/reproducibility · #17 · deps: AUD-03; related AUD-01/AUD-02/AUD-06/AUD-07 · **Границы:** CI/workflows/toolchain; no product behavior; runner/account settings only by owner.
 - **Было:** unpinned ranges/npx/apt, `ubuntu-latest`, workflow-level `pull-requests: write`; локальный/CI набор расходился.
 - **Результат/решение:** `ubuntu-24.04`, Python 3.12, pip 26.3, hash-locked `requirements-dev.txt`/npm, `npm ci` cache; one `make check`; workflow policy checks 7 files and rejects unsafe workflows; Dependency Review write at job scope; docs/CI match; budget `make validate` ≤1 s / `make check` ≤30 s accepted.
+- **Производительность:** путь `.github/workflows/ci.yml`; нагрузка — pip/npm + suite; baseline 810 ms без pytest; цель `validate` ≤1 s/`check` ≤30 s; сравнение per-step timing; duplicate contrast/bash удалены.
 - **Приёмка/доказательство:** `.github/workflows/*`, `Makefile`, `scripts/check_workflows.py`, `tests/test_workflows.py`; 188 tests; runtime ~0.3 s/20 s.
 
 ### AUD-05 — Secret handling and ignore guard
@@ -137,6 +138,7 @@
 - `DONE` · P2 · content/performance/docs · #19 · deps: AUD-03; related AUD-04/AUD-07 · **Границы:** skill docs/assets/AGENTS project info; no product behavior or code/CI.
 - **Было:** `design-direction.md` 35 017 B, typical set 85 527 B; tokens/motion/units/budgets расходились; дубли шаблонов и attribution.
 - **Результат/решение:** 32 KiB reading budget; tokens canonical; motion/units/budgets fixed; `quality-gates.md`/`assets/audit-report.md` one template; `skills/frontend-design/references/sources.md` canonical; `AGENTS.md` project info/plan/listing aligned; `SKILL.md` 7 035 B; 10 reading sets; new-page 32 462 B; worked example excluded.
+- **Производительность:** путь `SKILL.md` routing + references; нагрузка — загружаемые байты; baseline 35 017 B / 85 527 B; цель 32 KiB; сравнение `wc -c`; дубли/лишние разделы удалены.
 - **Приёмка/доказательство:** `skills/frontend-design/assets/reading-sets.json`, references, `scripts/validate.py`; `make check` PASS.
 
 ### AUD-07 — Repository protections and evidence
@@ -215,7 +217,7 @@
 ### AUD-28 — Plan is oversized for its startup role
 
 - `DONE` · P3 · documentation/process · #47 · deps: audit complete · **Границы:** план и связанные документы; продукт не меняется.
-- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 295 / 33 262; стартовый контекст 8 223–9 579 B.
+- **Результат/приёмка:** один компактный реестр; завершённые блоки сведены, открытые задачи сохранены; 26 ID (19 DONE + 7 OPEN), все статусы/зависимости/ссылки/риски сохранены; план 328 строк / 51 255 B → 297 / 33 804; стартовый контекст 8 223–9 579 B.
 - **Доказательство:** этот файл; `make check` PASS; ссылки/якоря validate PASS; PR этой задачи закрывает #47.
 
 ## Решения владельца
