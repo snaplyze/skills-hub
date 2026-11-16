@@ -19,6 +19,22 @@ Code is clean when the next engineer can understand it, change it, and verify it
 4. Verify with the narrow test, then the affected suite.
 5. Stop when the requested improvement is complete; do not turn a fix into a rewrite.
 
+## Scope discipline
+
+Touch only what the task requires. If you notice an unrelated problem, record it as `Noticed, not touching: <path:line> — <issue>` and leave it for a separate task. Do not combine a refactor with a feature or bug fix unless the change cannot be separated safely; if mixed, explain why. Do not modernize, reformat, or clean adjacent code because it is convenient.
+
+## Simplicity check
+
+Before adding an abstraction, ask:
+
+- What is the simplest thing that could work now?
+- Does this abstraction earn its complexity, or is it speculative?
+- Would a staff engineer ask why this is not a direct function?
+- Am I building for a hypothetical future requirement?
+- Can a branch, mode, or wrapper be deleted instead of polished?
+
+Three similar lines are often better than a premature abstraction. Prove correctness first; optimize or generalize only with evidence.
+
 ## Heuristics
 
 - **Names:** say what the thing is or does, in domain language. Avoid encodings, vague `data`/`manager`, and misleading type words.
@@ -67,7 +83,8 @@ Rigidity, fragility, immobility, viscosity, needless complexity, needless repeti
 - [ ] Duplication represents shared knowledge, not coincidence.
 - [ ] No dead or commented-out code was left behind.
 - [ ] Relevant tests pass; new behavior has coverage.
-- [ ] The diff is scoped to the request.
+- [ ] The diff is scoped to the request; unrelated findings are recorded, not fixed.
+- [ ] The simplest working shape was chosen; abstractions are justified.
 
 ## Handoff
 

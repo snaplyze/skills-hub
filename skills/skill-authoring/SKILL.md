@@ -52,6 +52,18 @@ What the agent returns and which skill or action comes next.
 
 Use short sections and imperative language. Prefer examples over adjectives. Do not copy an upstream skill's text; synthesize the idea and cite the source.
 
+## Trigger mining
+
+Mine real prompts, failures, and near-misses before writing. Group them by the behavior the agent should change, not by topic. For each group, record:
+
+- a positive prompt that should load the skill;
+- a negative prompt that should not;
+- the failure mode without the skill;
+- the observable difference with the skill;
+- the cheapest pressure variant (ambiguous, incomplete, adversarial, or large input).
+
+If there is no real behavior change or no credible trigger, do not add the skill. Prefer editing an existing skill over a near-duplicate.
+
 ## Test the skill
 
 Use TDD for behavior-shaping documentation:
@@ -65,14 +77,28 @@ Use TDD for behavior-shaping documentation:
 
 If you cannot run an agent evaluation, use a documented tabletop trigger matrix and state that it is not behavioral evidence. For a reference skill, test lookup accuracy and staleness; for a workflow, test sequence and stop conditions; for a technique, test application and failure cases; for a pattern, test selection and tradeoffs.
 
+Record each evaluation:
+
+```text
+Prompt:
+Baseline (no skill):
+With skill:
+Triggered? yes/no
+Evidence:
+Verdict: keep / revise / drop
+```
+
+Compare on the same prompt and model. Do not claim a quantitative improvement without a baseline and a repeatable check.
+
 ## Repository integration
 
 - Add the skill under `skills/<lowercase-kebab-id>/SKILL.md`.
 - Validate frontmatter, links, anchors, file references, and the loaded reading budget.
 - Add it to the README skills table and any project skill listing.
-- Record sources and licenses; do not copy upstream text.
+- Record sources and licenses; do not copy upstream text. Verify the license of the exact source, not only the repository root.
 - Add a CHANGELOG entry and plan/tracker task when the repository uses them.
 - Keep the skill self-contained; no hooks, plugins, or hidden runtime dependencies.
+- Version a material behavior change in the skill metadata or changelog; re-run the trigger/eval cases before merging.
 
 ## Red flags
 

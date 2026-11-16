@@ -7,6 +7,17 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Changed
+
+- Strengthen the planning contract with project-local `docs/plans/` files,
+  interfaces, expected outputs, checkpoints, and review focus.
+- Add execution ledgers, task briefs, rulings, and per-task plus whole-branch
+  review gates without plugins or hidden state.
+- Add tests-first review, mutation checks, calibrated findings, integration
+  choices, post-merge verification, and scope discipline.
+- Add trigger mining, baseline-vs-skill evals, versioning, and license checks to
+  skill authoring; record the new source ideas in third-party notices.
+
 ## [1.2.0] - 2026-11-15
 
 ### Added
