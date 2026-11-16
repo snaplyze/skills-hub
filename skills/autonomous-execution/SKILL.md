@@ -36,8 +36,7 @@ Next: T3
 ```
 
 For a short task, a `## Ledger` section in the plan is enough. For a long task,
-use the separate `progress.md` file. Never hide it in `.superpowers/` or another
-tool-owned directory.
+use the separate `progress.md` file. Never hide it in a tool-owned directory.
 
 ## The task loop
 
