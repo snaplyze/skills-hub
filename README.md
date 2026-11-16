@@ -178,6 +178,7 @@ skills-hub/
 ├── .github/                     # CI, security, issue/PR templates
 ├── docs/
 │   ├── plan.md                  # audit and remediation registry
+│   ├── plans/                   # project-local task plans and ledgers
 │   ├── opencode-orchestration.md # native routing architecture and limits
 │   ├── release-process.md       # release gate and owner setup
 │   └── repository-settings.md   # settings evidence and owner actions

@@ -8,7 +8,7 @@
 |---|---|---|
 | `docs/plan.md` | реестр плана | 328 / 51 255 → 328 / 37 684 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
-| `README.md` | вход и установка | 335 / 18 143 |
+| `README.md` | вход и установка | 336 / 18 223 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
 | `docs/release-process.md` | release gate и owner setup | 251 / 11 572 |
 | `docs/repository-settings.md` | settings evidence | 75 / 4 912 |
