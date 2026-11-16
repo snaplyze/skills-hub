@@ -1,6 +1,6 @@
 # Skill Suite v2 — planning, execution, review
 
-Status: IN_REVIEW
+Status: DONE
 Date: 2026-11-16
 Spec: user request to strengthen the suite using current skill repositories
 Sources:
@@ -251,12 +251,12 @@ Acceptance:
 
 ## Execution ledger
 
-| Task | Base | Status | Evidence |
-|---|---|---|---|
-| SKL2-01 | `9f820e1` | done | specification/planning contract; `test_v2_planning_and_execution_contracts` |
-| SKL2-02 | `9f820e1` | done | ledger/task-brief/rulings text; contract tests |
-| SKL2-03 | `9f820e1` | done | tests-first/mutation/delivery checks; contract tests |
-| SKL2-04 | `9f820e1` | done | evals/attribution; notices and contract tests |
+| Task | Base | Commands | Expected -> Actual | Ruling | Next |
+|---|---|---|---|---|---|
+| SKL2-01 | `9f820e1` | `pytest -q tests/test_skill_suite.py`; `make check` | PASS -> PASS | Keep `docs/plans/`; reject tool-owned plan dirs | merged in PR #62 |
+| SKL2-02 | `9f820e1` | same suite; contract checks | PASS -> PASS | Ledger is inline for this short plan; long plan uses `.progress.md` | merged in PR #62 |
+| SKL2-03 | `9f820e1` | same suite; `git diff --check` | PASS -> PASS | Keep P0/P1/P2 and add calibrated optional/nit labels | merged in PR #62 |
+| SKL2-04 | `9f820e1` | `make check`; `git diff --check` | PASS -> PASS | Cite ideas only; Anthropic per-skill license check | merged in PR #62 |
 
 The plan is short enough to keep the ledger inline; a long run would use
 `docs/plans/2026-11-16-skill-suite-v2.progress.md`. No hidden workspace was
@@ -266,14 +266,16 @@ created.
 
 - Independent reviewer found P1 (premature closed status) and P2 findings; all
   were addressed. No P0/P1 remains in the final recheck.
-- `tests/test_skill_suite.py` includes a real workflow mutation
-  (`test_empty_workflow_body_is_rejected`) and the v2 contract checks.
+- `tests/test_skill_suite.py` includes the v2 contract checks and a new
+  mutation check (`test_v2_contract_mutation_is_detected`) that removes a
+  required v2 phrase from the real skill text and asserts the contract checker
+  reports it.
 - No product code was changed; the behavior under review is the skill
   instruction contract and the validator/test surface.
 
 ## Evidence
 
-- `make check` — PASS, 201 tests, 11 skills, markdownlint, Ruff, ShellCheck, dry-run installer, CSS, workflow policy.
+- `make check` — PASS, 202 tests, 11 skills, markdownlint, Ruff, ShellCheck, dry-run installer, CSS, workflow policy.
 - `python3 scripts/validate.py` — PASS.
 - `git diff --check` — PASS.
 - Tracker: #58, #59, #60, #61; milestone #8.

@@ -37,7 +37,7 @@ Keep the header short. It is the contract that later tasks inherit; do not repea
 6. **Specify each task concretely:** files (create/modify/test), public interface or signature, expected behavior, test(s), command, dependencies, and commit boundary. Use `Consumes`/`Produces` for interfaces shared with another task. Include the exact values from the spec; do not leave naming or error semantics to the implementer unless either choice is safe.
 7. **Plan verification.** Name the narrow test for each task and the full check for the end. Each executable step has a command and an `Expected` result. Include a baseline check before edits and a rollback or containment path for risky changes.
 8. **Self-review the plan.** Check spec coverage, step scan (does each step decide one thing?), type consistency across tasks, review focus coverage, and proportion (is the plan a transcript of the code?). Could a fresh engineer execute it without this session? Are tasks independent where claimed? Present the plan for approval when the work is large or irreversible; do not start execution on an unapproved scope.
-9. **Save and hand off.** Save to `docs/plans/YYYY-MM-DD-<slug>.md` or the project's plan location. Do not create `docs/superpowers/`, `.superpowers/`, or another tool-owned plan directory. If an unfinished plan for the same work exists, read and extend it; do not overwrite it. Hand off to `autonomous-execution`.
+9. **Save and hand off.** Save to `docs/plans/YYYY-MM-DD-<slug>.md` or the project's plan location. Do not create a tool-owned plan directory; use `docs/plans/`. If an unfinished plan for the same work exists, read and extend it; do not overwrite it. Hand off to `autonomous-execution`.
 
 ## Plan template
 

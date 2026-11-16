@@ -239,8 +239,7 @@ def test_suite_is_listed_in_readme_and_agents() -> None:
         assert skill_id in agents
 
 
-def test_v2_planning_and_execution_contracts() -> None:
-    required = {
+V2_REQUIRED = {
         "specification": ("Approaches:", "Review focus:"),
         "implementation-planning": (
             "Global constraints:",
@@ -283,10 +282,23 @@ def test_v2_planning_and_execution_contracts() -> None:
             "Version a material",
         ),
     }
-    for skill_id, phrases in required.items():
-        text = skill_text(skill_id)
-        for phrase in phrases:
-            assert phrase in text, (skill_id, phrase)
+
+
+def v2_contract_errors(skill_id: str, text: str) -> list[str]:
+    return [phrase for phrase in V2_REQUIRED[skill_id] if phrase not in text]
+
+
+def test_v2_planning_and_execution_contracts() -> None:
+    for skill_id in V2_REQUIRED:
+        errors = v2_contract_errors(skill_id, skill_text(skill_id))
+        assert not errors, (skill_id, errors)
+
+
+def test_v2_contract_mutation_is_detected() -> None:
+    text = skill_text("implementation-planning")
+    mutated = text.replace("Global constraints:", "")
+    assert mutated != text
+    assert "Global constraints:" in v2_contract_errors("implementation-planning", mutated)
 
 
 def test_v2_state_is_project_local() -> None:
@@ -298,6 +310,10 @@ def test_v2_state_is_project_local() -> None:
         for line in skill_text(skill_id).splitlines():
             if "progress.md" in line:
                 assert "docs/plans/" in line or "Never hide" in line, (skill_id, line)
+    for skill_id in EXPECTED:
+        text = skill_text(skill_id)
+        assert ".superpowers" not in text, skill_id
+        assert "docs/superpowers" not in text, skill_id
 
 
 def test_docs_test_paths_exist() -> None:
