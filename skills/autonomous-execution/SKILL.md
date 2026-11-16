@@ -15,19 +15,58 @@ Execution is coordination, not typing. Keep the plan, the current task, the evid
 
 1. Read the plan and the relevant spec. If acceptance or dependencies are missing, return to planning instead of guessing.
 2. Check the workspace using the Isolation section below; establish the baseline before editing.
-3. Define the ledger: plan path, task ID, status, files owned, commands run, evidence, and blockers. Update it after every task.
+3. Create or resume the ledger at `docs/plans/<plan-basename>.progress.md` (or a `## Ledger` section in the plan for a short task). Record the plan path, task ID, BASE commit, status, files owned, commands, expected vs actual output, evidence, rulings, and next step. Update it after every task.
 4. Establish a green baseline or record the pre-existing failure. Never attribute an old failure to the new work.
+5. If resuming after compaction or a restart, read the plan, ledger, and `git diff --stat`; trust those over recollection. A ledger whose plan path differs from the current plan is not yours to reuse.
+
+## Ledger
+
+The ledger is the recovery map, not a progress essay. Keep one row or block per task:
+
+```text
+Plan: docs/plans/2026-11-16-feature.md
+Task: T2 — add validation
+BASE: <commit before the task>
+Status: in_progress | done | blocked
+Files: <owned paths>
+Commands: <command> -> <expected> -> <actual>
+Evidence: <test/build output summary>
+Ruling: <decision + why + cost if wrong>
+Next: T3
+```
+
+For a short task, a `## Ledger` section in the plan is enough. For a long task,
+use the separate `progress.md` file. Never hide it in `.superpowers/` or another
+tool-owned directory.
 
 ## The task loop
 
-1. **Read the task and its acceptance.** Restate the expected behavior in one line.
-2. **Protect ownership.** One writer per file. Parallel tasks must touch disjoint files or use isolated workspaces; shared files are sequential.
-3. **Write the failing test first.** Run it and capture the failure. Use `test-driven-development` for the red-green-refactor loop.
-4. **Make the smallest coherent change.** Do not add unrelated cleanup or speculative abstractions.
-5. **Run the narrow check, then the affected checks.** Add the full project check before declaring the task complete.
-6. **Review the diff.** Remove dead code, debug output, generated artifacts, and secrets. Check scope.
-7. **Commit the task.** Commit only the task's files; keep the message focused.
-8. **Update the ledger.** Record status, commands, evidence, and the next task. Continue without asking permission between planned tasks.
+1. **Read the task and its acceptance.** Restate the expected behavior in one line. Note the BASE commit before changing anything.
+2. **Read the task brief.** Use the plan's task block (or the brief derived from it); do not rely on a summary from earlier context.
+3. **Protect ownership.** One writer per file. Parallel tasks must touch disjoint files or use isolated workspaces; shared files are sequential.
+4. **Write the failing test first.** Run it and capture the failure. Use `test-driven-development` for the red-green-refactor loop.
+5. **Make the smallest coherent change.** Do not add unrelated cleanup or speculative abstractions.
+6. **Run the narrow check, then the affected checks.** Add the full project check before declaring the task complete.
+7. **Review the diff.** Remove dead code, debug output, generated artifacts, and secrets. Check scope.
+8. **Commit the task and append the ledger line in the same turn.** Commit only the task's files; keep the message focused.
+9. **Update the ledger.** Record status, commands, evidence, and the next task. Continue without asking permission between planned tasks.
+
+## Task briefs
+
+A subagent gets one task brief, not the whole plan. The brief contains the goal, exact files/interfaces, acceptance, constraints, expected output, verification command, stop condition, and any ruling from an earlier task that changes this one. Put it in the dispatch prompt or a temporary file; it is not repository state. The main session owns the plan, cross-task interfaces, Git, publication, and final acceptance.
+
+## Rulings and recovery
+
+When the plan conflicts with the spec or the repository reality, decide the smallest change that satisfies the spec, record `Ruling: <finding> — <decision> — <why> — <cost if wrong>` in the ledger, and continue. Do not silently broaden the task.
+
+Use a 3-strike protocol:
+
+1. diagnose and apply a targeted fix;
+2. change the approach, not the same action;
+3. rethink the assumption and record the attempt;
+4. after three failures, stop and report the blocker with evidence.
+
+After every two broad reads or searches, write the useful findings to the ledger or plan. Long tool output goes to a file; read the tail, not the whole dump.
 
 ## Isolation
 
@@ -35,7 +74,9 @@ Check whether the workspace is already isolated before creating anything. Use th
 
 ## Review gate
 
-After each task, if a fresh reviewer or subagent is available, dispatch `code-review` with the task spec, diff, tests, and open questions. A P0/P1 finding blocks the next task; fix it, rerun the affected checks, and re-review the delta. If independent review is unavailable, perform the same checklist yourself, record that it is a self-review, and do not claim independent approval. Do not accumulate unreviewed tasks until the end.
+After each task, if a fresh reviewer or subagent is available, dispatch `code-review` with the task spec, BASE..HEAD diff, tests, and open questions. A P0/P1 finding blocks the next task; fix it, rerun the affected checks, and re-review the delta. If independent review is unavailable, perform the same checklist yourself, record that it is a self-review, and do not claim independent approval. Do not accumulate unreviewed tasks until the end.
+
+Before delivery, send the whole BASE..HEAD diff, plan acceptance map, and final evidence to a fresh reviewer for a whole-branch review. The final reviewer checks cross-task interfaces, missing acceptance, and scope that per-task reviews could not see.
 
 ## Subagents and parallelism
 

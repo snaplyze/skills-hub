@@ -25,7 +25,16 @@ short standard phrases may coincide. They are informed by:
 - [alvinunreal/oh-my-opencode-slim](https://github.com/alvinunreal/oh-my-opencode-slim)
   — MIT; orchestration/routing ideas only.
 - [snaplyze/claude-orchestration](https://github.com/snaplyze/claude-orchestration)
-  — Apache-2.0; orchestration/routing ideas only.
+  — Apache-2.0; orchestration/routing ideas only;
+- [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) — MIT;
+  planning, incremental delivery, review, git, and doubt-driven ideas;
+- [OthmanAdi/planning-with-files](https://github.com/OthmanAdi/planning-with-files)
+  — MIT; persistent project-local planning and recovery ideas;
+- [wshobson/agents](https://github.com/wshobson/agents) — MIT; multi-reviewer
+  and parallel ownership ideas;
+- [anthropics/skills](https://github.com/anthropics/skills) — the README marks
+  many skills Apache 2.0; used for document, web-testing, and skill-authoring
+  patterns only, with per-skill license verification required.
 
 The workflow skills deliberately avoid hooks, plugins, and session bootstrap;
 their ideas are expressed in new Markdown and tested as OpenCode skills.

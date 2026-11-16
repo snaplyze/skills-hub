@@ -22,6 +22,7 @@ When a plan is already approved and the user asked to execute it, hand off to `a
 | One obvious file, small fix, sequential decision | Work directly. |
 | Unknown area, broad search, or "where is this?" | One `explore` with a mapping brief. |
 | Two or more independent read-only questions | Parallel `explore` calls, at most three, each with a disjoint question. |
+| Two or more unrelated failures or independent fixes | One `general` owner per failure domain; disjoint files and no shared state; integrate and run the full suite. |
 | Independent implementation in disjoint files | One `general` writer per workstream; serialize shared files. |
 | Verification of a risky change | Main session plus a `general` tester with a read-only brief. |
 | Material change before merge | Fresh `general` reviewer with spec, diff, tests, and open questions. |
@@ -36,6 +37,7 @@ Every delegated task is self-contained:
 ```text
 Role: observer | implementer | tester | reviewer
 Goal: one observable outcome
+Plan task: <plan path#task or "read-only investigation">
 Context: relevant paths, current behavior, and the spec/acceptance
 Ownership: files or subsystem you may write; "read-only" if none
 Constraints: no subagents, no Git/publication, no secrets, project checks
@@ -49,12 +51,13 @@ A subagent does not inherit the goal, the plan, or the user's permission to chan
 ## Rules
 
 - **One writer per file.** Parallel writers must have disjoint ownership. Shared files and shared refactors are sequential.
+- **One brief, not the whole plan.** A subagent gets the task block and cross-task decisions it needs; do not paste the entire plan or session history.
 - **Read-only means read-only.** Say it explicitly in the brief and do not ask an `explore` agent to implement.
 - **Subagents do not publish.** They do not commit, push, open/merge PRs, create releases, change settings, or edit the user's global config.
 - **No recursive delegation.** A child works the brief; it does not spawn more agents or invent a new plan.
 - **Wait for dependencies.** Do not integrate a result from a running child. Parallelize only independent read-only work or disjoint writers.
 - **Inspect the result.** Read the diff and rerun the affected checks; do not trust a report as evidence.
-- **Keep the ledger.** Record the task, owner, session ID, status, commands, evidence, and next action.
+- **Keep the ledger.** Record the task, owner, session ID, BASE, status, commands, evidence, rulings, and next action.
 - **Do not use orchestration as a substitute for thinking.** If the next step is unclear, plan or debug first; more agents do not remove ambiguity.
 
 ## Loop
@@ -74,9 +77,21 @@ Use `specification` and `implementation-planning` when the request is still ambi
 
 This skill intentionally does not choose provider models, reasoning effort, or presets. Use whatever models and agents your OpenCode configuration already exposes. If you define custom agent names, substitute them for `explore`/`general` in the briefs; do not create a plugin just to change a model.
 
+## Independent failure dispatch
+
+When several failures are genuinely independent — different test files, subsystems, or root causes — dispatch one owner per domain. Give each a focused scope, the exact failing evidence, disjoint write ownership, and a no-refactor constraint. Do not parallelize related failures, a shared design decision, or two writers in one file. Integrate the results, then run the full suite; never trust a child's success report without inspecting the diff.
+
 ## Stop conditions
 
-Stop and ask when the route would change scope, require a credential or destructive action, publish something, or depend on a child result that is still running. A failed child is a finding, not permission to broaden its brief.
+Stop and ask only when:
+
+- the route requires an irreversible or destructive action;
+- the work needs a credential or security-sensitive change outside the approved scope;
+- publication, merge, release, or a side effect outside the working copy is required;
+- the plan is broken or conflicting enough that every path forward is a guess;
+- integrating would depend on a child result that is still running.
+
+A failed child is a finding, not permission to broaden its brief.
 
 ## Output
 

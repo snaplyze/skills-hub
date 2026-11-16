@@ -55,7 +55,7 @@ It is deliberately opinionated about craft and deliberately neutral about style.
 
 These skills cover the path from an ambiguous request to a verified merge. They are independent enough to load on demand, but designed to hand off to one another: `specification` → `implementation-planning` → `autonomous-execution` → `code-review` → `delivery`, with `systematic-debugging`, `test-driven-development`, and `clean-code` available at the points where they change the outcome. `skill-authoring` is the meta-skill for extending the suite. `orchestration` is the thin routing layer over native OpenCode subagents.
 
-No hooks, plugin bootstrap, or session injection are required. Trigger quality comes from each skill description and explicit routing. Each skill is loaded independently; the suite is not a single context load.
+No hooks, plugin bootstrap, or session injection are required. Trigger quality comes from each skill description and explicit routing. Each skill is loaded independently; the suite is not a single context load. Project plans live in `docs/plans/`; long runs keep a `progress.md` ledger beside the plan, not in a tool-owned hidden directory.
 
 ## Install
 
