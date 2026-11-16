@@ -6,7 +6,7 @@
 
 | Документ | Роль | Строк / байт |
 |---|---|---|
-| `docs/plan.md` | реестр плана | 328 / 51 255 → 328 / 37 747 |
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 328 / 37 675 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
 | `README.md` | вход и установка | 336 / 18 223 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
@@ -14,10 +14,10 @@
 | `docs/repository-settings.md` | settings evidence | 75 / 4 912 |
 | `docs/release-signing/` | публичный trust и ротация | 42 / 1 783 |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 405 / 16 700 |
-| `THIRD_PARTY_NOTICES.md` | атрибуция | 47 / 3 089 |
-| `docs/plans/2026-11-16-skill-suite-v2.md` | детальный план этапа 08 | 257 / 9 296 |
+| `THIRD_PARTY_NOTICES.md` | атрибуция | 47 / 3 062 |
+| `docs/plans/2026-11-16-skill-suite-v2.md` | детальный план этапа 08 | 279 / 10 333 |
 
-Документы этапа: `README.md`, `CHANGELOG.md`, `docs/plans/2026-11-16-skill-suite-v2.md`, `docs/release-process.md`, `docs/repository-settings.md`, `docs/release-signing/`; остальные не менялись. Открытых задач нет; этап 08 в review до merge PR #62. Полный план: 37 747 B; детальный план: 9 296 B. План не входит в бюджет инструкций 32 KiB.
+Документы этапа: `README.md`, `CHANGELOG.md`, `docs/plans/2026-11-16-skill-suite-v2.md`; план обновлён; остальные не менялись. Задачи #58–#61 в review до merge PR #62. Полный план: 37 675 B; детальный план: 10 333 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
@@ -32,7 +32,7 @@
 | 07 | Audit 2026-11-15 (веха #7, closed) | AUD-22 #41 DONE; AUD-23 #42 DONE; AUD-24 #43 DONE; AUD-25 #44 DONE; AUD-26 #45 DONE; AUD-27 #46 DONE; AUD-28 #47 DONE; AUD-29 #48 DONE |
 | 08 | Skill suite v2 (веха #8, open) | SKL2-01 #58 IN_REVIEW, SKL2-02 #59 IN_REVIEW, SKL2-03 #60 IN_REVIEW, SKL2-04 #61 IN_REVIEW |
 
-Порядок этапов: 01 → 02 → 03 → 04 → 05 → 06 → 07. Очередь навыков: SKL-01 → SKL-02 → SKL-05 → SKL-03/SKL-04/SKL-08 → SKL-06 → SKL-07 → SKL-09. Исполнение не начинается до принятого spec/plan; review-gate обязателен на каждой задаче.
+Порядок этапов: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08. Очередь навыков: SKL-01 → SKL-02 → SKL-05 → SKL-03/SKL-04/SKL-08 → SKL-06 → SKL-07 → SKL-09. Исполнение не начинается до принятого spec/plan; review-gate обязателен на каждой задаче.
 
 ## Задачи аудита
 

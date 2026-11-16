@@ -9,7 +9,7 @@ Sources:
 - https://github.com/addyosmani/agent-skills (MIT)
 - https://github.com/OthmanAdi/planning-with-files (MIT)
 - https://github.com/wshobson/agents (MIT)
-- https://github.com/anthropics/skills (README: Apache 2.0 for many skills; verify per skill)
+- https://github.com/anthropics/skills (README: Apache 2.0 for many skills; verify per skill; skill-authoring patterns only)
 
 ## Goal
 
@@ -248,6 +248,28 @@ Acceptance:
 - `make check` passes with the expanded contract tests.
 - Plan/ledger paths are project-local and documented.
 - Tracker issues close only after the merge and evidence check.
+
+## Execution ledger
+
+| Task | Base | Status | Evidence |
+|---|---|---|---|
+| SKL2-01 | `9f820e1` | done | specification/planning contract; `test_v2_planning_and_execution_contracts` |
+| SKL2-02 | `9f820e1` | done | ledger/task-brief/rulings text; contract tests |
+| SKL2-03 | `9f820e1` | done | tests-first/mutation/delivery checks; contract tests |
+| SKL2-04 | `9f820e1` | done | evals/attribution; notices and contract tests |
+
+The plan is short enough to keep the ledger inline; a long run would use
+`docs/plans/2026-11-16-skill-suite-v2.progress.md`. No hidden workspace was
+created.
+
+## Review evidence
+
+- Independent reviewer found P1 (premature closed status) and P2 findings; all
+  were addressed. No P0/P1 remains in the final recheck.
+- `tests/test_skill_suite.py` includes a real workflow mutation
+  (`test_empty_workflow_body_is_rejected`) and the v2 contract checks.
+- No product code was changed; the behavior under review is the skill
+  instruction contract and the validator/test surface.
 
 ## Evidence
 

@@ -33,8 +33,8 @@ short standard phrases may coincide. They are informed by:
 - [wshobson/agents](https://github.com/wshobson/agents) — MIT; multi-reviewer
   and parallel ownership ideas;
 - [anthropics/skills](https://github.com/anthropics/skills) — the README marks
-  many skills Apache 2.0; used for document, web-testing, and skill-authoring
-  patterns only, with per-skill license verification required.
+  many skills Apache 2.0; used for skill-authoring patterns only, with
+  per-skill license verification required.
 
 The workflow skills deliberately avoid hooks, plugins, and session bootstrap;
 their ideas are expressed in new Markdown and tested as OpenCode skills.

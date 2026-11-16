@@ -21,7 +21,7 @@ Code is clean when the next engineer can understand it, change it, and verify it
 
 ## Scope discipline
 
-Touch only what the task requires. If you notice an unrelated problem, record it as `Noticed, not touching: <path:line> — <issue>` and leave it for a separate task. Do not combine a refactor with a feature or bug fix. Do not modernize, reformat, or clean adjacent code because it is convenient.
+Touch only what the task requires. If you notice an unrelated problem, record it as `Noticed, not touching: <path:line> — <issue>` and leave it for a separate task. Do not combine a refactor with a feature or bug fix unless the change cannot be separated safely; if mixed, explain why. Do not modernize, reformat, or clean adjacent code because it is convenient.
 
 ## Simplicity check
 

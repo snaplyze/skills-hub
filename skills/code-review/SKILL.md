@@ -44,6 +44,8 @@ If the harness has subagents, dispatch a read-only reviewer with this brief and 
 
 ## Review checklist
 
+Use these as detailed prompts under the five axes; they are not a second verdict.
+
 - **Correctness:** the change does what the spec says, including failure and empty paths.
 - **Edge cases:** null/empty, long input, concurrency, retries, partial failure, permissions, time zones, locale, and version boundaries.
 - **Security and trust:** input validation, authorization, secret handling, injection, path traversal, unsafe deserialization, dependency/supply-chain changes.

@@ -294,6 +294,10 @@ def test_v2_state_is_project_local() -> None:
     assert "docs/plans/" in skill_text("autonomous-execution")
     assert "progress.md" in skill_text("autonomous-execution")
     assert "hooks:" not in skill_text("autonomous-execution")
+    for skill_id in ("implementation-planning", "autonomous-execution"):
+        for line in skill_text(skill_id).splitlines():
+            if "progress.md" in line:
+                assert "docs/plans/" in line or "Never hide" in line, (skill_id, line)
 
 
 def test_docs_test_paths_exist() -> None:
