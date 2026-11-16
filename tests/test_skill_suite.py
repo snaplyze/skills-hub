@@ -239,6 +239,67 @@ def test_suite_is_listed_in_readme_and_agents() -> None:
         assert skill_id in agents
 
 
+def test_v2_planning_and_execution_contracts() -> None:
+    required = {
+        "specification": ("Approaches:", "Review focus:"),
+        "implementation-planning": (
+            "Global constraints:",
+            "Review focus:",
+            "Interfaces:",
+            "Consumes:",
+            "Produces:",
+            "docs/plans/",
+            "Expected:",
+            "Checkpoint",
+        ),
+        "autonomous-execution": (
+            "progress.md",
+            "Task briefs",
+            "Ruling:",
+            "3-strike",
+            "whole-branch",
+            "BASE",
+        ),
+        "orchestration": (
+            "Independent failure dispatch",
+            "One brief, not the whole plan",
+        ),
+        "code-review": (
+            "Tests first",
+            "Five axes",
+            "Mutation check",
+            "Structural remedies",
+            "Change size",
+        ),
+        "delivery": (
+            "Evidence required",
+            "Post-merge verification",
+            "Change summary",
+        ),
+        "clean-code": ("Scope discipline", "Simplicity check"),
+        "skill-authoring": (
+            "Trigger mining",
+            "Record each evaluation",
+            "Version a material",
+        ),
+    }
+    for skill_id, phrases in required.items():
+        text = skill_text(skill_id)
+        for phrase in phrases:
+            assert phrase in text, (skill_id, phrase)
+
+
+def test_v2_state_is_project_local() -> None:
+    assert "docs/plans/" in skill_text("implementation-planning")
+    assert "docs/plans/" in skill_text("autonomous-execution")
+    assert "progress.md" in skill_text("autonomous-execution")
+    assert "hooks:" not in skill_text("autonomous-execution")
+    for skill_id in ("implementation-planning", "autonomous-execution"):
+        for line in skill_text(skill_id).splitlines():
+            if "progress.md" in line:
+                assert "docs/plans/" in line or "Never hide" in line, (skill_id, line)
+
+
 def test_docs_test_paths_exist() -> None:
     for path in DOCS_WITH_TEST_REFERENCES:
         text = path.read_text(encoding="utf-8")

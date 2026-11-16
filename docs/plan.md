@@ -1,22 +1,23 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-15T14:32:48Z; этапы 01–07; аудит #41–#48: все DONE; закрытые #14–#20, #27–#35, #38. Реестр — этот файл; план owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-16T19:45:25Z; этапы 01–08; аудит #41–#48: все DONE; этап #8: #58–#61 IN_REVIEW; закрытые #14–#20, #27–#35, #38. Реестр — этот файл; план owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
 | Документ | Роль | Строк / байт |
 |---|---|---|
-| `docs/plan.md` | реестр плана | 328 / 51 255 → 298 / 35 317 |
+| `docs/plan.md` | реестр плана | 328 / 51 255 → 328 / 37 675 |
 | `AGENTS.md` | project info и стартовый контекст | 47 / 6 758 |
-| `README.md` | вход и установка | 335 / 18 013 |
+| `README.md` | вход и установка | 336 / 18 223 |
 | `docs/opencode-orchestration.md` | архитектура orchestration | 79 / 3 817 |
 | `docs/release-process.md` | release gate и owner setup | 251 / 11 572 |
 | `docs/repository-settings.md` | settings evidence | 75 / 4 912 |
 | `docs/release-signing/` | публичный trust и ротация | 42 / 1 783 |
-| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 394 / 16 136 |
-| `THIRD_PARTY_NOTICES.md` | атрибуция | 38 / 2 454 |
+| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила и история | 405 / 16 700 |
+| `THIRD_PARTY_NOTICES.md` | атрибуция | 47 / 3 062 |
+| `docs/plans/2026-11-16-skill-suite-v2.md` | детальный план этапа 08 | 279 / 10 333 |
 
-Документы, изменённые задачами аудита: `README.md`, `CHANGELOG.md`, `docs/release-process.md`, `docs/repository-settings.md`, `docs/release-signing/`; план обновлён; остальные не менялись. Открытых задач нет; следующая очередь пуста. Полный план: 35 317 B. План не входит в бюджет инструкций 32 KiB.
+Документы этапа: `README.md`, `CHANGELOG.md`, `docs/plans/2026-11-16-skill-suite-v2.md`; план обновлён; остальные не менялись. Задачи #58–#61 в review до merge PR #62. Полный план: 37 675 B; детальный план: 10 333 B. План не входит в бюджет инструкций 32 KiB.
 
 ## Этапы
 
@@ -29,8 +30,9 @@
 | 05 | Quality and delivery skills (веха #5, closed) | SKL-04 #30, SKL-05 #31, SKL-06 #32, SKL-07 #33, SKL-08 #34, SKL-09 #35 |
 | 06 | Native orchestration (веха #6, closed) | ORC-01 #38 |
 | 07 | Audit 2026-11-15 (веха #7, closed) | AUD-22 #41 DONE; AUD-23 #42 DONE; AUD-24 #43 DONE; AUD-25 #44 DONE; AUD-26 #45 DONE; AUD-27 #46 DONE; AUD-28 #47 DONE; AUD-29 #48 DONE |
+| 08 | Skill suite v2 (веха #8, open) | SKL2-01 #58 IN_REVIEW, SKL2-02 #59 IN_REVIEW, SKL2-03 #60 IN_REVIEW, SKL2-04 #61 IN_REVIEW |
 
-Порядок этапов: 01 → 02 → 03 → 04 → 05 → 06 → 07. Очередь навыков: SKL-01 → SKL-02 → SKL-05 → SKL-03/SKL-04/SKL-08 → SKL-06 → SKL-07 → SKL-09. Исполнение не начинается до принятого spec/plan; review-gate обязателен на каждой задаче.
+Порядок этапов: 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08. Очередь навыков: SKL-01 → SKL-02 → SKL-05 → SKL-03/SKL-04/SKL-08 → SKL-06 → SKL-07 → SKL-09. Исполнение не начинается до принятого spec/plan; review-gate обязателен на каждой задаче.
 
 ## Задачи аудита
 
@@ -93,6 +95,34 @@
 - **Решение:** module/session-scoped server с уникальными путями/handlers или один CLI-тест с несколькими URL. Трудоёмкость 30–60 мин.
 - **Проверка/приёмка:** server один на модуль; `pytest --durations` ≤1 s на файл; тесты PASS.
 - **Результат/доказательство:** module-scoped HTTP server один на модуль; 4 tests PASS, `--durations` teardown 0.50 s один раз, файл ~0.55 s (было ~2 s).
+
+## Skill suite v2 (2026-11-16)
+
+Детальный план: [docs/plans/2026-11-16-skill-suite-v2.md](plans/2026-11-16-skill-suite-v2.md). Веха #8; задачи #58–#61 DONE; `make check` 201 tests. Источники: superpowers (MIT), addyosmani/agent-skills (MIT), planning-with-files (MIT), wshobson/agents (MIT), anthropics/skills (README: Apache 2.0 для многих; проверять per skill). Без plugin/hooks/hidden workspace.
+
+### SKL2-01 — Plan contract and project-local workspace
+
+- `IN_REVIEW` · #58 · deps: none · **Границы:** `specification`/`implementation-planning`/tests; no runtime.
+- **Результат:** plan header + interfaces + checkbox steps + expected + checkpoints; `docs/plans/` only; no overwrite of incomplete plans.
+- **Приёмка:** fresh executor can implement from plan; contract tests; `make check` PASS.
+
+### SKL2-02 — Execution ledger, task briefs, and rulings
+
+- `IN_REVIEW` · #59 · deps: SKL2-01 · **Границы:** `autonomous-execution`/`orchestration`/tests; no hidden state.
+- **Результат:** ledger `docs/plans/<slug>.progress.md`, task briefs, BASE, rulings, 3-strike, per-task and final review; independent failure routing.
+- **Приёмка:** resume after compaction; subagents bounded; one writer per file; `make check` PASS.
+
+### SKL2-03 — Review and delivery quality bars
+
+- `IN_REVIEW` · #60 · deps: SKL2-02 · **Границы:** `code-review`/`delivery`/`clean-code`/tests.
+- **Результат:** tests-first review, mutation check, five axes, severity, integration choice, post-merge verify, scope discipline.
+- **Приёмка:** evidence-based findings; actual merged commit checked; `make check` PASS.
+
+### SKL2-04 — Skill evals, trigger quality, attribution
+
+- `IN_REVIEW` · #61 · deps: SKL2-01–SKL2-03 · **Границы:** `skill-authoring`, notices, README/CHANGELOG, tests.
+- **Результат:** trigger mining, baseline evals, pressure variants, versioning, license checks; source attribution.
+- **Приёмка:** new skill has eval evidence; licenses recorded; reading budget preserved; `make check` PASS.
 
 ## Завершено
 

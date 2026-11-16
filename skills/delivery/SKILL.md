@@ -18,6 +18,14 @@ A completion claim needs fresh evidence from the current tree:
 
 Use PASS, FAIL, or NOT_TESTED. A local check does not replace a required CI check. If a check cannot run, say so and use the best available substitute rather than inventing a result.
 
+| Claim | Evidence required | Not sufficient |
+|---|---|---|
+| Tests pass | command + exit code + failure count | "should pass" or an earlier run |
+| Build passes | build command + exit 0 | linter only |
+| Bug fixed | original symptom now passes + regression test | code changed |
+| Requirements met | acceptance checklist, item by item | tests alone |
+| Agent finished | diff inspected + checks rerun | agent report |
+
 ## Before the PR
 
 1. Re-read the spec and acceptance checks.
@@ -33,7 +41,13 @@ Include: goal, issue link, what changed, why, tests and evidence, risks, compati
 
 ## Integration choice
 
-Before merging, confirm the base branch and the intended integration: merge, open a PR, keep the branch for review, or discard the work. Do not choose a destructive discard or force-push without explicit confirmation. If the change came from a worktree, verify the base and test the merged result, then remove only the clean worktree.
+Before merging, confirm the base branch and present the integration choice:
+
+1. Merge locally into the base and verify the merged result.
+2. Push the branch and open a PR; keep the branch for review.
+3. Keep the branch/worktree as-is.
+
+Discard is allowed only after an explicit request and confirmation. Do not choose a destructive discard or force-push on your own. If the change came from a worktree, verify the base and test the merged result, then remove only the clean worktree.
 
 ## Merge gate
 
@@ -46,6 +60,14 @@ Before merging, confirm the base branch and the intended integration: merge, ope
 - If a push or merge is rejected, inspect the actual remote state; do not retry with force.
 
 An auto-merge queue is not a merge; confirm the final commit. If checks fail, fix the cause and rerun the affected checks; do not edit the test to hide a regression.
+
+## Post-merge verification
+
+After merge, fetch the base branch, confirm the merge/squash commit, and inspect the actual content on the base branch: the expected files, tests, docs, and tracker state. Run the affected checks on that commit or confirm the required CI run for that exact commit. A local branch or a merge queue entry is not delivery.
+
+## Change summary
+
+Report: files changed; what was intentionally not touched; commands and results; reviewed-by (or self-review); risks; NOT_TESTED items; PR and merge commit; tracker items closed. Keep it concise and evidence-based.
 
 ## Cleanup
 
