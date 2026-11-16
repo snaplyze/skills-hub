@@ -1,6 +1,6 @@
 # Skill Suite v2 — planning, execution, review
 
-Status: DONE
+Status: IN_REVIEW
 Date: 2026-11-16
 Spec: user request to strengthen the suite using current skill repositories
 Sources:
