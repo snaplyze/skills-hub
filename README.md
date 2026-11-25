@@ -155,7 +155,7 @@ OpenCode discovers directory skills with a `SKILL.md` and advertises them by the
 
 ### Other harnesses
 
-The skill is written in plain Markdown with relative references, so the content is portable. Harness-specific installers will be added when their target paths and frontmatter requirements are verified. Do not assume a Claude Code or Codex path until the installer exists.
+The skills are written in plain Markdown with relative references, so the content is portable. Harness-specific installers will be added when their target paths and frontmatter requirements are verified. Do not assume a Claude Code or Codex path until the installer exists.
 
 ## Repository layout
 
@@ -172,6 +172,7 @@ skills-hub/
 ├── THIRD_PARTY_NOTICES.md
 ├── Makefile                     # local validation entry points
 ├── package.json                 # pinned Markdown/CSS tools
+├── package-lock.json            # locked npm dependency tree
 ├── pyproject.toml               # Ruff configuration
 ├── requirements-dev.in          # direct Python development inputs
 ├── requirements-dev.txt         # hash-locked Python development tools
@@ -181,6 +182,7 @@ skills-hub/
 │   ├── plans/                   # project-local task plans and ledgers
 │   ├── opencode-orchestration.md # native routing architecture and limits
 │   ├── release-process.md       # release gate and owner setup
+│   ├── release-signing/         # public SSH allowed-signers and rotation
 │   └── repository-settings.md   # settings evidence and owner actions
 ├── install/
 │   └── opencode.sh              # global OpenCode installer
@@ -197,9 +199,9 @@ skills-hub/
     └── ...                      # nine workflow skills
 ```
 
-## Using the skill
+## Using the skills
 
-Once installed, mention it in a prompt or let OpenCode load it when relevant:
+Once installed, mention a skill in a prompt or let OpenCode load it when relevant:
 
 ```text
 Use @frontend-design to redesign the pricing page. The product is a
@@ -228,7 +230,7 @@ It supports hex, `rgb()`, `hsl()`, alpha compositing, text/large-text/UI thresho
 
 1. **Progressive disclosure.** `SKILL.md` is the entry point; references are loaded only when the task needs them.
 2. **Deterministic where possible.** Scripts handle measurable checks; the model handles judgment.
-3. **Evidence over claims.** The skill requires verification and reports gaps.
+3. **Evidence over claims.** Skills require verification and report gaps.
 4. **Portable content.** Plain Markdown, relative paths, no harness-specific APIs in the body.
 5. **No vendor lock-in.** Skills do not install packages, modify the OS, or authorize unrelated changes.
 6. **Attribution.** Sources and licenses are recorded; adapted text is not copied wholesale.
@@ -250,7 +252,7 @@ Or run individual checks:
 
 ```bash
 make validate   # frontmatter, links, anchors, tokens, fixture, installer syntax
-make lint       # ruff + markdownlint (pinned npm tools)
+make lint       # ruff + markdownlint (pinned Python/npm tools)
 make test       # pytest suite, including contrast CLI and negative fixtures
 make shellcheck # ShellCheck on the installer
 make workflows  # pinned-action and permissions policy
@@ -275,7 +277,8 @@ This is a public repository. `main` is protected by a repository ruleset:
   alerts;
 - CODEOWNERS is advisory under the current solo-maintainer ruleset.
 
-Tags matching `v*` block deletion and force updates. The release workflow is dispatched from `main` with an annotated signed tag;
+Tags matching `v*` restrict creation (owner bypass), block deletion and force
+updates, and require signed tags. The release workflow is dispatched from `main` with an annotated signed tag;
 it verifies the signature against owner-configured trust material, requires the
 tagged commit to be an ancestor of `origin/main`, requires successful
 `validate` and `Analyze (python)` check-runs for that commit, and requires the
@@ -297,7 +300,8 @@ Security features enabled:
   SARIF is uploaded to code scanning. Ruleset changes are covered by the
   weekly run because Actions has no `repository_ruleset` trigger;
 - GitHub Actions with a read-only default token, job-scoped write permissions,
-  pinned action commits, a GitHub-owned/verified action allowlist, and approval
+  pinned action commits, a GitHub-owned/verified action allowlist (with an
+  explicit exception for `ossf/scorecard-action@*`), and approval
   required for all external fork contributors;
 - explicit settings evidence and owner-only release controls in
   [docs/repository-settings.md](docs/repository-settings.md).
@@ -333,4 +337,4 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT for this repository. See [LICENSE](LICENSE). Third-party sources are recorded in the canonical [`sources.md`](skills/frontend-design/references/sources.md); [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) points to that registry. Two community sources are explicitly marked for upstream verification.
+MIT for this repository. See [LICENSE](LICENSE). Third-party sources for `frontend-design` are recorded in [`sources.md`](skills/frontend-design/references/sources.md); [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) points to that registry and serves as the canonical attribution registry for the agent workflow skills. Sources without verified upstream license files remain ideas-only.

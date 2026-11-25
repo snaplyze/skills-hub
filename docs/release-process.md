@@ -45,20 +45,33 @@ created. The workflow fails closed with an `::error::` message.
    listed in the README and that the current-HEAD archive test passes. Merge it.
 3. Wait for `validate` and `Analyze (python)` on `main`, and for
    `dependency-review` on the pull request. Do not bypass branch protection.
-4. From a clean `main` checkout, create a signed annotated tag:
+4. From a clean `main` checkout, create a signed annotated tag and verify it
+   locally:
 
    ```bash
    git switch main
    git pull --ff-only
    git tag -s v1.2.3 -m "skills-hub v1.2.3"
-   git tag -v v1.2.3
+   git -c gpg.format=ssh \
+     -c gpg.ssh.allowedSignersFile=docs/release-signing/allowed_signers \
+     verify-tag v1.2.3
    git push origin v1.2.3
    ```
 
-5. Approve the `release` environment deployment in the Actions run.
-6. Inspect the draft release: `release-notes.md` content, the source archive,
+   For an OpenPGP-signed tag, run `git tag -v v1.2.3` instead.
+
+5. Confirm immutable releases remain enabled in repository settings (see
+   `docs/repository-settings.md`), then dispatch the `Release` workflow from
+   `main` (pushing a tag does not trigger it):
+
+   ```bash
+   gh workflow run release.yml --ref main -f tag=v1.2.3
+   ```
+
+6. Approve the `release` environment deployment in the Actions run.
+7. Inspect the draft release: `release-notes.md` content, the source archive,
    `SHA256SUMS`, and the provenance attestation.
-7. Promote the draft manually after review. Do not publish a failed or
+8. Promote the draft manually after review. Do not publish a failed or
    incomplete draft.
 
 For a prerelease, use a tag such as `v1.2.3-rc.1` and the matching changelog
@@ -104,7 +117,8 @@ The current `tag-protection` ruleset restricts creation to the repository owner
 through its configured bypass actor. A GitHub bypass actor can bypass the rules
 in that ruleset, including the signature rule. The release workflow is therefore
 the authoritative signature gate: it independently verifies the tag with
-`git verify-tag` against the public trust file and still enforces main ancestry,
+`git verify-tag` against the configured trust source (matching
+`docs/release-signing/allowed_signers`) and still enforces main ancestry,
 required check-runs, the protected environment, and immutable-release controls.
 Keep the owner-only creation rule while there is one release manager; when a
 second release manager joins, replace the bypass with a narrowly scoped release
@@ -169,9 +183,9 @@ The workflow pins every action to a full commit SHA. It uses:
 
 `actions/attest-build-provenance` is a GitHub-owned action. Keep the repository
 Actions allowlist and the Scorecard allowlist consistent with it. The release
-job requests `contents: write`, `checks: read`, `id-token: write`, and
-`attestations: write`; the top-level workflow permission remains
-`contents: read`. Do not move write permissions to workflow scope.
+job requests `actions: read`, `attestations: write`, `checks: read`,
+`contents: write`, and `id-token: write`; the top-level workflow permission
+remains `contents: read`. Do not move write permissions to workflow scope.
 
 ### Main protection
 
@@ -182,17 +196,18 @@ an ancestor of `origin/main` fails even if the tag itself is valid.
 
 ## What the workflow checks
 
-1. `scripts/release_notes.py` validates the tag and extracts the matching
+1. The tag object must be annotated, and the signature must verify against the
+   configured trust source.
+2. The tag commit must be an ancestor of a freshly fetched `origin/main`.
+3. `gate/scripts/release_checks.py` (from `main`) verifies that the latest
+   `validate` and `Analyze (python)` check-runs for the exact commit completed
+   with conclusion `success`, were created by GitHub Actions, and came from
+   `.github/workflows/ci.yml` and `.github/workflows/codeql.yml`.
+4. `scripts/release_notes.py` validates the tag and extracts the matching
    changelog section. The workflow passes the result to
    `gh release create --notes-file`. `CHANGELOG.md` is the only release-notes
    source; generated release notes and label-based notes are not used. The
    former `.github/release.yml` label configuration has been removed.
-2. The tag object must be annotated, and the signature must verify against the
-   configured trust source.
-3. The tag commit must be an ancestor of a freshly fetched `origin/main`.
-4. The latest `validate` and `Analyze (python)` check-runs for the exact commit
-   must be completed with conclusion `success` and must have been created by
-   GitHub Actions.
 5. `git archive` creates `skills-hub-<tag>.tar.gz`; `SHA256SUMS` contains its
    SHA-256 digest.
 6. `actions/attest-build-provenance` attests the archive.
@@ -242,7 +257,7 @@ git -c gpg.format=ssh \
 - Required check-runs can expire under GitHub's retention limits. Very old
   commits may need a new check run before a release, which is intentional.
 - A failed run can leave a draft release or an attestation behind. Delete the
-  draft before re-running the tag workflow.
+  draft before re-running the `Release` workflow.
 - The workflow uses the repository `GITHUB_TOKEN` scoped to the job and
   protected environment. It does not create tags, edit `main`, or change
   repository settings.

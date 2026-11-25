@@ -48,10 +48,12 @@ Or run the commands individually:
 ```bash
 python3 scripts/validate.py
 ruff check .
+node_modules/.bin/markdownlint-cli2 "**/*.md" "#node_modules"
 python3 -m pytest -q
 shellcheck install/opencode.sh
-./install/opencode.sh --dry-run --target /tmp/skills-hub-check
-python3 scripts/check_workflows.py
+./install/opencode.sh --dry-run --target /tmp/opencode/skills-hub-check
+node_modules/.bin/csstree-validator skills/frontend-design/assets/tokens.css
+python3 scripts/check_workflows.py --strict
 ```
 
 ## Skill structure
@@ -73,7 +75,7 @@ Rules:
 - Keep `SKILL.md` focused on the workflow. Put depth in `references/` and tell the model when to read each file.
 - Use relative paths such as `references/design-direction.md`.
 - Use real, tested scripts for measurable checks; do not fake deterministic results.
-- Write original text. If you adapt material, add the source and license to the skill's canonical `references/sources.md`; `THIRD_PARTY_NOTICES.md` is the repository-level pointer.
+- Write original text. If you adapt material, add the source and license to `skills/frontend-design/references/sources.md` for `frontend-design` or to `THIRD_PARTY_NOTICES.md` for workflow skills (which also points to `sources.md`).
 - Use English for skill content so it stays portable across harnesses.
 - Do not include secrets, private URLs, personal data, or generated credentials.
 
