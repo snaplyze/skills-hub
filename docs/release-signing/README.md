@@ -31,8 +31,10 @@ authoritative gate for publication.
 3. Update the repository or environment variable `RELEASE_TAG_ALLOWED_SIGNERS`
    with the full file, including both keys during the transition.
 4. Sign the next tag with the new key and verify it against this file.
-5. Move the verification test to the new tag and confirm the old tag still
-   verifies while its key remains in the file.
+5. Run `tests/test_release_signature.py` (which automatically verifies the
+   highest `v*` tag), and explicitly re-verify any older supported tag with
+   `git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=docs/release-signing/allowed_signers verify-tag <old-tag>`
+   while its key remains in the file.
 6. Remove the old public key only after no supported tag depends on it. Never
    replace the only key before the migration tag has passed verification.
 

@@ -1,6 +1,6 @@
 # Repository settings evidence
 
-Verified 2026-11-15 from the GitHub API and repository files. Recheck after any
+Verified 2026-11-26 from the GitHub API and repository files. Recheck after any
 settings change; this file records the state, not a claim that a setting cannot
 regress.
 
@@ -15,7 +15,7 @@ regress.
 | Required checks | `validate`, `Analyze (python)`, `dependency-review`; strict up-to-date policy | Ruleset `main-protection` | Maintainer |
 | Code scanning | CodeQL required; errors and high/critical security alerts block | Ruleset `main-protection` | Maintainer |
 | Force push / deletion | Blocked | Ruleset `main-protection` | Maintainer |
-| Tag ruleset | `tag-protection` (#27259245), active; blocks creation, deletion, non-fast-forward; requires signatures; owner-only creation via configured bypass; bypass does not bypass signature/ancestry/check-run gates | Tag ruleset | Maintainer |
+| Tag ruleset | `tag-protection` (#27259245), active; blocks creation, deletion, non-fast-forward; requires signatures; owner-only creation via configured bypass; bypass does not bypass release workflow signature/ancestry/check-run gates | Tag ruleset | Maintainer |
 | Tag creation | Gated by the tag ruleset with owner bypass; signatures required | Tag ruleset | Maintainer |
 | CODEOWNERS | Advisory only; the ruleset does not require code-owner review | `.github/CODEOWNERS` | Maintainer |
 | Environments | `release` exists; required reviewer `snaplyze`; deployment policy allows `main`; self-review allowed by solo exception; admin bypass disabled | Actions environments | Maintainer |
@@ -47,7 +47,7 @@ fork code on it, and keep fork approval enabled.
 | Dependabot alerts/updates | Enabled | Security settings | Maintainer |
 | Private vulnerability reporting | Enabled | Security settings | Maintainer |
 | Immutable releases | Enabled | Releases settings | Maintainer |
-| Release tag signatures | Required by ruleset; trust variable `RELEASE_TAG_ALLOWED_SIGNERS` is set; `v1.2.0` signed/immutable; `v1.0.0`/`v1.0.1` predate the rule | Tag ruleset and repository variables | Maintainer |
+| Release tag signatures | Required by ruleset; trust variable `RELEASE_TAG_ALLOWED_SIGNERS` is set; `v1.1.0` and `v1.2.0` signed/immutable; `v1.0.0`/`v1.0.1` predate the rule | Tag ruleset and repository variables | Maintainer |
 
 ## Claim-to-evidence map
 
