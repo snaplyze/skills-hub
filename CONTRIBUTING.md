@@ -70,7 +70,7 @@ skills/<skill-id>/
 Rules:
 
 - The directory name is the skill ID: lowercase kebab-case, 1–64 characters.
-- `SKILL.md` starts with YAML frontmatter containing `name`, `description`, and `license`.
+- `SKILL.md` starts with YAML frontmatter containing `name`, `description`, and `license` (optional: `compatibility`, `metadata`, `disable-model-invocation`).
 - The description must explain what the skill does and when to use it. It is the primary trigger; OpenCode also lists the skill ID and name before loading the skill.
 - Keep `SKILL.md` focused on the workflow. Put depth in `references/` and tell the model when to read each file.
 - Use relative paths such as `references/design-direction.md`.

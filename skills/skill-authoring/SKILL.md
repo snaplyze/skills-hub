@@ -17,7 +17,7 @@ Collect a real prompt or session where the current agent failed. Name the behavi
 
 ## Directory shape
 
-Use `skills/<lowercase-kebab-id>/SKILL.md`, optional `references/` for depth, `assets/` for templates/data, and `scripts/` only for deterministic checks. Keep the entry point short; a reference must be named in routing and loaded only when needed.
+Use `skills/<lowercase-kebab-id>/SKILL.md`, optional `references/` for depth, `assets/` for templates/data, and `scripts/` only for deterministic checks. Keep the entry point short; a reference must be named in routing and loaded only when needed. When a skill adds Markdown files under `references/` or `assets/`, also add `skills/<lowercase-kebab-id>/assets/reading-sets.json` (`{"sets": {"<name>": ["SKILL.md", ...]}}`, each set ≤ 32,768 B) so the repository validator enforces the reading budget.
 
 ## Design before prose
 
@@ -35,6 +35,11 @@ name: <display name>
 description: <when to use + what it does + anti-trigger>
 license: MIT
 compatibility: opencode
+# Optional OpenCode V2 controls:
+# disable-model-invocation: true
+# metadata:
+#   version: "1.0.0"
+#   opencode/autoinvoke: false
 ---
 
 # <title>

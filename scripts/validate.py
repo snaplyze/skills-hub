@@ -17,6 +17,7 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Hashable
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -39,75 +40,229 @@ PLACEHOLDER_MARKERS = ("TODO", "TBD", "FIXME")
 CONTRAST_PAIR_COUNT = 64
 CONTRAST_THEME_PAIR_COUNT = 32
 CONTRAST_SIZES = frozenset({"normal", "large", "ui"})
-ALLOWED_FRONTMATTER_KEYS = frozenset({"name", "description", "license", "compatibility"})
+ALLOWED_FRONTMATTER_KEYS = frozenset(
+    {
+        "name",
+        "description",
+        "license",
+        "compatibility",
+        "metadata",
+        "disable-model-invocation",
+    }
+)
+AGGREGATE_DESCRIPTION_LIMIT = 16384
 READING_SET_HARD_LIMIT = 32768
 READING_SET_NEW_PAGE_LIMIT = 32768
 
-FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+OPEN_BACKTICK_FENCE_RE = re.compile(r"^ {0,3}(`{3,})[^`]*$")
+OPEN_TILDE_FENCE_RE = re.compile(r"^ {0,3}(~{3,}).*$")
 ATX_HEADING_RE = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 CLOSING_HASHES_RE = re.compile(r"[ \t]+#+[ \t]*$")
 SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(=+|-+)[ \t]*$")
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-INLINE_CODE_RE = re.compile(r"(`+)(?!`)(.*?)\1")
+HTML_ID_RE = re.compile(
+    r"<(?:a|h[1-6])\b[^>]*\s(?:id|name)\s*=\s*(?:\"([^\"]+)\"|'([^']+)')",
+    re.IGNORECASE,
+)
 REF_DEF_RE = re.compile(
     r"^ {0,3}\[([^\]\n]+)\]:[ \t]*(<[^>\n]*>|[^\s]+)"
     r"(?:[ \t]+(?:\"[^\"\n]*\"|'[^'\n]*'|\([^)\n]*\)))?[ \t]*$"
-)
-INLINE_LINK_RE = re.compile(
-    # Possessive repetition avoids exponential backtracking on escaped brackets.
-    r"!?\[(?:[^\[\]\n]|\\.)*+\]\("
-    r"[ \t]*(?P<dest><[^>\n]*>|(?:[^\s()\\]|\\.|\([^()\n]*\))+)"
-    r"(?:[ \t]+(?:\"[^\"\n]*\"|'[^'\n]*'|\([^)\n]*\)))?"
-    r"[ \t]*\)"
 )
 REF_LINK_RE = re.compile(r"!?\[([^\]\n]*)\](?:\[([^\]\n]*)\])?")
 CSS_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 VAR_RE = re.compile(r"var\(\s*(--[a-z0-9-]+)\s*(?:,\s*(.*))?\)", re.DOTALL)
 
 
+class UniqueKeySafeLoader(yaml.SafeLoader):
+    """YAML SafeLoader that rejects duplicate mapping keys, merge keys, and unhashable keys."""
+
+
+def _construct_unique_mapping(
+    loader: UniqueKeySafeLoader, node: yaml.MappingNode, deep: bool = False
+) -> dict:
+    mapping: dict = {}
+    for key_node, value_node in node.value:
+        if isinstance(key_node, yaml.ScalarNode) and key_node.tag == "tag:yaml.org,2002:merge":
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping",
+                node.start_mark,
+                "YAML merge key '<<' is not allowed",
+                key_node.start_mark,
+            )
+        key = loader.construct_object(key_node, deep=True)
+        if not isinstance(key, Hashable):
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping",
+                node.start_mark,
+                "found unhashable key",
+                key_node.start_mark,
+            )
+        if key in mapping:
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping",
+                node.start_mark,
+                f"found duplicate key {key!r}",
+                key_node.start_mark,
+            )
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+UniqueKeySafeLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
+
+
+def normalize_newlines(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def slug(text: str) -> str:
-    """Approximate GitHub's heading anchor slug for simple headings."""
+    """Match GitHub's GFM heading anchor slugging."""
     text = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", text)
     text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
     text = re.sub(r"<[^>]*>", "", text)
     text = text.strip().lower()
-    text = re.sub(r"[`*_~]", "", text)
+    # Preserve underscores inside inline code spans (e.g., `__init__`), strip emphasis elsewhere.
+    parts = re.split(r"(`+[^`]*`+)", text)
+    cleaned: list[str] = []
+    for part in parts:
+        if part.startswith("`") and part.endswith("`"):
+            cleaned.append(part.strip("`"))
+        else:
+            part = re.sub(r"[*~]", "", part)
+            part = re.sub(r"(?<!\w)_+|_+(?!\w)", "", part)
+            cleaned.append(part)
+    text = "".join(cleaned)
     text = re.sub(r"[^\w\s-]", "", text, flags=re.UNICODE)
-    text = re.sub(r"\s+", "-", text)
-    return text.strip("-")
+    text = text.replace("\t", " ")
+    return text.replace(" ", "-")
 
 
 def strip_frontmatter(text: str) -> str:
+    text = normalize_newlines(text)
     if text.startswith("---\n"):
-        end = text.find("\n---\n", 4)
-        if end != -1:
-            return text[end + 5 :]
+        match = re.search(r"\n---(?:\n|$)", text[3:])
+        if match is not None:
+            return text[3 + match.end() :]
     return text
 
 
 def strip_fenced_code(text: str) -> str:
-    """Blank fenced code blocks while keeping line numbers stable."""
+    """Blank CommonMark fenced code blocks while keeping line numbers stable."""
     lines: list[str] = []
     fence_char = ""
     fence_length = 0
-    for line in text.splitlines():
-        match = FENCE_RE.match(line)
+    for line in normalize_newlines(text).splitlines():
         if fence_char:
-            if match and match.group(1)[0] == fence_char and len(match.group(1)) >= fence_length:
+            close_re = rf"^ {{0,3}}{re.escape(fence_char)}{{{fence_length},}}[ \t]*$"
+            if re.match(close_re, line):
                 fence_char = ""
                 fence_length = 0
             lines.append("")
-        elif match:
-            fence_char = match.group(1)[0]
-            fence_length = len(match.group(1))
+            continue
+
+        match = OPEN_BACKTICK_FENCE_RE.match(line) or OPEN_TILDE_FENCE_RE.match(line)
+        if match:
+            fence = match.group(1)
+            fence_char = fence[0]
+            fence_length = len(fence)
             lines.append("")
         else:
             lines.append(line)
     return "\n".join(lines)
 
 
+def _is_escaped(text: str, pos: int) -> bool:
+    backslashes = 0
+    i = pos - 1
+    while i >= 0 and text[i] == "\\":
+        backslashes += 1
+        i -= 1
+    return (backslashes % 2) == 1
+
+
+def mask_code_and_comments(text: str) -> str:
+    """Mask CommonMark inline code spans and HTML comments in a single left-to-right pass."""
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text.startswith("<!--", i) and not _is_escaped(text, i):
+            end = text.find("-->", i + 4)
+            if end != -1:
+                out.append(re.sub(r"[^\n]", " ", text[i : end + 3]))
+                i = end + 3
+                continue
+        if text[i] == "`" and not _is_escaped(text, i):
+            j = i
+            while j < n and text[j] == "`":
+                j += 1
+            tick_len = j - i
+            k = j
+            found = -1
+            while k < n:
+                if text[k] == "\n" and k + 1 < n and text[k + 1] == "\n":
+                    break
+                if text[k] == "`":
+                    end = k
+                    while end < n and text[end] == "`":
+                        end += 1
+                    if end - k == tick_len:
+                        found = end
+                        break
+                    k = end
+                else:
+                    k += 1
+            if found != -1:
+                out.append(re.sub(r"[^\n]", " ", text[i:found]))
+                i = found
+                continue
+            out.append(text[i:j])
+            i = j
+            continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
+
+
 def mask_inline_code(text: str) -> str:
-    return INLINE_CODE_RE.sub(lambda match: " " * len(match.group(0)), text)
+    """Mask CommonMark inline code spans without crossing paragraph boundaries."""
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text[i] != "`" or _is_escaped(text, i):
+            out.append(text[i])
+            i += 1
+            continue
+        j = i
+        while j < n and text[j] == "`":
+            j += 1
+        tick_len = j - i
+        k = j
+        found = -1
+        while k < n:
+            if text[k] == "\n" and k + 1 < n and text[k + 1] == "\n":
+                break
+            if text[k] == "`":
+                end = k
+                while end < n and text[end] == "`":
+                    end += 1
+                if end - k == tick_len:
+                    found = end
+                    break
+                k = end
+            else:
+                k += 1
+        if found != -1:
+            out.append(re.sub(r"[^\n]", " ", text[i:found]))
+            i = found
+        else:
+            out.append(text[i:j])
+            i = j
+    return "".join(out)
 
 
 def mask_html_comments(text: str) -> str:
@@ -122,25 +277,39 @@ def normalize_reference_label(text: str) -> str:
 
 
 def markdown_headings(text: str) -> set[str]:
-    text = mask_html_comments(strip_fenced_code(strip_frontmatter(text)))
-    lines = text.splitlines()
+    stripped = strip_fenced_code(strip_frontmatter(text))
+    masked = mask_code_and_comments(stripped)
     anchors: set[str] = set()
-    seen: dict[str, int] = {}
+
+    for match in HTML_ID_RE.finditer(masked):
+        explicit_id = (match.group(1) or match.group(2) or "").strip()
+        if explicit_id:
+            anchors.add(explicit_id)
+
+    lines = masked.splitlines()
+    raw_lines = stripped.splitlines()
 
     def add(raw: str) -> None:
         base = slug(raw)
         if not base:
             return
-        count = seen.get(base, 0)
-        seen[base] = count + 1
-        anchors.add(base if count == 0 else f"{base}-{count}")
+        if base not in anchors:
+            anchors.add(base)
+            return
+        suffix = 1
+        while f"{base}-{suffix}" in anchors:
+            suffix += 1
+        anchors.add(f"{base}-{suffix}")
 
     index = 0
     while index < len(lines):
         line = lines[index]
         heading = ATX_HEADING_RE.match(line)
         if heading:
-            raw = CLOSING_HASHES_RE.sub("", heading.group(2) or "")
+            raw_heading = ATX_HEADING_RE.match(raw_lines[index])
+            raw = CLOSING_HASHES_RE.sub(
+                "", (raw_heading.group(2) if raw_heading else heading.group(2)) or ""
+            )
             add(raw)
             index += 1
             continue
@@ -150,61 +319,189 @@ def markdown_headings(text: str) -> set[str]:
             and index + 1 < len(lines)
             and SETEXT_UNDERLINE_RE.match(lines[index + 1])
         ):
-            add(line)
+            add(raw_lines[index])
             index += 2
             continue
         index += 1
     return anchors
 
 
+def _parse_inline_dest(text: str, pos: int) -> tuple[str, int] | None:
+    """Parse ``(dest [title])`` starting at ``pos`` (pointing at '(')."""
+    n = len(text)
+    if pos >= n or text[pos] != "(":
+        return None
+    i = pos + 1
+    while i < n and text[i] in " \t":
+        i += 1
+    if i >= n:
+        return None
+
+    if text[i] == "<":
+        end = text.find(">", i + 1)
+        if end == -1 or "\n" in text[i:end]:
+            return None
+        dest = text[i : end + 1]
+        i = end + 1
+    else:
+        start = i
+        paren_depth = 0
+        while i < n:
+            ch = text[i]
+            if ch == "\\" and i + 1 < n and text[i + 1] != "\n":
+                i += 2
+                continue
+            if ch in " \t\n":
+                break
+            if ch == "(":
+                paren_depth += 1
+            elif ch == ")":
+                if paren_depth == 0:
+                    break
+                paren_depth -= 1
+            i += 1
+        if i == start or paren_depth != 0:
+            return None
+        dest = text[start:i]
+
+    while i < n and text[i] in " \t":
+        i += 1
+    if i < n and text[i] in "\"'(":
+        closer = ")" if text[i] == "(" else text[i]
+        i += 1
+        while i < n and text[i] != closer:
+            if text[i] == "\n":
+                return None
+            if text[i] == "\\" and i + 1 < n and text[i + 1] != "\n":
+                i += 2
+                continue
+            i += 1
+        if i >= n or text[i] != closer:
+            return None
+        i += 1
+        while i < n and text[i] in " \t":
+            i += 1
+    if i >= n or text[i] != ")":
+        return None
+    return dest, i + 1
+
+
+def _scan_inline_links(text: str) -> tuple[list[str], str]:
+    """Extract inline Markdown link/image destinations in O(n) without recursion."""
+    n = len(text)
+    match_bracket: dict[int, int] = {}
+    stack: list[int] = []
+    i = 0
+    while i < n:
+        ch = text[i]
+        if ch == "\n":
+            stack.clear()
+            i += 1
+            continue
+        if ch == "\\" and i + 1 < n and text[i + 1] != "\n":
+            i += 2
+            continue
+        if ch == "[":
+            stack.append(i)
+        elif ch == "]" and stack:
+            match_bracket[stack.pop()] = i
+        i += 1
+
+    targets: list[str] = []
+    masked = list(text)
+    for open_pos, close_pos in sorted(match_bracket.items()):
+        if close_pos + 1 < n and text[close_pos + 1] == "(":
+            parsed = _parse_inline_dest(text, close_pos + 1)
+            if parsed is not None:
+                dest, end_pos = parsed
+                targets.append(dest)
+                start_mask = (
+                    open_pos - 1 if open_pos > 0 and text[open_pos - 1] == "!" else open_pos
+                )
+                for k in range(start_mask, end_pos):
+                    if masked[k] != "\n":
+                        masked[k] = " "
+    return targets, "".join(masked)
+
+
 def extract_markdown_links(text: str) -> list[str]:
-    text = mask_html_comments(strip_fenced_code(strip_frontmatter(text)))
+    stripped = strip_fenced_code(strip_frontmatter(text))
+    scan = mask_code_and_comments(stripped)
     definitions: dict[str, str] = {}
+    all_definition_targets: list[str] = []
     lines: list[str] = []
-    for line in text.splitlines():
+    for line in scan.splitlines():
         definition = REF_DEF_RE.match(line)
         if definition:
-            definitions[normalize_reference_label(definition.group(1))] = definition.group(2)
+            label = normalize_reference_label(definition.group(1))
+            dest = definition.group(2)
+            definitions.setdefault(label, dest)
+            all_definition_targets.append(dest)
             lines.append("")
         else:
             lines.append(line)
-    scan = mask_inline_code("\n".join(lines))
+    body = "\n".join(lines)
 
-    targets = [match.group("dest") for match in INLINE_LINK_RE.finditer(scan)]
-    without_inline = INLINE_LINK_RE.sub(lambda match: " " * len(match.group(0)), scan)
+    targets, without_inline = _scan_inline_links(body)
+    seen_ref_targets: set[str] = set()
     for match in REF_LINK_RE.finditer(without_inline):
         text_label, reference_label = match.group(1), match.group(2)
-        label = reference_label if reference_label else text_label
-        target = definitions.get(normalize_reference_label(label))
+        label = normalize_reference_label(reference_label if reference_label else text_label)
+        target = definitions.get(label)
         if target is not None:
+            seen_ref_targets.add(target)
+            targets.append(target)
+    for target in all_definition_targets:
+        if target not in seen_ref_targets:
+            seen_ref_targets.add(target)
             targets.append(target)
     return targets
 
 
-def check_markdown_links(path: Path, errors: list[str]) -> None:
+def check_markdown_links(path: Path, errors: list[str], *, skill_dir: Path | None = None) -> None:
     text = path.read_text(encoding="utf-8")
     headings = markdown_headings(text)
+    root_resolved = ROOT.resolve()
+    skill_resolved = skill_dir.resolve() if skill_dir is not None else None
 
     for raw_target in extract_markdown_links(text):
         target = raw_target.strip()
-        if not target or target.startswith("//"):
-            continue
         if target.startswith("<") and target.endswith(">"):
             target = target[1:-1].strip()
+        if not target or target.startswith("//"):
+            continue
         if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", target):
             # http(s), mailto, tel, and other external schemes are skipped.
             continue
 
         parsed = urlsplit(target)
+        if parsed.netloc:
+            continue
         path_part = unquote(parsed.path)
         anchor = unquote(parsed.fragment)
+        if "\x00" in path_part:
+            errors.append(f"{path.relative_to(ROOT)}: broken link -> {target}")
+            continue
         if path_part.startswith("/"):
-            candidate = (ROOT / path_part.lstrip("/")).resolve()
-            if not candidate.is_relative_to(ROOT):
-                errors.append(f"{path.relative_to(ROOT)}: broken link -> {target}")
+            if skill_resolved is not None:
+                errors.append(
+                    f"{path.relative_to(ROOT)}: skill link escapes skill directory -> {target}"
+                )
+                continue
+            candidate = (root_resolved / path_part.lstrip("/")).resolve()
+            if not candidate.is_relative_to(root_resolved):
+                errors.append(f"{path.relative_to(ROOT)}: link escapes repository root -> {target}")
                 continue
         elif path_part:
             candidate = (path.parent / path_part).resolve()
+            if not candidate.is_relative_to(root_resolved):
+                errors.append(f"{path.relative_to(ROOT)}: link escapes repository root -> {target}")
+                continue
+            if skill_resolved is not None and not candidate.is_relative_to(skill_resolved):
+                errors.append(
+                    f"{path.relative_to(ROOT)}: skill link escapes skill directory -> {target}"
+                )
+                continue
         else:
             candidate = path.resolve()
 
@@ -225,67 +522,55 @@ def check_markdown_links(path: Path, errors: list[str]) -> None:
 
 
 def parse_frontmatter(path: Path) -> tuple[dict, str]:
-    text = path.read_text(encoding="utf-8")
+    text = normalize_newlines(path.read_text(encoding="utf-8"))
     if not text.startswith("---\n"):
         raise ValueError("file does not start with YAML frontmatter")
-    end = text.find("\n---\n", 4)
-    if end == -1:
+    match = re.search(r"\n---(?:\n|$)", text[3:])
+    if match is None:
         raise ValueError("frontmatter is not closed with ---")
-    data = yaml.safe_load(text[4:end])
+    raw_yaml = text[4 : 3 + match.start()] if match.start() > 0 else ""
+    body = text[3 + match.end() :]
+    data = yaml.load(raw_yaml, Loader=UniqueKeySafeLoader)
     if not isinstance(data, dict):
         raise ValueError("frontmatter must be a mapping")
-    return data, text[end + 5 :]
+    return data, body
 
 
-def reading_set_entries(data) -> list[tuple[str, list[str]]]:
-    """Read named reading sets from the accepted manifest shapes."""
-    if isinstance(data, dict):
-        container = data.get(
-            "sets",
-            data.get("reading_sets", data.get("readingSets")),
-        )
-    else:
-        container = data
+def _parse_byte_limit(raw: object, field: str) -> int:
+    if isinstance(raw, bool) or not isinstance(raw, int) or not 1 <= raw <= READING_SET_HARD_LIMIT:
+        raise ValueError(f"{field} must be an integer between 1 and {READING_SET_HARD_LIMIT}")
+    return raw
 
-    entries: list[tuple[str, list[str]]] = []
-    if isinstance(container, dict):
-        for name, value in container.items():
-            if isinstance(value, list):
-                files = value
-            elif isinstance(value, dict):
-                files = next(
-                    (
-                        value[key]
-                        for key in ("files", "paths", "documents", "items")
-                        if isinstance(value.get(key), list)
-                    ),
-                    None,
-                )
-                if files is None:
-                    raise ValueError(f"set {name!r} needs a file list")
-            else:
-                raise ValueError(f"set {name!r} must be a list or an object")
-            entries.append((str(name), files))
-    elif isinstance(container, list):
-        for index, value in enumerate(container):
-            if not isinstance(value, dict):
-                raise ValueError(f"set {index} must be an object")
-            name = value.get("name", value.get("id", value.get("key")))
-            files = next(
-                (
-                    value[key]
-                    for key in ("files", "paths", "documents", "items")
-                    if isinstance(value.get(key), list)
-                ),
-                None,
-            )
-            if name is None or files is None:
-                raise ValueError(f"set {index} needs a name and a file list")
-            entries.append((str(name), files))
-    else:
-        raise ValueError("manifest needs a 'sets' mapping or list")
 
-    return entries
+def reading_set_entries(data: object) -> tuple[list[tuple[str, list[str], int | None]], int]:
+    """Read named reading sets from the documented ``{"sets": {...}}`` manifest shape."""
+    if not isinstance(data, dict):
+        raise ValueError("manifest must be a JSON object")
+    budget_limit = READING_SET_HARD_LIMIT
+    if "budget_bytes" in data:
+        budget_limit = _parse_byte_limit(data["budget_bytes"], "budget_bytes")
+
+    container = data.get("sets")
+    if not isinstance(container, dict):
+        raise ValueError("manifest must contain a 'sets' object")
+
+    entries: list[tuple[str, list[str], int | None]] = []
+    for name, value in container.items():
+        if not isinstance(name, str):
+            raise ValueError("set name must be a string")
+        set_limit: int | None = None
+        if isinstance(value, list):
+            files = value
+        elif isinstance(value, dict):
+            files = value.get("files")
+            if not isinstance(files, list):
+                raise ValueError(f"set {name!r} needs a 'files' list")
+            if "limit_bytes" in value:
+                set_limit = _parse_byte_limit(value["limit_bytes"], f"set {name!r} limit_bytes")
+        else:
+            raise ValueError(f"set {name!r} must be a list or an object")
+        entries.append((name, files, set_limit))
+    return entries, budget_limit
 
 
 def is_new_page_set(name: str) -> bool:
@@ -295,10 +580,21 @@ def is_new_page_set(name: str) -> bool:
 
 def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
     manifest = skill_dir / "assets" / "reading-sets.json"
+    skill_resolved = skill_dir.resolve()
+    skill_md_resolved = (skill_dir / "SKILL.md").resolve()
     referenced = [
-        *((skill_dir / "references").rglob("*.md")),
-        *((skill_dir / "assets").rglob("*.md")),
+        p
+        for p in (
+            *((skill_dir / "references").rglob("*.md")),
+            *((skill_dir / "assets").rglob("*.md")),
+        )
+        if not p.is_symlink() and p.is_file()
     ]
+    if manifest.is_symlink():
+        errors.append(
+            f"{manifest.relative_to(ROOT)}: symlinked reading-set manifest is not allowed"
+        )
+        return
     if not manifest.is_file():
         if referenced:
             errors.append(f"{manifest.relative_to(ROOT)}: missing reading-set manifest")
@@ -313,7 +609,7 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
 
     try:
         data = json.loads(manifest.read_text(encoding="utf-8"))
-        entries = reading_set_entries(data)
+        entries, budget_limit = reading_set_entries(data)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         errors.append(f"{manifest.relative_to(ROOT)}: invalid manifest: {error}")
         return
@@ -329,7 +625,7 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
     seen_names: set[str] = set()
     covered: set[Path] = set()
     new_page_sets: list[tuple[str, int]] = []
-    for name, files in entries:
+    for name, files, set_limit in entries:
         where = f"{manifest.relative_to(ROOT)}: set {name!r}"
         normalized_name = name.casefold()
         if not name.strip():
@@ -348,9 +644,13 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
                 errors.append(f"{where} has an empty or non-string path")
                 continue
             relative = Path(raw_path)
+            if relative.is_absolute():
+                errors.append(f"{where} path must be relative to skill directory -> {raw_path}")
+                continue
             candidate = (skill_dir / relative).resolve()
-            if not candidate.exists() and not relative.is_absolute():
-                candidate = (ROOT / relative).resolve()
+            if not candidate.is_relative_to(skill_resolved):
+                errors.append(f"{where} path escapes skill directory -> {raw_path}")
+                continue
             if not candidate.exists():
                 errors.append(f"{where} path does not exist -> {raw_path}")
                 continue
@@ -366,22 +666,21 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
 
             if candidate.suffix.lower() not in (".md", ".markdown"):
                 continue
-            try:
-                routing_path = candidate.relative_to(skill_dir).as_posix()
-            except ValueError:
-                try:
-                    routing_path = candidate.relative_to(ROOT).as_posix()
-                except ValueError:
-                    routing_path = candidate.name
-            if candidate == (skill_dir / "SKILL.md").resolve():
+            routing_path = candidate.relative_to(skill_resolved).as_posix()
+            if candidate == skill_md_resolved:
                 continue
-            if routing_path not in body and candidate.name not in body:
+            if routing_path not in body:
                 errors.append(
                     f"{where} Markdown file is not mentioned in SKILL routing -> {routing_path}"
                 )
 
+        if skill_md_resolved not in seen_paths:
+            errors.append(f"{where} must include SKILL.md")
+        effective_limit = min(set_limit or READING_SET_HARD_LIMIT, budget_limit)
         if total > READING_SET_HARD_LIMIT:
             errors.append(f"{where} totals {total} B; hard limit is {READING_SET_HARD_LIMIT} B")
+        elif total > effective_limit:
+            errors.append(f"{where} totals {total} B; limit is {effective_limit} B")
         if is_new_page_set(name):
             new_page_sets.append((name, total))
 
@@ -394,7 +693,21 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
             errors.append(
                 f"{manifest.relative_to(ROOT)}: excluded path {raw_path!r} needs a reason"
             )
-        candidate = (skill_dir / raw_path).resolve()
+        relative = Path(raw_path)
+        if relative.is_absolute():
+            errors.append(
+                f"{manifest.relative_to(ROOT)}: excluded path must be relative to skill directory -> {raw_path}"
+            )
+            continue
+        candidate = (skill_dir / relative).resolve()
+        if not candidate.is_relative_to(skill_resolved):
+            errors.append(
+                f"{manifest.relative_to(ROOT)}: excluded path escapes skill directory -> {raw_path}"
+            )
+            continue
+        if candidate == skill_md_resolved:
+            errors.append(f"{manifest.relative_to(ROOT)}: SKILL.md cannot be excluded")
+            continue
         if not candidate.is_file():
             errors.append(
                 f"{manifest.relative_to(ROOT)}: excluded path does not exist -> {raw_path}"
@@ -402,11 +715,20 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
             continue
         excluded_paths.add(candidate)
 
-    all_markdown = {(skill_dir / "SKILL.md").resolve()}
-    all_markdown.update(path.resolve() for path in (skill_dir / "references").rglob("*.md"))
-    all_markdown.update(path.resolve() for path in (skill_dir / "assets").rglob("*.md"))
+    all_markdown = {skill_md_resolved}
+    for sub in ("references", "assets"):
+        sub_dir = skill_dir / sub
+        if sub_dir.is_symlink() or not sub_dir.is_dir():
+            continue
+        for path in sub_dir.rglob("*.md"):
+            if path.is_symlink() or not path.is_file():
+                continue
+            resolved = path.resolve()
+            if resolved.is_relative_to(skill_resolved):
+                all_markdown.add(resolved)
     missing_sets = sorted(
-        path.relative_to(skill_dir).as_posix() for path in all_markdown - covered - excluded_paths
+        path.relative_to(skill_resolved).as_posix()
+        for path in all_markdown - covered - excluded_paths
     )
     if missing_sets:
         errors.append(
@@ -414,23 +736,48 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
             + ", ".join(missing_sets)
         )
 
-    if not new_page_sets:
-        errors.append(f"{manifest.relative_to(ROOT)}: missing new-page set")
-    for name, total in new_page_sets:
-        if total > READING_SET_NEW_PAGE_LIMIT:
-            errors.append(
-                f"{manifest.relative_to(ROOT)}: new-page set {name!r} totals "
-                f"{total} B; new-page limit is {READING_SET_NEW_PAGE_LIMIT} B"
-            )
+    if skill_dir.name == "frontend-design":
+        if not new_page_sets:
+            errors.append(f"{manifest.relative_to(ROOT)}: missing new-page set")
+        for name, total in new_page_sets:
+            if total > READING_SET_NEW_PAGE_LIMIT:
+                errors.append(
+                    f"{manifest.relative_to(ROOT)}: new-page set {name!r} totals "
+                    f"{total} B; new-page limit is {READING_SET_NEW_PAGE_LIMIT} B"
+                )
 
 
-def check_skill(skill_dir: Path, errors: list[str]) -> None:
+def _check_local_refs(md_path: Path, text: str, skill_dir: Path, errors: list[str]) -> None:
+    skill_resolved = skill_dir.resolve()
+    rel = md_path.relative_to(ROOT)
+    for target in LOCAL_REF_RE.findall(strip_fenced_code(text)):
+        candidate = (skill_dir / target).resolve()
+        if not candidate.is_relative_to(skill_resolved):
+            errors.append(f"{rel}: local reference escapes skill directory -> {target}")
+        elif not candidate.exists():
+            errors.append(f"{rel}: missing referenced file -> {target}")
+
+
+def check_skill(skill_dir: Path, errors: list[str]) -> int:
     skill_file = skill_dir / "SKILL.md"
     rel = skill_file.relative_to(ROOT)
 
+    if skill_dir.is_symlink():
+        errors.append(f"{skill_dir.relative_to(ROOT)}: symlinked skill directory is not allowed")
+        return 0
+    found_symlinks = False
+    for entry in sorted(skill_dir.rglob("*")):
+        if entry.is_symlink():
+            errors.append(
+                f"{entry.relative_to(ROOT)}: symlink inside skill directory is not allowed"
+            )
+            found_symlinks = True
+    if found_symlinks:
+        return 0
+
     if not skill_file.is_file():
         errors.append(f"{skill_dir.relative_to(ROOT)}: missing SKILL.md")
-        return
+        return 0
 
     if not SKILL_ID_RE.fullmatch(skill_dir.name):
         errors.append(f"{rel}: directory name must be lowercase kebab-case")
@@ -441,9 +788,13 @@ def check_skill(skill_dir: Path, errors: list[str]) -> None:
         frontmatter, body = parse_frontmatter(skill_file)
     except (ValueError, yaml.YAMLError) as error:
         errors.append(f"{rel}: invalid frontmatter: {error}")
-        return
+        return 0
 
-    unknown_keys = sorted(set(frontmatter) - ALLOWED_FRONTMATTER_KEYS)
+    if any(not isinstance(key, str) for key in frontmatter):
+        errors.append(f"{rel}: frontmatter keys must be strings")
+    unknown_keys = sorted(
+        key for key in frontmatter if isinstance(key, str) and key not in ALLOWED_FRONTMATTER_KEYS
+    )
     if unknown_keys:
         errors.append(f"{rel}: unknown frontmatter key(s): {', '.join(unknown_keys)}")
 
@@ -452,8 +803,43 @@ def check_skill(skill_dir: Path, errors: list[str]) -> None:
         if not isinstance(value, str) or not value.strip():
             errors.append(f"{rel}: frontmatter needs a non-empty '{key}'")
 
+    if "compatibility" in frontmatter:
+        compat = frontmatter["compatibility"]
+        if not isinstance(compat, str) or not compat.strip():
+            errors.append(f"{rel}: frontmatter 'compatibility' must be a non-empty string")
+
+    disable_model = frontmatter.get("disable-model-invocation")
+    if "disable-model-invocation" in frontmatter and not isinstance(disable_model, bool):
+        errors.append(f"{rel}: frontmatter 'disable-model-invocation' must be a boolean")
+
+    autoinvoke: bool | None = None
+    if "metadata" in frontmatter:
+        metadata = frontmatter["metadata"]
+        if not isinstance(metadata, dict):
+            errors.append(f"{rel}: frontmatter 'metadata' must be a mapping")
+        else:
+            for meta_key in metadata:
+                if not isinstance(meta_key, str) or not meta_key.strip():
+                    errors.append(f"{rel}: frontmatter 'metadata' keys must be non-empty strings")
+            if "opencode/autoinvoke" in metadata:
+                raw_auto = metadata["opencode/autoinvoke"]
+                if not isinstance(raw_auto, bool):
+                    errors.append(
+                        f"{rel}: frontmatter 'metadata.opencode/autoinvoke' must be a boolean"
+                    )
+                else:
+                    autoinvoke = raw_auto
+
+    if isinstance(disable_model, bool) and autoinvoke is not None and disable_model == autoinvoke:
+        errors.append(
+            f"{rel}: conflicting 'disable-model-invocation' ({disable_model}) and "
+            f"'metadata.opencode/autoinvoke' ({autoinvoke})"
+        )
+
     description = frontmatter.get("description", "")
+    description_bytes = 0
     if isinstance(description, str):
+        description_bytes = len(description.encode("utf-8"))
         if len(description.strip()) < 40:
             errors.append(f"{rel}: description is too short to advertise clearly")
         if len(description) > 1024:
@@ -462,30 +848,34 @@ def check_skill(skill_dir: Path, errors: list[str]) -> None:
     if not body.strip():
         errors.append(f"{rel}: SKILL.md body is empty")
 
-    for target in LOCAL_REF_RE.findall(body):
-        if not (skill_dir / target).exists():
-            errors.append(f"{rel}: missing referenced file -> {target}")
+    _check_local_refs(skill_file, body, skill_dir, errors)
 
     for reference in sorted((skill_dir / "references").rglob("*.md")):
+        if reference.is_symlink() or not reference.is_file():
+            continue
         routing_path = reference.relative_to(skill_dir).as_posix()
-        if routing_path not in body and reference.name not in body:
+        if routing_path not in body:
             errors.append(f"{rel}: reference not mentioned in routing -> {routing_path}")
 
     check_reading_sets(skill_dir, body, errors)
-    check_markdown_links(skill_file, errors)
+    check_markdown_links(skill_file, errors, skill_dir=skill_dir)
     for md in sorted(skill_dir.rglob("*.md")):
-        if md.name == "SKILL.md":
+        if md.name == "SKILL.md" or md.is_symlink() or not md.is_file():
             continue
         if md.stat().st_size == 0:
             errors.append(f"{md.relative_to(ROOT)}: empty markdown file")
-        check_markdown_links(md, errors)
+        _check_local_refs(md, md.read_text(encoding="utf-8"), skill_dir, errors)
+        check_markdown_links(md, errors, skill_dir=skill_dir)
 
     for path in sorted(skill_dir.rglob("*")):
+        if path.is_symlink():
+            continue
         if path.is_file() and path.suffix in (".md", ".css", ".json", ".py", ".sh"):
             content = path.read_text(encoding="utf-8")
             for marker in PLACEHOLDER_MARKERS:
                 if marker in content:
                     errors.append(f"{path.relative_to(ROOT)}: contains placeholder marker {marker}")
+    return description_bytes
 
 
 def check_installer(errors: list[str]) -> None:
@@ -871,12 +1261,16 @@ def check_root_docs(errors: list[str]) -> None:
             errors.append(f"{name}: missing")
             continue
         check_markdown_links(path, errors)
-    for path in sorted((ROOT / "docs").glob("*.md")):
+    for path in sorted((ROOT / "docs").rglob("*.md")):
+        if not path.is_file():
+            continue
         check_markdown_links(path, errors)
 
 
 def check_github_docs(errors: list[str]) -> None:
     for path in sorted((ROOT / ".github").rglob("*.md")):
+        if not path.is_file():
+            continue
         if path.stat().st_size == 0:
             errors.append(f"{path.relative_to(ROOT)}: empty markdown file")
         check_markdown_links(path, errors)
@@ -903,13 +1297,23 @@ def main() -> int:
         print("error: skills/ directory not found", file=sys.stderr)
         return 2
 
+    for entry in sorted(SKILLS_DIR.iterdir()):
+        if entry.is_symlink() and not entry.is_dir():
+            errors.append(f"{entry.relative_to(ROOT)}: symlink inside skills/ is not allowed")
+
     skill_dirs = sorted(path for path in SKILLS_DIR.iterdir() if path.is_dir())
     if not skill_dirs:
         print("error: no skills found", file=sys.stderr)
         return 2
 
+    total_description_bytes = 0
     for skill_dir in skill_dirs:
-        check_skill(skill_dir, errors)
+        total_description_bytes += check_skill(skill_dir, errors)
+    if total_description_bytes > AGGREGATE_DESCRIPTION_LIMIT:
+        errors.append(
+            f"skills/: aggregate description bytes ({total_description_bytes} B) "
+            f"exceed limit ({AGGREGATE_DESCRIPTION_LIMIT} B)"
+        )
 
     check_installer(errors)
     check_contrast(errors)

@@ -111,11 +111,15 @@ def test_skill_link_formats_pass(tmp_path: Path) -> None:
     append_to_skill(
         repo,
         '\n\n[local](references/accessibility.md "Accessibility reference")\n'
-        "[root](/README.md)\n"
         "[full][accessibility]\n"
         "[collapsed][]\n"
+        "[![badge](https://example.invalid/badge.svg)](references/accessibility.md)\n"
         "\n[accessibility]: references/accessibility.md#testing-protocol\n"
         "[collapsed]: references/accessibility.md\n",
+    )
+    readme = repo / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8") + "\n[root](/README.md)\n", encoding="utf-8"
     )
     assert_validation_passes(repo)
 
@@ -129,13 +133,22 @@ def test_skill_link_formats_pass(tmp_path: Path) -> None:
             "\n\n[broken](references/accessibility.md#does-not-exist)\n",
             "missing anchor",
         ),
-        ("\n\n[broken](/docs/does-not-exist.md)\n", "broken link"),
+        ("\n\n[escape](/README.md)\n", "escapes skill directory"),
+        ("\n\n[escape](../../README.md)\n", "escapes skill directory"),
         (
             '\n\n[broken](references/does-not-exist.md "A title")\n',
             "broken link",
         ),
         (
             '\n\n[broken][missing]\n\n[missing]: references/does-not-exist.md "A title"\n',
+            "broken link",
+        ),
+        (
+            "\n\n[unused]: references/does-not-exist.md\n",
+            "broken link",
+        ),
+        (
+            "\n\n[![badge](https://example.invalid/x.svg)](references/does-not-exist.md)\n",
             "broken link",
         ),
     ],
@@ -532,3 +545,389 @@ def test_reading_sets_missing_new_page_set_fails(tmp_path: Path) -> None:
     repo = copy_repo(tmp_path)
     write_reading_sets(repo, {"sets": {"component-state": ["SKILL.md"]}})
     assert_validation_fails(repo, "missing new-page set")
+
+
+def test_v2_frontmatter_metadata_and_autoinvoke_pass(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    skill = repo / "skills" / "v2-meta-skill"
+    skill.mkdir()
+    (skill / "SKILL.md").write_text(
+        "---\r\n"
+        "name: V2 Meta Skill\r\n"
+        "description: Use when testing OpenCode V2 frontmatter metadata and manual invocation controls.\r\n"
+        "license: MIT\r\n"
+        "compatibility: opencode\r\n"
+        "disable-model-invocation: true\r\n"
+        "metadata:\r\n"
+        "  version: '1.0.0'\r\n"
+        "  opencode/autoinvoke: false\r\n"
+        "---\r\n\r\n"
+        "# V2 Meta Skill\r\n\r\nWorkflow body.\r\n",
+        encoding="utf-8",
+    )
+    assert_validation_passes(repo)
+
+
+@pytest.mark.parametrize(
+    ("extra", "needle"),
+    [
+        ("compatibility: null\n", "'compatibility' must be a non-empty string"),
+        ("disable-model-invocation: 'yes'\n", "'disable-model-invocation' must be a boolean"),
+        ("metadata: []\n", "'metadata' must be a mapping"),
+        (
+            "metadata:\n  opencode/autoinvoke: 'false'\n",
+            "'metadata.opencode/autoinvoke' must be a boolean",
+        ),
+        (
+            "disable-model-invocation: true\nmetadata:\n  opencode/autoinvoke: true\n",
+            "conflicting 'disable-model-invocation'",
+        ),
+        ("license: Apache-2.0\n", "duplicate key 'license'"),
+    ],
+)
+def test_v2_frontmatter_invalid_fields_fail(tmp_path: Path, extra: str, needle: str) -> None:
+    repo = copy_repo(tmp_path)
+    skill = repo / "skills" / "frontend-design" / "SKILL.md"
+    text = skill.read_text(encoding="utf-8")
+    mutated = text.replace("compatibility: opencode\n", extra, 1)
+    assert mutated != text
+    skill.write_text(mutated, encoding="utf-8")
+    assert_validation_fails(repo, needle)
+
+
+def test_second_skill_with_references_does_not_require_new_page_set(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    skill = write_simple_skill(
+        repo,
+        skill_id="modular-skill",
+        body="# Modular\n\nRead `references/extra.md` when needed.\n",
+    )
+    (skill / "references").mkdir()
+    (skill / "references" / "extra.md").write_text("# Extra\n\nDetails.\n", encoding="utf-8")
+    (skill / "assets").mkdir()
+    (skill / "assets" / "reading-sets.json").write_text(
+        json.dumps(
+            {"sets": {"core": {"limit_bytes": 16384, "files": ["SKILL.md", "references/extra.md"]}}}
+        ),
+        encoding="utf-8",
+    )
+    assert_validation_passes(repo)
+
+
+def test_reading_sets_path_containment_and_per_set_limit_enforced(tmp_path: Path) -> None:
+    from scripts import validate
+
+    skill = tmp_path / "skills" / "probe"
+    (skill / "assets").mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\nname: P\ndescription: A sufficiently long probe skill description for testing.\n"
+        "license: MIT\n---\n# Probe\n" + ("a" * 200) + "\n",
+        encoding="utf-8",
+    )
+    orig_root = validate.ROOT
+    try:
+        validate.ROOT = tmp_path
+        manifest = skill / "assets" / "reading-sets.json"
+
+        manifest.write_text(
+            json.dumps({"sets": {"s": ["SKILL.md", "/etc/hosts"]}}), encoding="utf-8"
+        )
+        errs: list[str] = []
+        validate.check_reading_sets(skill, "# Probe\n", errs)
+        assert any("must be relative" in e for e in errs)
+
+        manifest.write_text(
+            json.dumps({"sets": {"s": ["SKILL.md", "../../README.md"]}}), encoding="utf-8"
+        )
+        errs = []
+        validate.check_reading_sets(skill, "# Probe\n", errs)
+        assert any("escapes skill directory" in e for e in errs)
+
+        manifest.write_text(
+            json.dumps({"sets": {"s": {"limit_bytes": 100, "files": ["SKILL.md"]}}}),
+            encoding="utf-8",
+        )
+        errs = []
+        validate.check_reading_sets(skill, "# Probe\n", errs)
+        assert any("limit is 100 B" in e for e in errs)
+
+        manifest.write_text(
+            json.dumps({"sets": {"s": {"limit_bytes": True, "files": ["SKILL.md"]}}}),
+            encoding="utf-8",
+        )
+        errs = []
+        validate.check_reading_sets(skill, "# Probe\n", errs)
+        assert any("invalid manifest" in e for e in errs)
+
+        manifest.write_text(
+            json.dumps({"sets": {"s": ["SKILL.md"]}, "excluded": {"SKILL.md": "nope"}}),
+            encoding="utf-8",
+        )
+        errs = []
+        validate.check_reading_sets(skill, "# Probe\n", errs)
+        assert any("SKILL.md cannot be excluded" in e for e in errs)
+    finally:
+        validate.ROOT = orig_root
+
+
+def test_nested_docs_and_relative_repo_escape_fail(tmp_path: Path) -> None:
+    from scripts import validate
+
+    (tmp_path / "docs" / "nested").mkdir(parents=True)
+    nested_doc = tmp_path / "docs" / "nested" / "broken.md"
+    nested_doc.write_text("# Nested\n\n[escape](../../../../etc/hosts)\n", encoding="utf-8")
+    for name in (
+        "AGENTS.md",
+        "README.md",
+        "CONTRIBUTING.md",
+        "CODE_OF_CONDUCT.md",
+        "SECURITY.md",
+        "CHANGELOG.md",
+        "GOVERNANCE.md",
+        "THIRD_PARTY_NOTICES.md",
+    ):
+        (tmp_path / name).write_text("# Doc\n", encoding="utf-8")
+
+    orig_root = validate.ROOT
+    try:
+        validate.ROOT = tmp_path
+        errs: list[str] = []
+        validate.check_root_docs(errs)
+        assert any("escapes repository root" in e for e in errs)
+    finally:
+        validate.ROOT = orig_root
+
+
+def test_symlink_inside_skill_fails(tmp_path: Path) -> None:
+    from scripts import validate
+
+    orig_root = validate.ROOT
+    try:
+        validate.ROOT = tmp_path
+
+        # Symlink to directory named leak.md must not crash with IsADirectoryError.
+        skill = tmp_path / "skills" / "sym-skill"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text(
+            "---\nname: Sym\ndescription: A sufficiently long test description for symlink rejection.\n"
+            "license: MIT\n---\n# Sym\n",
+            encoding="utf-8",
+        )
+        (skill / "leak.md").symlink_to(tmp_path)
+        errs: list[str] = []
+        validate.check_skill(skill, errs)
+        assert any("symlink inside skill directory" in e for e in errs)
+
+        # Broken *.md symlink must not crash with FileNotFoundError.
+        skill2 = tmp_path / "skills" / "broken-sym"
+        skill2.mkdir()
+        (skill2 / "SKILL.md").write_text(
+            "---\nname: Sym2\ndescription: A sufficiently long test description for broken symlink.\n"
+            "license: MIT\n---\n# Sym2\n",
+            encoding="utf-8",
+        )
+        (skill2 / "dangling.md").symlink_to(tmp_path / "does-not-exist")
+        errs = []
+        validate.check_skill(skill2, errs)
+        assert any("symlink inside skill directory" in e for e in errs)
+
+        # Symlinked skill directory itself.
+        link_dir = tmp_path / "skills" / "sym-dir"
+        link_dir.symlink_to(skill)
+        errs = []
+        validate.check_skill(link_dir, errs)
+        assert any("symlinked skill directory" in e for e in errs)
+    finally:
+        validate.ROOT = orig_root
+
+
+def test_top_level_file_symlink_and_aggregate_description_limit(tmp_path: Path) -> None:
+    from scripts import validate
+
+    orig_root, orig_skills, orig_limit = (
+        validate.ROOT,
+        validate.SKILLS_DIR,
+        validate.AGGREGATE_DESCRIPTION_LIMIT,
+    )
+    try:
+        validate.ROOT = tmp_path
+        validate.SKILLS_DIR = tmp_path / "skills"
+        validate.AGGREGATE_DESCRIPTION_LIMIT = 50
+        skill = validate.SKILLS_DIR / "tiny-skill"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text(
+            "---\nname: Tiny\ndescription: A sufficiently long description exceeding fifty bytes total.\n"
+            "license: MIT\n---\n# Tiny\n",
+            encoding="utf-8",
+        )
+        (validate.SKILLS_DIR / "stray-link").symlink_to(tmp_path / "does-not-exist")
+        import io
+        from contextlib import redirect_stderr
+
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            rc = validate.main()
+        assert rc == 1
+        err_text = buf.getvalue()
+        assert "symlink inside skills/ is not allowed" in err_text
+        assert "aggregate description bytes" in err_text
+    finally:
+        validate.ROOT = orig_root
+        validate.SKILLS_DIR = orig_skills
+        validate.AGGREGATE_DESCRIPTION_LIMIT = orig_limit
+
+
+def test_frontmatter_edge_cases_unit(tmp_path: Path) -> None:
+    from scripts import validate
+
+    orig_root = validate.ROOT
+    try:
+        validate.ROOT = tmp_path
+
+        def check_raw(name: str, raw: str) -> list[str]:
+            skill = tmp_path / "skills" / name
+            skill.mkdir(parents=True, exist_ok=True)
+            (skill / "SKILL.md").write_text(raw, encoding="utf-8")
+            errs: list[str] = []
+            validate.check_skill(skill, errs)
+            return errs
+
+        # Closing --- at EOF without trailing newline parses frontmatter cleanly (then reports empty body).
+        errs = check_raw(
+            "eof-fm",
+            "---\nname: E\ndescription: A sufficiently long description for EOF frontmatter test.\n"
+            "license: MIT\n---",
+        )
+        assert any("body is empty" in e for e in errs)
+
+        # Empty frontmatter ---\n--- must not swallow body until next horizontal rule.
+        empty_fm_doc = "---\n---\n# Title\n\n[broken](missing.md)\n\n---\n\nAfter\n"
+        assert "missing.md" in validate.extract_markdown_links(empty_fm_doc)
+        errs = check_raw("empty-fm", empty_fm_doc)
+        assert any("invalid frontmatter" in e for e in errs)
+
+        # Unhashable key, merge key <<, nested duplicate key, non-string key, and false/false conflict.
+        assert any(
+            "unhashable key" in e for e in check_raw("unhashable", "---\n[a, b]: 1\n---\n# X\n")
+        )
+        assert any(
+            "merge key '<<'" in e
+            for e in check_raw("merge-key", "---\nbase: &b\n  k: v\n<<: *b\n---\n# X\n")
+        )
+        assert any(
+            "duplicate key 'v'" in e
+            for e in check_raw(
+                "nested-dup",
+                "---\nname: N\ndescription: A sufficiently long description for nested duplicate key.\n"
+                "license: MIT\nmetadata:\n  v: '1'\n  v: '2'\n---\n# X\n",
+            )
+        )
+        assert any(
+            "frontmatter keys must be strings" in e
+            for e in check_raw(
+                "non-str-key",
+                "---\nname: N\ndescription: A sufficiently long description for non string key test.\n"
+                "license: MIT\n1: bad\n---\n# X\n",
+            )
+        )
+        assert any(
+            "conflicting 'disable-model-invocation'" in e
+            for e in check_raw(
+                "false-conflict",
+                "---\nname: N\ndescription: A sufficiently long description for false conflict test.\n"
+                "license: MIT\ndisable-model-invocation: false\nmetadata:\n  opencode/autoinvoke: false\n---\n# X\n",
+            )
+        )
+    finally:
+        validate.ROOT = orig_root
+
+
+def test_reading_sets_and_local_ref_edge_cases_unit(tmp_path: Path) -> None:
+    from scripts import validate
+
+    orig_root = validate.ROOT
+    try:
+        validate.ROOT = tmp_path
+        skill = tmp_path / "skills" / "edge-skill"
+        (skill / "references").mkdir(parents=True)
+        (skill / "assets").mkdir(parents=True)
+        (skill / "SKILL.md").write_text(
+            "---\nname: Edge\ndescription: A sufficiently long description for edge reading-set tests.\n"
+            "license: MIT\n---\n# Edge\n\nSee extra.md (bare basename only).\n",
+            encoding="utf-8",
+        )
+        (skill / "references" / "extra.md").write_text(
+            "# Extra\n\nBad ref `references/../../README.md` and [pct](%2e%2e/%2e%2e/README.md) "
+            "and [nul](foo%00bar.md).\n",
+            encoding="utf-8",
+        )
+        manifest = skill / "assets" / "reading-sets.json"
+        manifest.write_text(
+            json.dumps(
+                {
+                    "budget_bytes": 50,
+                    "sets": {"no-skill": ["references/extra.md"]},
+                    "excluded": {"../../README.md": "escape"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        errs: list[str] = []
+        validate.check_skill(skill, errs)
+        assert any("reference not mentioned in routing -> references/extra.md" in e for e in errs)
+        assert any("must include SKILL.md" in e for e in errs)
+        assert any("limit is 50 B" in e for e in errs)
+        assert any("excluded path escapes skill directory" in e for e in errs)
+        assert any("local reference escapes skill directory" in e for e in errs)
+        assert any("skill link escapes skill directory" in e for e in errs)
+        assert any("broken link -> foo%00bar.md" in e for e in errs)
+    finally:
+        validate.ROOT = orig_root
+
+
+def test_gfm_slug_and_commonmark_parser_unit(tmp_path: Path) -> None:
+    from scripts import validate
+
+    assert validate.slug("foo_bar") == "foo_bar"
+    assert validate.slug("`__init__`") == "__init__"
+    assert validate.slug("A & B") == "a--b"
+    assert validate.slug("_em_ and `code_id`") == "em-and-code_id"
+
+    headings = validate.markdown_headings(
+        "# Foo\n## Foo 1\n## Foo\n<a id='custom-id'></a>\n<a data-id='ignored'></a>\n"
+    )
+    assert {"foo", "foo-1", "foo-2", "custom-id"} <= headings
+    assert "ignored" not in headings
+
+    links = validate.extract_markdown_links(
+        "```inline``` text\n\n"
+        r"Use \` [escaped-ok](esc.md) \`"
+        "\n\n<!-- note ` --> [after-comment](comment.md) `code`\n\n"
+        "`<!--` [kept](a.md) `-->`\n\n"
+        "[![alt](img.svg)](target.md)\n\n"
+        "[dup]: broken-first.md\n[dup]: second.md\n[dup][]\n"
+    )
+    for expected in (
+        "esc.md",
+        "comment.md",
+        "a.md",
+        "img.svg",
+        "target.md",
+        "broken-first.md",
+        "second.md",
+    ):
+        assert expected in links
+
+    deep = "[" * 1500 + "x" + "](deep.md)" * 1500
+    assert "deep.md" in validate.extract_markdown_links(deep)
+
+    orig_root = validate.ROOT
+    try:
+        validate.ROOT = tmp_path
+        doc = tmp_path / "doc.md"
+        doc.write_text("[proto](<//example.com/foo>)\n", encoding="utf-8")
+        errs: list[str] = []
+        validate.check_markdown_links(doc, errs)
+        assert errs == []
+    finally:
+        validate.ROOT = orig_root
