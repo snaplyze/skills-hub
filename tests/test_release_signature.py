@@ -1,10 +1,12 @@
-"""Verify the public release-signing trust material."""
+"""Verify release-signing trust material and SSH tag verification without .git dependence."""
 
 from __future__ import annotations
 
+import os
 import shlex
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -13,39 +15,6 @@ ROOT = Path(__file__).resolve().parents[1]
 SIGNERS = ROOT / "docs" / "release-signing" / "allowed_signers"
 SIGNERS_README = ROOT / "docs" / "release-signing" / "README.md"
 RELEASE_PROCESS = ROOT / "docs" / "release-process.md"
-
-
-
-def run_git(*args: str, signers: Path = SIGNERS) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [
-            "git",
-            "-c",
-            "gpg.format=ssh",
-            "-c",
-            f"gpg.ssh.allowedSignersFile={signers}",
-            *args,
-        ],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
-
-
-def release_tag() -> str | None:
-    result = subprocess.run(
-        ["git", "tag", "--list", "v*", "--sort=-v:refname"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        timeout=10,
-        check=False,
-    )
-    tags = [tag for tag in result.stdout.splitlines() if tag]
-    return tags[0] if tags else None
-
 
 KEY_TYPES = frozenset(
     {
@@ -60,6 +29,62 @@ KEY_TYPES = frozenset(
 )
 
 
+@dataclass(frozen=True)
+class SignedTagFixture:
+    repo: Path
+    good_signers: Path
+    tampered_signers: Path
+    signed_tag: str
+    unsigned_tag: str
+
+
+def _isolated_git_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["GIT_CONFIG_GLOBAL"] = os.devnull
+    env["GIT_CONFIG_NOSYSTEM"] = "1"
+    env["LC_ALL"] = "C"
+    return env
+
+
+def run_git_verify(repo: Path, tag: str, *, signers: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "gpg.format=ssh",
+            "-c",
+            f"gpg.ssh.allowedSignersFile={signers}",
+            "verify-tag",
+            "--",
+            f"refs/tags/{tag}",
+        ],
+        env=_isolated_git_env(),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+
+def repo_release_tag() -> str | None:
+    if not (ROOT / ".git").exists():
+        return None
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "tag", "--list", "v*", "--sort=-v:refname"],
+        env=_isolated_git_env(),
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    tags = [tag for tag in result.stdout.splitlines() if tag]
+    return tags[0] if tags else None
+
+
 def parse_signer_line(line: str) -> tuple[list[str], str, str]:
     fields = shlex.split(line, comments=True)
     try:
@@ -71,6 +96,98 @@ def parse_signer_line(line: str) -> tuple[list[str], str, str]:
     key = fields[key_index + 1] if key_index + 1 < len(fields) else ""
     assert key, f"allowed_signers line has no key: {line!r}"
     return principals, fields[key_index], key
+
+
+@pytest.fixture(scope="module")
+def signed_tag_fixture(tmp_path_factory: pytest.TempPathFactory) -> SignedTagFixture:
+    """Create a deterministic temp git repo with an SSH-signed tag and tampered trust."""
+    if shutil.which("git") is None or shutil.which("ssh-keygen") is None:
+        pytest.fail("git and ssh-keygen are required for SSH tag signature verification tests")
+
+    base = tmp_path_factory.mktemp("signed-tag-fixture")
+    repo = base / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Fixture\n", encoding="utf-8")
+
+    good_key = base / "good_key"
+    wrong_key = base / "wrong_key"
+    for key_path in (good_key, wrong_key):
+        subprocess.run(
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key_path)],
+            check=True,
+            timeout=10,
+        )
+
+    good_pub = Path(f"{good_key}.pub").read_text(encoding="utf-8").split()[1]
+    wrong_pub = Path(f"{wrong_key}.pub").read_text(encoding="utf-8").split()[1]
+
+    good_signers = base / "allowed_signers"
+    good_signers.write_text(f"release@snaplyze.me ssh-ed25519 {good_pub}\n", encoding="utf-8")
+    tampered_signers = base / "tampered_signers"
+    tampered_signers.write_text(f"release@snaplyze.me ssh-ed25519 {wrong_pub}\n", encoding="utf-8")
+
+    env = _isolated_git_env()
+    git_identity = [
+        "-c",
+        "user.name=Release Test",
+        "-c",
+        "user.email=release@snaplyze.me",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "tag.gpgsign=false",
+    ]
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], env=env, check=True, timeout=10)
+    subprocess.run(["git", "-C", str(repo), "add", "README.md"], env=env, check=True, timeout=10)
+    subprocess.run(
+        ["git", "-C", str(repo), *git_identity, "commit", "-qm", "initial"],
+        env=env,
+        check=True,
+        timeout=10,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            *git_identity,
+            "-c",
+            "gpg.format=ssh",
+            "-c",
+            f"user.signingkey={good_key}",
+            "tag",
+            "-s",
+            "v1.2.3",
+            "-m",
+            "Signed fixture release v1.2.3",
+        ],
+        env=env,
+        check=True,
+        timeout=10,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            *git_identity,
+            "tag",
+            "-a",
+            "v1.2.4",
+            "-m",
+            "Unsigned annotated tag v1.2.4",
+        ],
+        env=env,
+        check=True,
+        timeout=10,
+    )
+    return SignedTagFixture(
+        repo=repo,
+        good_signers=good_signers,
+        tampered_signers=tampered_signers,
+        signed_tag="v1.2.3",
+        unsigned_tag="v1.2.4",
+    )
 
 
 def test_allowed_signers_is_public_and_well_formed() -> None:
@@ -92,35 +209,46 @@ def test_allowed_signers_is_public_and_well_formed() -> None:
     assert "Rotation" in SIGNERS_README.read_text(encoding="utf-8")
 
 
-@pytest.mark.skipif(shutil.which("git") is None, reason="git is required")
-def test_current_release_tag_verifies_with_repo_trust() -> None:
-    tag = release_tag()
-    if tag is None:
-        pytest.skip("no release tag is present in this checkout")
-    result = run_git("verify-tag", tag)
+def test_signed_tag_verifies_with_matching_trust(signed_tag_fixture: SignedTagFixture) -> None:
+    result = run_git_verify(
+        signed_tag_fixture.repo,
+        signed_tag_fixture.signed_tag,
+        signers=signed_tag_fixture.good_signers,
+    )
     assert result.returncode == 0, result.stderr
+    assert 'Good "git" signature for release@snaplyze.me' in (result.stdout + result.stderr)
+
+    # Also verify the real repository release tag whenever tags are present in a git checkout.
+    tag = repo_release_tag()
+    if tag is not None:
+        real = run_git_verify(ROOT, tag, signers=SIGNERS)
+        assert real.returncode == 0, real.stderr
+        assert 'Good "git" signature for release@snaplyze.me' in (real.stdout + real.stderr)
 
 
-@pytest.mark.skipif(
-    shutil.which("git") is None or shutil.which("ssh-keygen") is None,
-    reason="git and ssh-keygen are required",
-)
-def test_tampered_trust_fails(tmp_path: Path) -> None:
-    tag = release_tag()
-    if tag is None:
-        pytest.skip("no release tag is present in this checkout")
-    key_path = tmp_path / "wrong_key"
-    subprocess.run(
-        ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key_path)],
-        check=True,
-        timeout=10,
+def test_tampered_trust_and_unsigned_tag_fail(signed_tag_fixture: SignedTagFixture) -> None:
+    tampered = run_git_verify(
+        signed_tag_fixture.repo,
+        signed_tag_fixture.signed_tag,
+        signers=signed_tag_fixture.tampered_signers,
     )
-    public_key = Path(f"{key_path}.pub").read_text(encoding="utf-8").split()[1]
-    tampered = tmp_path / "allowed_signers"
-    tampered.write_text(
-        f"release@snaplyze.me ssh-ed25519 {public_key}\n",
-        encoding="utf-8",
+    assert tampered.returncode != 0
+    tampered_out = tampered.stdout + tampered.stderr
+    assert 'Good "git" signature for ' not in tampered_out
+    assert "No principal matched" in tampered_out
+
+    unsigned = run_git_verify(
+        signed_tag_fixture.repo,
+        signed_tag_fixture.unsigned_tag,
+        signers=signed_tag_fixture.good_signers,
     )
-    result = run_git("verify-tag", tag, signers=tampered)
-    assert result.returncode != 0
-    assert "Good" not in result.stdout
+    assert unsigned.returncode != 0
+    assert "Good" not in (unsigned.stdout + unsigned.stderr)
+
+    tag = repo_release_tag()
+    if tag is not None:
+        real_tampered = run_git_verify(ROOT, tag, signers=signed_tag_fixture.tampered_signers)
+        assert real_tampered.returncode != 0
+        real_out = real_tampered.stdout + real_tampered.stderr
+        assert 'Good "git" signature for ' not in real_out
+        assert "No principal matched" in real_out
