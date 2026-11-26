@@ -61,7 +61,7 @@ No hooks, plugin bootstrap, or session injection are required. Trigger quality c
 
 ### OpenCode
 
-The installer copies skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default. Copy mode snapshots content and never writes into this checkout. Use `--link` only when you want a live link to the clone. It requires Bash and GNU `realpath -m`; on systems without that command, use the minimal manual copy below.
+The installer copies skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default. Copy mode snapshots content and never writes into this checkout. Use `--link` only when you want a live link to the clone. It requires Bash and GNU coreutils/findutils/tar (`realpath -m`, `sort -z`, `mv -T`, `find -printf`, GNU `tar`); on systems without those tools, use the minimal manual copy below.
 
 Release `v1.2.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release
 gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do
@@ -119,7 +119,7 @@ cd skills-hub
 
 | Flag | Behavior |
 |---|---|
-| `--copy` | Copy the skill tree (default). Excludes generated artifacts including `__pycache__`, `*.pyc`, `.ruff_cache`, `.pytest_cache`, `.mypy_cache`, `.venv`, `.git`, `.playwright-cli`, and `node_modules`. |
+| `--copy` | Copy the skill tree (default). Excludes generated artifacts and secret-like files (`__pycache__`, `*.py[cod]`, `.ruff_cache`, `.pytest_cache`, `.mypy_cache`, `.venv`, `venv`, `.git`, `.playwright-cli`, `node_modules`, `.DS_Store`, `.env`, `.env.*` except `.env.example`, `*.key`, `*.pem`, `*.p12`, `secrets`, `credentials*`, `id_*` SSH keys, `.opencode`, `.claude`, `.agents`). |
 | `--link` | Symlink the skill directory. Explicit opt-in; links follow the clone and break if it moves or is deleted. |
 | `--all` | Install every discovered skill. Invalid kebab-case IDs are rejected. |
 | `--force` | Move an existing installation to `<target>/.skills-hub-backups/` and atomically replace it. |
@@ -131,8 +131,9 @@ cd skills-hub
 
 The installer canonicalizes target and source paths and refuses `/`, `$HOME`,
 the repository root or a path inside it, the source skill or its
-ancestors/descendants, symlinked source/target roots, and paths with control
-characters. It installs through a staging directory inside the target and keeps
+ancestors/descendants, symlinked source/target roots, symlinks inside skill
+trees, and paths with control characters. It runs a pre-flight check before
+writing, installs through a staging directory inside the target, and keeps
 replaced skills under `.skills-hub-backups`.
 
 To update a copy install, re-run with `--force`; the previous version is kept in
@@ -143,8 +144,7 @@ remove the installed skill:
 rm -rf -- "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/frontend-design"
 ```
 
-Start a new OpenCode session or run `/reload` after installing. A minimal
-manual copy (without the installer's safety checks or artifact exclusions) is:
+OpenCode reloads skills automatically after install; run `opencode reload` (or `/reload` / Command Palette → Reload configuration) to force a refresh without restarting. A minimal manual copy (without the installer's safety checks or artifact exclusions) is:
 
 ```bash
 mkdir -p -- ~/.config/opencode/skills

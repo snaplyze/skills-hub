@@ -582,3 +582,421 @@ def test_verify_rejects_archive_without_git(workspace: SimpleNamespace) -> None:
 
     assert result.returncode != 0
     assert "not a git checkout" in result.stderr
+
+
+def test_list_parses_quoted_literal_empty_nextline_and_crlf_descriptions(
+    workspace: SimpleNamespace,
+) -> None:
+    write_skill(
+        workspace.repo,
+        "quoted-skill",
+        '---\r\nname: q\r\ndescription: "Quoted: value with \\"escapes\\" inside." # note\r\nlicense: MIT\r\n---\r\n# Q\r\n',
+    )
+    write_skill(
+        workspace.repo,
+        "single-quoted",
+        "---\nname: s\ndescription: 'Single ''quoted'' value'\nlicense: MIT\n---\n# S\n",
+    )
+    write_skill(
+        workspace.repo,
+        "literal-skill",
+        "---\nname: l\ndescription: |- # comment\n  Line one.\n  Line two.\nlicense: MIT\n---\n# L\n",
+    )
+    write_skill(
+        workspace.repo,
+        "nextline-skill",
+        "---\nname: n\ndescription:\n  Next line plain scalar # comment\nlicense: MIT\n---\n# N\n",
+    )
+    write_skill(
+        workspace.repo,
+        "empty-quoted",
+        '---\nname: e\ndescription: ""\nlicense: MIT\n---\n# E\n',
+    )
+
+    env = workspace.env.copy()
+    env.pop("HOME", None)
+    listed = run_installer(workspace, "--list", env=env)
+    assert listed.returncode == 0, listed.stderr
+    assert '    Quoted: value with "escapes" inside.' in listed.stdout
+    assert "    Single 'quoted' value" in listed.stdout
+    assert "    Line one.\n    Line two." in listed.stdout
+    assert "    Next line plain scalar" in listed.stdout
+    assert '""' not in listed.stdout
+
+    # Empty quoted description must still trigger the missing-description warning on install.
+    install = run_installer(
+        workspace, "--dry-run", "--target", str(workspace.target), "empty-quoted"
+    )
+    assert install.returncode == 0, install.stderr
+    assert "empty-quoted has no description" in install.stderr
+
+
+def test_refuses_internal_symlink_in_copy_and_link_modes(
+    workspace: SimpleNamespace, tmp_path: Path
+) -> None:
+    secret = tmp_path / "outside.txt"
+    secret.write_text("secret\n", encoding="utf-8")
+    (workspace.repo / "skills" / "frontend-design" / "leak.md").symlink_to(secret)
+
+    for mode in ("--copy", "--link"):
+        result = run_installer(
+            workspace, mode, "--target", str(workspace.target), "frontend-design"
+        )
+        assert result.returncode != 0
+        assert "symlink inside skill source" in result.stderr
+        assert not (workspace.target / "frontend-design").exists()
+
+
+def test_copy_excludes_secret_files_but_keeps_env_example(workspace: SimpleNamespace) -> None:
+    skill = workspace.repo / "skills" / "frontend-design"
+    (skill / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    (skill / ".env.local").write_text("SECRET=2\n", encoding="utf-8")
+    (skill / ".env.example").write_text("EXAMPLE=1\n", encoding="utf-8")
+    (skill / "private.key").write_text("KEY\n", encoding="utf-8")
+    (skill / "secrets").mkdir()
+    (skill / "secrets" / "db.txt").write_text("DB\n", encoding="utf-8")
+
+    result = run_installer(workspace, "--target", str(workspace.target), "frontend-design")
+    assert result.returncode == 0, result.stderr
+    installed = workspace.target / "frontend-design"
+    assert not (installed / ".env").exists()
+    assert not (installed / ".env.local").exists()
+    assert not (installed / "private.key").exists()
+    assert not (installed / "secrets").exists()
+    assert (installed / ".env.example").is_file()
+    assert "opencode reload" in result.stdout
+
+
+def test_verify_rejects_gitignored_secret_file_inside_skills(workspace: SimpleNamespace) -> None:
+    shutil.copyfile(ROOT / ".gitignore", workspace.repo / ".gitignore")
+    assert run_git(workspace, "init", "-q").returncode == 0
+    assert run_git(workspace, "add", "-A").returncode == 0
+    assert (
+        run_git(
+            workspace,
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.test",
+            "commit",
+            "-qm",
+            "init",
+        ).returncode
+        == 0
+    )
+    assert (
+        run_git(
+            workspace,
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.test",
+            "tag",
+            "-a",
+            "v1.2.3",
+            "-m",
+            "v1.2.3",
+        ).returncode
+        == 0
+    )
+    (workspace.repo / "skills" / "frontend-design" / ".env").write_text(
+        "SECRET=1\n", encoding="utf-8"
+    )
+
+    result = run_installer(
+        workspace, "--verify", "--ref", "v1.2.3", "--target", str(workspace.target)
+    )
+    assert result.returncode != 0
+    assert "ignored files exist inside skills/" in result.stderr
+
+
+def test_cli_edge_cases_default_xdg_dedup_all_link_and_backup_symlink(
+    workspace: SimpleNamespace, tmp_path: Path
+) -> None:
+    # --all combined with positional skill is rejected.
+    bad_all = run_installer(
+        workspace, "--all", "frontend-design", "--target", str(workspace.target)
+    )
+    assert bad_all.returncode != 0
+    assert "cannot combine --all" in bad_all.stderr
+
+    # Invalid --ref syntax is rejected.
+    bad_ref = run_installer(workspace, "--ref", "not-a-tag", "--target", str(workspace.target))
+    assert bad_ref.returncode != 0
+    assert "invalid --ref tag" in bad_ref.stderr
+
+    # Duplicate positional skill arguments are deduplicated cleanly.
+    dup = run_installer(
+        workspace,
+        "--target",
+        str(workspace.target),
+        "frontend-design",
+        "frontend-design",
+    )
+    assert dup.returncode == 0, dup.stderr
+    assert (workspace.target / "frontend-design" / "SKILL.md").is_file()
+
+    # Symlinked .skills-hub-backups is refused on --force replacement.
+    (workspace.target / ".skills-hub-backups").symlink_to(tmp_path)
+    bad_bak = run_installer(
+        workspace,
+        "--force",
+        "--target",
+        str(workspace.target),
+        "frontend-design",
+    )
+    assert bad_bak.returncode != 0
+    assert "symlinked backup directory" in bad_bak.stderr
+
+    # Default target honors XDG_CONFIG_HOME and idempotent --link reports already linked.
+    xdg = tmp_path / "xdg"
+    env = workspace.env.copy()
+    env["XDG_CONFIG_HOME"] = str(xdg)
+    first_link = run_installer(workspace, "--link", "frontend-design", env=env)
+    assert first_link.returncode == 0, first_link.stderr
+    assert (xdg / "opencode" / "skills" / "frontend-design").is_symlink()
+    second_link = run_installer(workspace, "--link", "frontend-design", env=env)
+    assert second_link.returncode == 0, second_link.stderr
+    assert "already linked" in second_link.stdout
+
+
+def test_verify_multi_tag_selects_highest_semver_and_honors_list_verify(
+    workspace: SimpleNamespace,
+) -> None:
+    make_git_checkout(workspace, tag="v1.2.0-rc.1")
+    for tag in ("v1.2.0", "v1.10.0-rc.1", "v1.10.0"):
+        assert (
+            run_git(
+                workspace,
+                "-c",
+                "user.name=T",
+                "-c",
+                "user.email=t@example.test",
+                "tag",
+                "-a",
+                tag,
+                "-m",
+                tag,
+            ).returncode
+            == 0
+        )
+    listed = run_installer(workspace, "--list", "--verify")
+    assert listed.returncode == 0, listed.stderr
+    assert "verified clean checkout at v1.10.0" in listed.stdout
+
+
+def test_preflight_prevents_partial_install_on_conflict_and_symlink_in_second_skill(
+    workspace: SimpleNamespace, tmp_path: Path
+) -> None:
+    # Pre-install only other-skill, then attempt to install both without --force:
+    # frontend-design must NOT be installed partially.
+    first = run_installer(workspace, "--target", str(workspace.target), "other-skill")
+    assert first.returncode == 0, first.stderr
+    conflict = run_installer(
+        workspace, "--target", str(workspace.target), "frontend-design", "other-skill"
+    )
+    assert conflict.returncode == 1
+    assert "no changes were written" in conflict.stderr
+    assert not (workspace.target / "frontend-design").exists()
+
+    # Symlink in a skill must fail before creating a fresh target directory.
+    fresh_target = tmp_path / "fresh-target"
+    secret = tmp_path / "outside.txt"
+    secret.write_text("x\n", encoding="utf-8")
+    (workspace.repo / "skills" / "other-skill" / "secrets").symlink_to(secret)
+
+    # Even a pruned name like `secrets` as a symlink must be refused in --link mode.
+    link_res = run_installer(
+        workspace, "--link", "--target", str(fresh_target), "frontend-design", "other-skill"
+    )
+    assert link_res.returncode != 0
+    assert "symlink inside skill source" in link_res.stderr
+    assert not fresh_target.exists()
+
+
+def test_copy_handles_dash_filename_and_extended_secret_exclusions(
+    workspace: SimpleNamespace,
+) -> None:
+    skill = workspace.repo / "skills" / "frontend-design"
+    (skill / "--checkpoint=1").write_text("safe dash file\n", encoding="utf-8")
+    for secret_name in (
+        "credentials_prod.json",
+        "cert.pem",
+        "keystore.p12",
+        "id_rsa",
+        "id_ed25519",
+    ):
+        (skill / secret_name).write_text("SECRET\n", encoding="utf-8")
+    for secret_dir in (".opencode", ".claude", ".agents"):
+        (skill / secret_dir).mkdir()
+        (skill / secret_dir / "cfg.json").write_text("{}\n", encoding="utf-8")
+
+    res = run_installer(workspace, "--target", str(workspace.target), "frontend-design")
+    assert res.returncode == 0, res.stderr
+    installed = workspace.target / "frontend-design"
+    assert (installed / "--checkpoint=1").read_text(encoding="utf-8") == "safe dash file\n"
+    for name in (
+        "credentials_prod.json",
+        "cert.pem",
+        "keystore.p12",
+        "id_rsa",
+        "id_ed25519",
+        ".opencode",
+        ".claude",
+        ".agents",
+    ):
+        assert not (installed / name).exists()
+
+
+def test_verify_rejects_tracked_symlink_and_ignores_benign_pycache_in_copy(
+    workspace: SimpleNamespace, tmp_path: Path
+) -> None:
+    shutil.copyfile(ROOT / ".gitignore", workspace.repo / ".gitignore")
+    assert run_git(workspace, "init", "-q").returncode == 0
+    assert run_git(workspace, "add", "-A").returncode == 0
+    assert (
+        run_git(
+            workspace,
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.test",
+            "commit",
+            "-qm",
+            "init",
+        ).returncode
+        == 0
+    )
+    assert (
+        run_git(
+            workspace,
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.test",
+            "tag",
+            "-a",
+            "v1.2.3",
+            "-m",
+            "v1.2.3",
+        ).returncode
+        == 0
+    )
+
+    # Benign __pycache__ in skills/ is tolerated in --verify --copy and never copied to target.
+    cache_dir = workspace.repo / "skills" / "frontend-design" / "__pycache__"
+    cache_dir.mkdir()
+    (cache_dir / "x.pyc").write_bytes(b"pyc")
+    ok = run_installer(
+        workspace,
+        "--verify",
+        "--ref",
+        "v1.2.3",
+        "--target",
+        str(workspace.target),
+        "frontend-design",
+    )
+    assert ok.returncode == 0, ok.stderr
+    assert not (workspace.target / "frontend-design" / "__pycache__").exists()
+    # --verify --link rejects even __pycache__ because the live directory would be exposed.
+    link_target = tmp_path / "link-target"
+    bad_link = run_installer(
+        workspace,
+        "--verify",
+        "--link",
+        "--ref",
+        "v1.2.3",
+        "--target",
+        str(link_target),
+        "frontend-design",
+    )
+    assert bad_link.returncode != 0
+    assert "ignored files exist" in bad_link.stderr
+
+    # Tracked symlink inside skills/ must be rejected by --verify (git ls-tree check).
+    shutil.rmtree(cache_dir)
+    (workspace.repo / "skills" / "frontend-design" / "secrets").symlink_to("/etc/hosts")
+    assert run_git(workspace, "add", "-f", "skills/frontend-design/secrets").returncode == 0
+    assert (
+        run_git(
+            workspace,
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.test",
+            "commit",
+            "-qm",
+            "sym",
+        ).returncode
+        == 0
+    )
+    assert (
+        run_git(
+            workspace,
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.test",
+            "tag",
+            "-a",
+            "v1.2.4",
+            "-m",
+            "v1.2.4",
+        ).returncode
+        == 0
+    )
+    sym_target = tmp_path / "sym-target"
+    bad_sym = run_installer(
+        workspace, "--verify", "--ref", "v1.2.4", "--target", str(sym_target), "frontend-design"
+    )
+    assert bad_sym.returncode != 0
+    assert "symlink or gitlink inside verified skill source" in bad_sym.stderr
+    assert not sym_target.exists()
+
+
+def test_xdg_default_target_works_without_home_and_yaml_edge_cases(
+    workspace: SimpleNamespace, tmp_path: Path
+) -> None:
+    write_skill(
+        workspace.repo,
+        "yaml-edges",
+        "---\n"
+        "name: y\n"
+        "description: first ignored\n"
+        "description:\n"
+        "  # pure comment line\n"
+        '  "next-line quoted"\n'
+        "license: MIT\n"
+        "---\n# Y\n",
+    )
+    write_skill(
+        workspace.repo,
+        "sq-sentinel",
+        "---\nname: sq\ndescription: 'literal __SQ__ and ''quote'''\nlicense: MIT\n---\n# SQ\n",
+    )
+    write_skill(
+        workspace.repo,
+        "lit-blank",
+        "---\nname: lb\ndescription: |\n\n  after blank\nlicense: MIT\n---\n# LB\n",
+    )
+    write_skill(
+        workspace.repo,
+        "plain-comment",
+        "---\nname: pc\ndescription: hello\n  # pure comment\n  world\nlicense: MIT\n---\n# PC\n",
+    )
+    listed = run_installer(workspace, "--list")
+    assert listed.returncode == 0, listed.stderr
+    assert "    next-line quoted\n" in listed.stdout
+    assert "    literal __SQ__ and 'quote'\n" in listed.stdout
+    assert "    hello world\n" in listed.stdout
+    assert "    after blank\n" in listed.stdout
+    assert "# pure comment" not in listed.stdout
+
+    # XDG_CONFIG_HOME without HOME must still resolve default target.
+    xdg = tmp_path / "xdg-no-home"
+    env = workspace.env.copy()
+    env.pop("HOME", None)
+    env["XDG_CONFIG_HOME"] = str(xdg)
+    res = run_installer(workspace, "frontend-design", env=env)
+    assert res.returncode == 0, res.stderr
+    assert (xdg / "opencode" / "skills" / "frontend-design" / "SKILL.md").is_file()
