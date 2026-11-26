@@ -7,16 +7,79 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-26
+
+### Added
+
+- OpenCode V2 frontmatter support (`metadata`, `disable-model-invocation`) and
+  strict duplicate-key YAML parsing (`UniqueKeySafeLoader`) in
+  `scripts/validate.py`, plus generalized `assets/reading-sets.json` support for
+  any skill with `references/`.
+- CodeQL `Analyze (actions)` workflow analysis alongside `Analyze (python)` and
+  `gitleaks` in required `main` branch protection and release check-run gates.
+- Sigstore provenance bundle release asset (`skills-hub-<tag>.tar.gz.sigstore.json`)
+  for offline `gh attestation verify --bundle` verification.
+- Light-theme contrast coverage for `--color-surface-raised` and mandatory
+  both-theme (`light` + `dark`) semantic token coverage enforcement in
+  `scripts/validate.py`.
+- Deterministic SSH-signed tag and `.git`-independent archive fixtures across
+  `tests/test_release_signature.py` and `tests/test_release_assets.py`.
+
 ### Changed
 
-- Strengthen the planning contract with project-local `docs/plans/` files,
-  interfaces, expected outputs, checkpoints, and review focus.
-- Add execution ledgers, task briefs, rulings, and per-task plus whole-branch
-  review gates without plugins or hidden state.
-- Add tests-first review, mutation checks, calibrated findings, integration
-  choices, post-merge verification, and scope discipline.
-- Add trigger mining, baseline-vs-skill evals, versioning, and license checks to
-  skill authoring; record the new source ideas in third-party notices.
+- Upgrade the 10-skill OpenCode workflow suite (`orchestration`,
+  `specification`, `implementation-planning`, `autonomous-execution`,
+  `systematic-debugging`, `test-driven-development`, `code-review`, `delivery`,
+  `clean-code`, `skill-authoring`) and `docs/opencode-orchestration.md` for
+  OpenCode V2 (`v2.4.1`) and Skill Suite v2: project-local `docs/plans/` files,
+  unified ledgers/briefs, rulings, bounded review-fix loops, secret-safe diff
+  checks, tests-first review, mutation checks, trigger mining, and separated
+  cross-skill anti-triggers.
+- Update `frontend-design` for Baseline 2026 CSS (`:user-invalid`, `@supports`
+  for `animation-timeline: view()`, `<dialog>` `display allow-discrete`),
+  Next.js 16 `preload` and React Compiler v1.0, W3C DTCG handoff, verified
+  upstream licenses (`Leonxlnx/taste-skill` MIT, WCAG 2.2 = ISO/IEC 40500:2025,
+  WAI-ARIA 1.3), and restore `new-page` reading-budget headroom (`31,411 / 32,768 B`).
+- Speed up `scripts/validate.py` (`190 -> 73 ms` in-process via single-pass
+  parsing and in-process contrast checks), `pytest` (`23.7 -> 9.8 s`, CI
+  `validate` `61 -> 20-30 s` by excluding `node_modules` copies and reducing
+  subprocess fan-out), `install/opencode.sh` (streaming `tar` scaling), and
+  `scripts/check_external_links.py` (pruned `os.walk` + bounded per-host
+  concurrency).
+- Update pinned development dependencies (`PyYAML 6.0.4`, `ruff 0.17.6`,
+  `markdownlint-cli2 0.24.2`) and GitHub Actions (`codeql-action v4.39.5`,
+  `dependency-review-action v5.0.1`, `scorecard-action v2.6.0`), drop no-op
+  CodeQL `autobuild`, add workflow-skills area to `bug_report.yml`, add
+  `#.venv`/`#.playwright-cli` markdownlint exclusions, document OpenCode V2
+  discovery/`skills[]`/`permission.skill` in `README.md`, and remove local
+  private environment details from public `AGENTS.md`.
+
+### Fixed
+
+- Fix `install/opencode.sh` YAML description parsing for `--list`, reject
+  symlinks inside skill trees, harden `--verify` against `.gitignore`d files via
+  `git archive`, add pre-flight validation, and document `opencode reload`.
+- Fix `skills/frontend-design/scripts/contrast.py` hex/RGB/HSL/non-finite
+  parsing bugs and CSS Color 4 angle/unitless support, plus string-aware CSS
+  declaration parsing in `scripts/validate.py`.
+- Fix workflow-test and skill-suite test fragility with structural YAML/TOML
+  and inline-comment-aware shell assertions, wrap-independent ledger checks, and
+  cross-skill trigger isolation covering all 11 skills.
+
+### Security
+
+- Resolve Code Scanning alert #13 in `.github/workflows/ci.yml` and harden
+  `scripts/check_workflows.py` and `.github/workflows/scorecard.yml`.
+- Harden `.github/workflows/release.yml`, `scripts/release_checks.py`, and
+  `scripts/release_notes.py`: checkout tags via `refs/tags/...`, execute
+  `gate/scripts/release_notes.py` from `main`, verify `RELEASE_TAG_ALLOWED_SIGNERS`
+  parity with `gate/docs/release-signing/allowed_signers`, require `gitleaks`
+  and `Analyze (actions)` check-runs, and fail closed on timeouts/errors.
+- Harden `scripts/check_external_links.py` with strict `http`/`https`-only
+  openers, non-global IP/DNS-rebinding socket pinning, bounded redirects without
+  unbounded body reads, and `--allow-local` opt-in for loopback testing.
+- Enforce path/symlink containment, CommonMark/GFM link extraction, and
+  `docs/**` link coverage in `scripts/validate.py`.
 
 ## [1.2.0] - 2026-11-15
 
