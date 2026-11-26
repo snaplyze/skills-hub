@@ -874,7 +874,10 @@ def test_reading_sets_and_local_ref_edge_cases_unit(tmp_path: Path) -> None:
         )
         errs: list[str] = []
         validate.check_skill(skill, errs)
-        assert any("reference not mentioned in routing -> references/extra.md" in e for e in errs)
+        routing_errors = [
+            e for e in errs if "not mentioned in SKILL routing -> references/extra.md" in e
+        ]
+        assert len(routing_errors) == 1
         assert any("must include SKILL.md" in e for e in errs)
         assert any("limit is 50 B" in e for e in errs)
         assert any("excluded path escapes skill directory" in e for e in errs)
@@ -931,3 +934,37 @@ def test_gfm_slug_and_commonmark_parser_unit(tmp_path: Path) -> None:
         assert errs == []
     finally:
         validate.ROOT = orig_root
+
+
+def test_validate_repo_in_process_does_not_mutate_root_and_catches_aa_failure(
+    tmp_path: Path,
+) -> None:
+    from scripts import validate
+
+    orig_root = validate.ROOT
+    names, errors = validate.validate_repo(REPO_ROOT)
+    assert errors == []
+    assert len(names) == 11
+    assert orig_root == validate.ROOT
+
+    # Verify merged pairs loop catches an AA failure in-process (without contrast subprocesses).
+    contrast = validate.load_contrast_module(
+        REPO_ROOT / "skills" / "frontend-design" / "scripts" / "contrast.py"
+    )
+    fixture_data = json.loads(
+        (
+            REPO_ROOT / "skills" / "frontend-design" / "assets" / "token-contrast-pairs.json"
+        ).read_text(encoding="utf-8")
+    )
+    fixture_data["pairs"][0]["fg"] = fixture_data["pairs"][0]["bg"]
+    bad_fixture = tmp_path / "pairs.json"
+    bad_fixture.write_text(json.dumps(fixture_data), encoding="utf-8")
+    errs: list[str] = []
+    validate.check_contrast_fixture(
+        bad_fixture,
+        REPO_ROOT / "skills" / "frontend-design" / "assets" / "tokens.css",
+        contrast,
+        errs,
+        root=tmp_path,
+    )
+    assert any("fails AA" in e for e in errs)

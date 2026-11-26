@@ -12,12 +12,15 @@ Exit codes:
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
+import io
 import json
 import re
 import subprocess
 import sys
-from collections.abc import Hashable
+from collections.abc import Hashable, Sequence
+from contextlib import redirect_stdout
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -52,7 +55,6 @@ ALLOWED_FRONTMATTER_KEYS = frozenset(
 )
 AGGREGATE_DESCRIPTION_LIMIT = 16384
 READING_SET_HARD_LIMIT = 32768
-READING_SET_NEW_PAGE_LIMIT = 32768
 
 OPEN_BACKTICK_FENCE_RE = re.compile(r"^ {0,3}(`{3,})[^`]*$")
 OPEN_TILDE_FENCE_RE = re.compile(r"^ {0,3}(~{3,}).*$")
@@ -60,6 +62,7 @@ ATX_HEADING_RE = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 CLOSING_HASHES_RE = re.compile(r"[ \t]+#+[ \t]*$")
 SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(=+|-+)[ \t]*$")
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+MASK_TOKEN_RE = re.compile(r"<!--|`+")
 HTML_ID_RE = re.compile(
     r"<(?:a|h[1-6])\b[^>]*\s(?:id|name)\s*=\s*(?:\"([^\"]+)\"|'([^']+)')",
     re.IGNORECASE,
@@ -154,12 +157,14 @@ def strip_fenced_code(text: str) -> str:
     lines: list[str] = []
     fence_char = ""
     fence_length = 0
+    close_re: re.Pattern[str] | None = None
     for line in normalize_newlines(text).splitlines():
         if fence_char:
-            close_re = rf"^ {{0,3}}{re.escape(fence_char)}{{{fence_length},}}[ \t]*$"
-            if re.match(close_re, line):
+            assert close_re is not None
+            if close_re.match(line):
                 fence_char = ""
                 fence_length = 0
+                close_re = None
             lines.append("")
             continue
 
@@ -168,6 +173,7 @@ def strip_fenced_code(text: str) -> str:
             fence = match.group(1)
             fence_char = fence[0]
             fence_length = len(fence)
+            close_re = re.compile(rf"^ {{0,3}}{re.escape(fence_char)}{{{fence_length},}}[ \t]*$")
             lines.append("")
         else:
             lines.append(line)
@@ -183,102 +189,127 @@ def _is_escaped(text: str, pos: int) -> bool:
     return (backslashes % 2) == 1
 
 
+def _blank_preserving_newlines(segment: str) -> str:
+    if "\n" not in segment:
+        return " " * len(segment)
+    return "\n".join(" " * len(part) for part in segment.split("\n"))
+
+
 def mask_code_and_comments(text: str) -> str:
-    """Mask CommonMark inline code spans and HTML comments in a single left-to-right pass."""
+    """Mask CommonMark inline code spans and HTML comments in a single token-jumping pass."""
     out: list[str] = []
-    i = 0
+    pos = 0
     n = len(text)
-    while i < n:
-        if text.startswith("<!--", i) and not _is_escaped(text, i):
-            end = text.find("-->", i + 4)
-            if end != -1:
-                out.append(re.sub(r"[^\n]", " ", text[i : end + 3]))
-                i = end + 3
-                continue
-        if text[i] == "`" and not _is_escaped(text, i):
-            j = i
-            while j < n and text[j] == "`":
-                j += 1
-            tick_len = j - i
-            k = j
-            found = -1
-            while k < n:
-                if text[k] == "\n" and k + 1 < n and text[k + 1] == "\n":
-                    break
-                if text[k] == "`":
-                    end = k
-                    while end < n and text[end] == "`":
-                        end += 1
-                    if end - k == tick_len:
-                        found = end
-                        break
-                    k = end
-                else:
-                    k += 1
-            if found != -1:
-                out.append(re.sub(r"[^\n]", " ", text[i:found]))
-                i = found
-                continue
-            out.append(text[i:j])
-            i = j
+    while pos < n:
+        match = MASK_TOKEN_RE.search(text, pos)
+        if match is None:
+            out.append(text[pos:])
+            break
+        start, end = match.span()
+        if start > pos:
+            out.append(text[pos:start])
+        token = match.group(0)
+        if _is_escaped(text, start):
+            out.append(token)
+            pos = end
             continue
-        out.append(text[i])
-        i += 1
+        if token == "<!--":
+            close = text.find("-->", end)
+            if close != -1:
+                out.append(_blank_preserving_newlines(text[start : close + 3]))
+                pos = close + 3
+                continue
+            out.append(token)
+            pos = end
+            continue
+        # Backtick opener of length tick_len: find matching exact-length closer before blank line.
+        tick_len = end - start
+        para_end = text.find("\n\n", end)
+        limit = n if para_end == -1 else para_end
+        search_pos = end
+        found = -1
+        while search_pos < limit:
+            next_tick = text.find("`", search_pos, limit)
+            if next_tick == -1:
+                break
+            run_end = next_tick
+            while run_end < limit and text[run_end] == "`":
+                run_end += 1
+            if run_end - next_tick == tick_len:
+                found = run_end
+                break
+            search_pos = run_end
+        if found != -1:
+            out.append(_blank_preserving_newlines(text[start:found]))
+            pos = found
+        else:
+            out.append(token)
+            pos = end
     return "".join(out)
 
 
 def mask_inline_code(text: str) -> str:
     """Mask CommonMark inline code spans without crossing paragraph boundaries."""
     out: list[str] = []
-    i = 0
+    pos = 0
     n = len(text)
-    while i < n:
-        if text[i] != "`" or _is_escaped(text, i):
-            out.append(text[i])
-            i += 1
+    while pos < n:
+        idx = text.find("`", pos)
+        if idx == -1:
+            out.append(text[pos:])
+            break
+        if idx > pos:
+            out.append(text[pos:idx])
+        run_end = idx
+        while run_end < n and text[run_end] == "`":
+            run_end += 1
+        if _is_escaped(text, idx):
+            out.append(text[idx:run_end])
+            pos = run_end
             continue
-        j = i
-        while j < n and text[j] == "`":
-            j += 1
-        tick_len = j - i
-        k = j
+        tick_len = run_end - idx
+        para_end = text.find("\n\n", run_end)
+        limit = n if para_end == -1 else para_end
+        search_pos = run_end
         found = -1
-        while k < n:
-            if text[k] == "\n" and k + 1 < n and text[k + 1] == "\n":
+        while search_pos < limit:
+            next_tick = text.find("`", search_pos, limit)
+            if next_tick == -1:
                 break
-            if text[k] == "`":
-                end = k
-                while end < n and text[end] == "`":
-                    end += 1
-                if end - k == tick_len:
-                    found = end
-                    break
-                k = end
-            else:
-                k += 1
+            close_end = next_tick
+            while close_end < limit and text[close_end] == "`":
+                close_end += 1
+            if close_end - next_tick == tick_len:
+                found = close_end
+                break
+            search_pos = close_end
         if found != -1:
-            out.append(re.sub(r"[^\n]", " ", text[i:found]))
-            i = found
+            out.append(_blank_preserving_newlines(text[idx:found]))
+            pos = found
         else:
-            out.append(text[i:j])
-            i = j
+            out.append(text[idx:run_end])
+            pos = run_end
     return "".join(out)
 
 
 def mask_html_comments(text: str) -> str:
     return HTML_COMMENT_RE.sub(
-        lambda match: re.sub(r"[^\n]", " ", match.group(0)),
+        lambda match: _blank_preserving_newlines(match.group(0)),
         text,
     )
+
+
+def preprocess_markdown(text: str) -> tuple[str, str]:
+    """Strip frontmatter and fenced code, then mask inline code and HTML comments once."""
+    stripped = strip_fenced_code(strip_frontmatter(text))
+    return stripped, mask_code_and_comments(stripped)
 
 
 def normalize_reference_label(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip()).casefold()
 
 
-def markdown_headings(text: str) -> set[str]:
-    stripped = strip_fenced_code(strip_frontmatter(text))
-    masked = mask_code_and_comments(stripped)
+def _markdown_headings_from_preprocessed(stripped: str, masked: str) -> set[str]:
     anchors: set[str] = set()
 
     for match in HTML_ID_RE.finditer(masked):
@@ -324,6 +355,11 @@ def markdown_headings(text: str) -> set[str]:
             continue
         index += 1
     return anchors
+
+
+def markdown_headings(text: str) -> set[str]:
+    stripped, masked = preprocess_markdown(text)
+    return _markdown_headings_from_preprocessed(stripped, masked)
 
 
 def _parse_inline_dest(text: str, pos: int) -> tuple[str, int] | None:
@@ -424,9 +460,7 @@ def _scan_inline_links(text: str) -> tuple[list[str], str]:
     return targets, "".join(masked)
 
 
-def extract_markdown_links(text: str) -> list[str]:
-    stripped = strip_fenced_code(strip_frontmatter(text))
-    scan = mask_code_and_comments(stripped)
+def _extract_markdown_links_from_masked(scan: str) -> list[str]:
     definitions: dict[str, str] = {}
     all_definition_targets: list[str] = []
     lines: list[str] = []
@@ -458,13 +492,36 @@ def extract_markdown_links(text: str) -> list[str]:
     return targets
 
 
-def check_markdown_links(path: Path, errors: list[str], *, skill_dir: Path | None = None) -> None:
-    text = path.read_text(encoding="utf-8")
-    headings = markdown_headings(text)
-    root_resolved = ROOT.resolve()
-    skill_resolved = skill_dir.resolve() if skill_dir is not None else None
+def extract_markdown_links(text: str) -> list[str]:
+    _, masked = preprocess_markdown(text)
+    return _extract_markdown_links_from_masked(masked)
 
-    for raw_target in extract_markdown_links(text):
+
+def check_markdown_links(
+    path: Path,
+    errors: list[str],
+    *,
+    root: Path | None = None,
+    skill_dir: Path | None = None,
+    text: str | None = None,
+    heading_cache: dict[Path, set[str]] | None = None,
+) -> None:
+    base_root = ROOT if root is None else root
+    raw_text = path.read_text(encoding="utf-8") if text is None else text
+    stripped, masked = preprocess_markdown(raw_text)
+    resolved_path = path.resolve()
+    if heading_cache is not None and resolved_path in heading_cache:
+        headings = heading_cache[resolved_path]
+    else:
+        headings = _markdown_headings_from_preprocessed(stripped, masked)
+        if heading_cache is not None:
+            heading_cache[resolved_path] = headings
+
+    root_resolved = base_root.resolve()
+    skill_resolved = skill_dir.resolve() if skill_dir is not None else None
+    rel_display = path.relative_to(base_root)
+
+    for raw_target in _extract_markdown_links_from_masked(masked):
         target = raw_target.strip()
         if target.startswith("<") and target.endswith(">"):
             target = target[1:-1].strip()
@@ -480,49 +537,49 @@ def check_markdown_links(path: Path, errors: list[str], *, skill_dir: Path | Non
         path_part = unquote(parsed.path)
         anchor = unquote(parsed.fragment)
         if "\x00" in path_part:
-            errors.append(f"{path.relative_to(ROOT)}: broken link -> {target}")
+            errors.append(f"{rel_display}: broken link -> {target}")
             continue
         if path_part.startswith("/"):
             if skill_resolved is not None:
-                errors.append(
-                    f"{path.relative_to(ROOT)}: skill link escapes skill directory -> {target}"
-                )
+                errors.append(f"{rel_display}: skill link escapes skill directory -> {target}")
                 continue
             candidate = (root_resolved / path_part.lstrip("/")).resolve()
             if not candidate.is_relative_to(root_resolved):
-                errors.append(f"{path.relative_to(ROOT)}: link escapes repository root -> {target}")
+                errors.append(f"{rel_display}: link escapes repository root -> {target}")
                 continue
         elif path_part:
             candidate = (path.parent / path_part).resolve()
             if not candidate.is_relative_to(root_resolved):
-                errors.append(f"{path.relative_to(ROOT)}: link escapes repository root -> {target}")
+                errors.append(f"{rel_display}: link escapes repository root -> {target}")
                 continue
             if skill_resolved is not None and not candidate.is_relative_to(skill_resolved):
-                errors.append(
-                    f"{path.relative_to(ROOT)}: skill link escapes skill directory -> {target}"
-                )
+                errors.append(f"{rel_display}: skill link escapes skill directory -> {target}")
                 continue
         else:
-            candidate = path.resolve()
+            candidate = resolved_path
 
         if not candidate.exists():
-            errors.append(f"{path.relative_to(ROOT)}: broken link -> {target}")
+            errors.append(f"{rel_display}: broken link -> {target}")
             continue
         if not anchor or candidate.is_dir():
             continue
         if candidate.suffix.lower() not in (".md", ".markdown"):
             continue
 
-        if candidate == path.resolve():
+        if candidate == resolved_path:
             target_headings = headings
+        elif heading_cache is not None and candidate in heading_cache:
+            target_headings = heading_cache[candidate]
         else:
             target_headings = markdown_headings(candidate.read_text(encoding="utf-8"))
+            if heading_cache is not None:
+                heading_cache[candidate] = target_headings
         if anchor not in target_headings:
-            errors.append(f"{path.relative_to(ROOT)}: missing anchor -> {target}")
+            errors.append(f"{rel_display}: missing anchor -> {target}")
 
 
-def parse_frontmatter(path: Path) -> tuple[dict, str]:
-    text = normalize_newlines(path.read_text(encoding="utf-8"))
+def parse_frontmatter_text(raw_text: str) -> tuple[dict, str]:
+    text = normalize_newlines(raw_text)
     if not text.startswith("---\n"):
         raise ValueError("file does not start with YAML frontmatter")
     match = re.search(r"\n---(?:\n|$)", text[3:])
@@ -534,6 +591,10 @@ def parse_frontmatter(path: Path) -> tuple[dict, str]:
     if not isinstance(data, dict):
         raise ValueError("frontmatter must be a mapping")
     return data, body
+
+
+def parse_frontmatter(path: Path) -> tuple[dict, str]:
+    return parse_frontmatter_text(path.read_text(encoding="utf-8"))
 
 
 def _parse_byte_limit(raw: object, field: str) -> int:
@@ -578,55 +639,72 @@ def is_new_page_set(name: str) -> bool:
     return ("new" in words and "page" in words) or "newpage" in words
 
 
-def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
+def check_reading_sets(
+    skill_dir: Path,
+    body: str,
+    errors: list[str],
+    *,
+    root: Path | None = None,
+    md_files: Sequence[Path] | None = None,
+) -> bool:
+    """Validate reading-sets manifest. Returns True when a manifest was validated."""
+    base_root = ROOT if root is None else root
     manifest = skill_dir / "assets" / "reading-sets.json"
     skill_resolved = skill_dir.resolve()
     skill_md_resolved = (skill_dir / "SKILL.md").resolve()
-    referenced = [
-        p
-        for p in (
-            *((skill_dir / "references").rglob("*.md")),
-            *((skill_dir / "assets").rglob("*.md")),
-        )
-        if not p.is_symlink() and p.is_file()
-    ]
+
+    if md_files is None:
+        referenced = [
+            p
+            for p in (
+                *((skill_dir / "references").rglob("*.md")),
+                *((skill_dir / "assets").rglob("*.md")),
+            )
+            if not p.is_symlink() and p.is_file()
+        ]
+    else:
+        referenced = [
+            p for p in md_files if p.relative_to(skill_dir).parts[0] in ("references", "assets")
+        ]
+
     if manifest.is_symlink():
         errors.append(
-            f"{manifest.relative_to(ROOT)}: symlinked reading-set manifest is not allowed"
+            f"{manifest.relative_to(base_root)}: symlinked reading-set manifest is not allowed"
         )
-        return
+        return False
     if not manifest.is_file():
         if referenced:
-            errors.append(f"{manifest.relative_to(ROOT)}: missing reading-set manifest")
-            return
+            errors.append(f"{manifest.relative_to(base_root)}: missing reading-set manifest")
+            return False
         skill_file = skill_dir / "SKILL.md"
         if skill_file.stat().st_size > READING_SET_HARD_LIMIT:
             errors.append(
-                f"{skill_file.relative_to(ROOT)}: {skill_file.stat().st_size} B; "
+                f"{skill_file.relative_to(base_root)}: {skill_file.stat().st_size} B; "
                 f"hard limit is {READING_SET_HARD_LIMIT} B"
             )
-        return
+        return False
 
+    manifest_rel = manifest.relative_to(base_root)
     try:
         data = json.loads(manifest.read_text(encoding="utf-8"))
         entries, budget_limit = reading_set_entries(data)
     except (OSError, json.JSONDecodeError, ValueError) as error:
-        errors.append(f"{manifest.relative_to(ROOT)}: invalid manifest: {error}")
-        return
+        errors.append(f"{manifest_rel}: invalid manifest: {error}")
+        return True
     if not entries:
-        errors.append(f"{manifest.relative_to(ROOT)}: no reading sets defined")
-        return
+        errors.append(f"{manifest_rel}: no reading sets defined")
+        return True
 
     excluded = data.get("excluded", {}) if isinstance(data, dict) else {}
     if not isinstance(excluded, dict):
-        errors.append(f"{manifest.relative_to(ROOT)}: 'excluded' must be a mapping")
+        errors.append(f"{manifest_rel}: 'excluded' must be a mapping")
         excluded = {}
 
     seen_names: set[str] = set()
     covered: set[Path] = set()
-    new_page_sets: list[tuple[str, int]] = []
+    has_new_page_set = False
     for name, files, set_limit in entries:
-        where = f"{manifest.relative_to(ROOT)}: set {name!r}"
+        where = f"{manifest_rel}: set {name!r}"
         normalized_name = name.casefold()
         if not name.strip():
             errors.append(f"{where} needs a non-empty name")
@@ -682,74 +760,58 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
         elif total > effective_limit:
             errors.append(f"{where} totals {total} B; limit is {effective_limit} B")
         if is_new_page_set(name):
-            new_page_sets.append((name, total))
+            has_new_page_set = True
 
     excluded_paths = set()
     for raw_path, reason in excluded.items():
         if not isinstance(raw_path, str) or not raw_path.strip():
-            errors.append(f"{manifest.relative_to(ROOT)}: excluded path must be a non-empty string")
+            errors.append(f"{manifest_rel}: excluded path must be a non-empty string")
             continue
         if not isinstance(reason, str) or not reason.strip():
-            errors.append(
-                f"{manifest.relative_to(ROOT)}: excluded path {raw_path!r} needs a reason"
-            )
+            errors.append(f"{manifest_rel}: excluded path {raw_path!r} needs a reason")
         relative = Path(raw_path)
         if relative.is_absolute():
             errors.append(
-                f"{manifest.relative_to(ROOT)}: excluded path must be relative to skill directory -> {raw_path}"
+                f"{manifest_rel}: excluded path must be relative to skill directory -> {raw_path}"
             )
             continue
         candidate = (skill_dir / relative).resolve()
         if not candidate.is_relative_to(skill_resolved):
-            errors.append(
-                f"{manifest.relative_to(ROOT)}: excluded path escapes skill directory -> {raw_path}"
-            )
+            errors.append(f"{manifest_rel}: excluded path escapes skill directory -> {raw_path}")
             continue
         if candidate == skill_md_resolved:
-            errors.append(f"{manifest.relative_to(ROOT)}: SKILL.md cannot be excluded")
+            errors.append(f"{manifest_rel}: SKILL.md cannot be excluded")
             continue
         if not candidate.is_file():
-            errors.append(
-                f"{manifest.relative_to(ROOT)}: excluded path does not exist -> {raw_path}"
-            )
+            errors.append(f"{manifest_rel}: excluded path does not exist -> {raw_path}")
             continue
         excluded_paths.add(candidate)
 
     all_markdown = {skill_md_resolved}
-    for sub in ("references", "assets"):
-        sub_dir = skill_dir / sub
-        if sub_dir.is_symlink() or not sub_dir.is_dir():
-            continue
-        for path in sub_dir.rglob("*.md"):
-            if path.is_symlink() or not path.is_file():
-                continue
-            resolved = path.resolve()
-            if resolved.is_relative_to(skill_resolved):
-                all_markdown.add(resolved)
+    for path in referenced:
+        resolved = path.resolve()
+        if resolved.is_relative_to(skill_resolved):
+            all_markdown.add(resolved)
     missing_sets = sorted(
         path.relative_to(skill_resolved).as_posix()
         for path in all_markdown - covered - excluded_paths
     )
     if missing_sets:
         errors.append(
-            f"{manifest.relative_to(ROOT)}: Markdown file(s) not covered by a set or excluded: "
+            f"{manifest_rel}: Markdown file(s) not covered by a set or excluded: "
             + ", ".join(missing_sets)
         )
 
-    if skill_dir.name == "frontend-design":
-        if not new_page_sets:
-            errors.append(f"{manifest.relative_to(ROOT)}: missing new-page set")
-        for name, total in new_page_sets:
-            if total > READING_SET_NEW_PAGE_LIMIT:
-                errors.append(
-                    f"{manifest.relative_to(ROOT)}: new-page set {name!r} totals "
-                    f"{total} B; new-page limit is {READING_SET_NEW_PAGE_LIMIT} B"
-                )
+    if skill_dir.name == "frontend-design" and not has_new_page_set:
+        errors.append(f"{manifest_rel}: missing new-page set")
+    return True
 
 
-def _check_local_refs(md_path: Path, text: str, skill_dir: Path, errors: list[str]) -> None:
+def _check_local_refs(
+    md_path: Path, text: str, skill_dir: Path, errors: list[str], *, root: Path
+) -> None:
     skill_resolved = skill_dir.resolve()
-    rel = md_path.relative_to(ROOT)
+    rel = md_path.relative_to(root)
     for target in LOCAL_REF_RE.findall(strip_fenced_code(text)):
         candidate = (skill_dir / target).resolve()
         if not candidate.is_relative_to(skill_resolved):
@@ -758,25 +820,42 @@ def _check_local_refs(md_path: Path, text: str, skill_dir: Path, errors: list[st
             errors.append(f"{rel}: missing referenced file -> {target}")
 
 
-def check_skill(skill_dir: Path, errors: list[str]) -> int:
+def _check_placeholders(path: Path, content: str, errors: list[str], *, root: Path) -> None:
+    for marker in PLACEHOLDER_MARKERS:
+        if marker in content:
+            errors.append(f"{path.relative_to(root)}: contains placeholder marker {marker}")
+
+
+def check_skill(
+    skill_dir: Path,
+    errors: list[str],
+    *,
+    root: Path | None = None,
+    heading_cache: dict[Path, set[str]] | None = None,
+) -> int:
+    base_root = ROOT if root is None else root
     skill_file = skill_dir / "SKILL.md"
-    rel = skill_file.relative_to(ROOT)
+    rel = skill_file.relative_to(base_root)
 
     if skill_dir.is_symlink():
-        errors.append(f"{skill_dir.relative_to(ROOT)}: symlinked skill directory is not allowed")
+        errors.append(
+            f"{skill_dir.relative_to(base_root)}: symlinked skill directory is not allowed"
+        )
         return 0
+
+    all_entries = sorted(skill_dir.rglob("*"))
     found_symlinks = False
-    for entry in sorted(skill_dir.rglob("*")):
+    for entry in all_entries:
         if entry.is_symlink():
             errors.append(
-                f"{entry.relative_to(ROOT)}: symlink inside skill directory is not allowed"
+                f"{entry.relative_to(base_root)}: symlink inside skill directory is not allowed"
             )
             found_symlinks = True
     if found_symlinks:
         return 0
 
     if not skill_file.is_file():
-        errors.append(f"{skill_dir.relative_to(ROOT)}: missing SKILL.md")
+        errors.append(f"{skill_dir.relative_to(base_root)}: missing SKILL.md")
         return 0
 
     if not SKILL_ID_RE.fullmatch(skill_dir.name):
@@ -784,8 +863,9 @@ def check_skill(skill_dir: Path, errors: list[str]) -> int:
     if len(skill_dir.name) > 64:
         errors.append(f"{rel}: directory name must be 64 characters or fewer")
 
+    skill_text = skill_file.read_text(encoding="utf-8")
     try:
-        frontmatter, body = parse_frontmatter(skill_file)
+        frontmatter, body = parse_frontmatter_text(skill_text)
     except (ValueError, yaml.YAMLError) as error:
         errors.append(f"{rel}: invalid frontmatter: {error}")
         return 0
@@ -848,38 +928,54 @@ def check_skill(skill_dir: Path, errors: list[str]) -> int:
     if not body.strip():
         errors.append(f"{rel}: SKILL.md body is empty")
 
-    _check_local_refs(skill_file, body, skill_dir, errors)
+    md_files = [p for p in all_entries if p.is_file() and p.suffix == ".md"]
+    has_manifest = check_reading_sets(skill_dir, body, errors, root=base_root, md_files=md_files)
 
-    for reference in sorted((skill_dir / "references").rglob("*.md")):
-        if reference.is_symlink() or not reference.is_file():
-            continue
-        routing_path = reference.relative_to(skill_dir).as_posix()
-        if routing_path not in body:
-            errors.append(f"{rel}: reference not mentioned in routing -> {routing_path}")
+    if not has_manifest:
+        for reference in md_files:
+            parts = reference.relative_to(skill_dir).parts
+            if parts[0] == "references":
+                routing_path = reference.relative_to(skill_dir).as_posix()
+                if routing_path not in body:
+                    errors.append(f"{rel}: reference not mentioned in routing -> {routing_path}")
 
-    check_reading_sets(skill_dir, body, errors)
-    check_markdown_links(skill_file, errors, skill_dir=skill_dir)
-    for md in sorted(skill_dir.rglob("*.md")):
-        if md.name == "SKILL.md" or md.is_symlink() or not md.is_file():
-            continue
-        if md.stat().st_size == 0:
-            errors.append(f"{md.relative_to(ROOT)}: empty markdown file")
-        _check_local_refs(md, md.read_text(encoding="utf-8"), skill_dir, errors)
-        check_markdown_links(md, errors, skill_dir=skill_dir)
+    _check_local_refs(skill_file, body, skill_dir, errors, root=base_root)
+    check_markdown_links(
+        skill_file,
+        errors,
+        root=base_root,
+        skill_dir=skill_dir,
+        text=skill_text,
+        heading_cache=heading_cache,
+    )
+    _check_placeholders(skill_file, skill_text, errors, root=base_root)
 
-    for path in sorted(skill_dir.rglob("*")):
-        if path.is_symlink():
+    for path in all_entries:
+        if not path.is_file() or path == skill_file:
             continue
-        if path.is_file() and path.suffix in (".md", ".css", ".json", ".py", ".sh"):
+        if path.suffix == ".md":
             content = path.read_text(encoding="utf-8")
-            for marker in PLACEHOLDER_MARKERS:
-                if marker in content:
-                    errors.append(f"{path.relative_to(ROOT)}: contains placeholder marker {marker}")
+            if not content:
+                errors.append(f"{path.relative_to(base_root)}: empty markdown file")
+            _check_local_refs(path, content, skill_dir, errors, root=base_root)
+            check_markdown_links(
+                path,
+                errors,
+                root=base_root,
+                skill_dir=skill_dir,
+                text=content,
+                heading_cache=heading_cache,
+            )
+            _check_placeholders(path, content, errors, root=base_root)
+        elif path.suffix in (".css", ".json", ".py", ".sh"):
+            _check_placeholders(path, path.read_text(encoding="utf-8"), errors, root=base_root)
+
     return description_bytes
 
 
-def check_installer(errors: list[str]) -> None:
-    installer = ROOT / "install" / "opencode.sh"
+def check_installer(errors: list[str], *, root: Path | None = None) -> None:
+    base_root = ROOT if root is None else root
+    installer = base_root / "install" / "opencode.sh"
     if not installer.is_file():
         errors.append("install/opencode.sh: missing")
         return
@@ -944,14 +1040,22 @@ def css_declarations(text: str) -> list[tuple[tuple[str, ...], str, str]]:
     return declarations
 
 
+def semantic_tokens_from_declarations(
+    declarations: Sequence[tuple[tuple[str, ...], str, str]],
+) -> set[str]:
+    return {name for _, name, _ in declarations if name.startswith("--color-")}
+
+
 def semantic_tokens(tokens_css: str) -> set[str]:
-    return {name for _, name, _ in css_declarations(tokens_css) if name.startswith("--color-")}
+    return semantic_tokens_from_declarations(css_declarations(tokens_css))
 
 
-def resolve_theme_tokens(tokens_css: str) -> dict[str, dict[str, str]]:
+def resolve_theme_tokens_from_declarations(
+    declarations: Sequence[tuple[tuple[str, ...], str, str]],
+) -> dict[str, dict[str, str]]:
     root_properties: dict[str, str] = {}
     dark_properties: dict[str, str] = {}
-    for context, name, value in css_declarations(tokens_css):
+    for context, name, value in declarations:
         inside_media = any(block.startswith(("@media", "@supports")) for block in context)
         if inside_media:
             continue
@@ -984,34 +1088,74 @@ def resolve_theme_tokens(tokens_css: str) -> dict[str, dict[str, str]]:
     return themes
 
 
+def resolve_theme_tokens(tokens_css: str) -> dict[str, dict[str, str]]:
+    return resolve_theme_tokens_from_declarations(css_declarations(tokens_css))
+
+
 def check_contrast_fixture(
     fixture: Path,
     tokens_css: Path,
     contrast,
     errors: list[str],
+    *,
+    root: Path | None = None,
 ) -> None:
+    base_root = ROOT if root is None else root
+    fixture_rel = fixture.relative_to(base_root)
     try:
         data = json.loads(fixture.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
-        errors.append(f"{fixture.relative_to(ROOT)}: invalid JSON: {error}")
+        errors.append(f"{fixture_rel}: invalid JSON: {error}")
         return
     if not isinstance(data, dict):
-        errors.append(f"{fixture.relative_to(ROOT)}: fixture must be a JSON object")
+        errors.append(f"{fixture_rel}: fixture must be a JSON object")
         return
 
     pairs = data.get("pairs")
     if not isinstance(pairs, list):
-        errors.append(f"{fixture.relative_to(ROOT)}: fixture needs a 'pairs' list")
+        errors.append(f"{fixture_rel}: fixture needs a 'pairs' list")
         return
     if len(pairs) != CONTRAST_PAIR_COUNT:
-        errors.append(
-            f"{fixture.relative_to(ROOT)}: expected {CONTRAST_PAIR_COUNT} pairs, found {len(pairs)}"
-        )
+        errors.append(f"{fixture_rel}: expected {CONTRAST_PAIR_COUNT} pairs, found {len(pairs)}")
+
+    coverage = data.get("coverage")
+    if not isinstance(coverage, dict):
+        errors.append(f"{fixture_rel}: fixture needs a 'coverage' mapping")
+        coverage = {}
+
+    combinations = data.get("combinations")
+    if not isinstance(combinations, list):
+        errors.append(f"{fixture_rel}: fixture needs a 'combinations' list")
+        combinations = []
+
+    has_tokens_css = tokens_css.is_file()
+    if has_tokens_css:
+        decls = css_declarations(tokens_css.read_text(encoding="utf-8"))
+        defined_tokens = semantic_tokens_from_declarations(decls)
+        resolved_tokens = resolve_theme_tokens_from_declarations(decls)
+    else:
+        errors.append(f"{tokens_css.relative_to(base_root)}: missing token source")
+        defined_tokens = set()
+        resolved_tokens = {}
 
     labels: set[str] = set()
     theme_counts = {"light": 0, "dark": 0}
+    label_tokens: dict[str, set[str]] = {}
+    parsed_token_colors: dict[tuple[str, str], object] = {}
+
+    def get_token_color(theme: str, token: str):
+        cache_key = (theme, token)
+        if cache_key in parsed_token_colors:
+            return parsed_token_colors[cache_key]
+        raw = resolved_tokens.get(theme, {}).get(token)
+        if raw is None:
+            return None
+        color = contrast.parse_color(raw)
+        parsed_token_colors[cache_key] = color
+        return color
+
     for index, item in enumerate(pairs):
-        where = f"{fixture.relative_to(ROOT)}: pair {index}"
+        where = f"{fixture_rel}: pair {index}"
         if not isinstance(item, dict):
             errors.append(f"{where} is not an object")
             continue
@@ -1028,15 +1172,16 @@ def check_contrast_fixture(
             errors.append(f"{where} fields {', '.join(string_fields)} must be non-empty strings")
             continue
         label = item["label"]
+        theme = item["theme"]
+        fg_token = item["fg_token"]
+        bg_token = item["bg_token"]
         fg, bg, size = item["fg"], item["bg"], item["size"]
-        if not isinstance(label, str) or not label.strip():
-            errors.append(f"{where} needs a non-empty label")
-            continue
+
         if label in labels:
             errors.append(f"{where} duplicates label {label!r}")
         labels.add(label)
-        label_theme = label.split(":", 1)[0]
-        if ":" in label and label_theme in theme_counts:
+        label_theme = label.split(":", 1)[0] if ":" in label else ""
+        if label_theme in theme_counts:
             theme_counts[label_theme] += 1
         else:
             errors.append(f"{where} label must start with 'light:' or 'dark:'")
@@ -1046,84 +1191,70 @@ def check_contrast_fixture(
             errors.append(f"{where} needs a non-empty fg color")
         if not isinstance(bg, str) or not bg.strip():
             errors.append(f"{where} needs a non-empty bg color")
+
+        parsed_pair: dict[str, object] = {}
         for field, value in (("fg", fg), ("bg", bg)):
             if isinstance(value, str) and value.strip():
                 try:
-                    contrast.parse_color(value)
+                    parsed_pair[field] = contrast.parse_color(value)
                 except (TypeError, ValueError):
                     errors.append(f"{where} has invalid {field} color {value!r}")
+
+        if len(parsed_pair) == 2 and isinstance(size, str) and size in CONTRAST_SIZES:
+            result = contrast.check_pair(parsed_pair["fg"], parsed_pair["bg"], label, size)
+            if not result.aa:
+                errors.append(
+                    f"token contrast fixture: {label} fails AA "
+                    f"({result.ratio:.2f}:1, needs {result.threshold:.1f}:1)"
+                )
+
+        if not has_tokens_css:
+            continue
+
+        if theme != label_theme:
+            errors.append(
+                f"{fixture_rel}: pair {label!r} theme {theme!r} "
+                f"does not match label theme {label_theme!r}"
+            )
+        if theme not in resolved_tokens:
+            errors.append(f"{fixture_rel}: pair {label!r} has unknown theme {theme!r}")
+            continue
+        for field, token in (("fg", fg_token), ("bg", bg_token)):
+            value = resolved_tokens[theme].get(token)
+            if value is None:
+                errors.append(f"{fixture_rel}: pair {label!r} has unknown {field} token")
+                continue
+            actual_color = parsed_pair.get(field)
+            if actual_color is None:
+                continue
+            try:
+                expected_color = get_token_color(theme, token)
+            except (TypeError, ValueError):
+                continue
+            if expected_color is None:
+                continue
+            expected_hex = expected_color.hex()
+            actual_hex = actual_color.hex()
+            if expected_hex != actual_hex:
+                errors.append(
+                    f"{fixture_rel}: pair {label!r} {field} {actual_hex} "
+                    f"does not match {token} ({expected_hex})"
+                )
+        label_tokens[label] = {fg_token, bg_token}
 
     for theme in ("light", "dark"):
         if theme_counts[theme] != CONTRAST_THEME_PAIR_COUNT:
             errors.append(
-                f"{fixture.relative_to(ROOT)}: expected {CONTRAST_THEME_PAIR_COUNT} "
+                f"{fixture_rel}: expected {CONTRAST_THEME_PAIR_COUNT} "
                 f"{theme} pairs, found {theme_counts[theme]}"
             )
 
-    coverage = data.get("coverage")
-    if not isinstance(coverage, dict):
-        errors.append(f"{fixture.relative_to(ROOT)}: fixture needs a 'coverage' mapping")
-        coverage = {}
-
-    combinations = data.get("combinations")
-    if not isinstance(combinations, list):
-        errors.append(f"{fixture.relative_to(ROOT)}: fixture needs a 'combinations' list")
-        combinations = []
-
-    if not tokens_css.is_file():
-        errors.append(f"{tokens_css.relative_to(ROOT)}: missing token source")
+    if not has_tokens_css:
         return
 
-    tokens_css_text = tokens_css.read_text(encoding="utf-8")
-    defined_tokens = semantic_tokens(tokens_css_text)
-    resolved_tokens = resolve_theme_tokens(tokens_css_text)
     combination_labels: set[str] = set()
-    label_tokens: dict[str, set[str]] = {}
-
-    for item in pairs:
-        if not isinstance(item, dict):
-            continue
-        label = item.get("label")
-        theme = item.get("theme")
-        fg_token = item.get("fg_token")
-        bg_token = item.get("bg_token")
-        if not all(isinstance(value, str) for value in (label, theme, fg_token, bg_token)):
-            continue
-        label_theme = label.split(":", 1)[0] if ":" in label else ""
-        if theme != label_theme:
-            errors.append(
-                f"{fixture.relative_to(ROOT)}: pair {label!r} theme {theme!r} "
-                f"does not match label theme {label_theme!r}"
-            )
-        if theme not in resolved_tokens:
-            errors.append(
-                f"{fixture.relative_to(ROOT)}: pair {label!r} has unknown theme {theme!r}"
-            )
-            continue
-        for field, token, literal in (
-            ("fg", fg_token, item.get("fg")),
-            ("bg", bg_token, item.get("bg")),
-        ):
-            value = resolved_tokens[theme].get(token)
-            if value is None:
-                errors.append(
-                    f"{fixture.relative_to(ROOT)}: pair {label!r} has unknown {field} token"
-                )
-                continue
-            try:
-                expected = contrast.parse_color(value).hex()
-                actual = contrast.parse_color(str(literal)).hex()
-            except (TypeError, ValueError):
-                continue
-            if expected != actual:
-                errors.append(
-                    f"{fixture.relative_to(ROOT)}: pair {label!r} {field} {actual} "
-                    f"does not match {token} ({expected})"
-                )
-        label_tokens[label] = {fg_token, bg_token}
-
     for index, item in enumerate(combinations):
-        where = f"{fixture.relative_to(ROOT)}: combination {index}"
+        where = f"{fixture_rel}: combination {index}"
         if not isinstance(item, dict):
             errors.append(f"{where} is not an object")
             continue
@@ -1152,14 +1283,16 @@ def check_contrast_fixture(
             if not isinstance(token, str) or not token.startswith("--color-"):
                 errors.append(f"{where} {field} must be a semantic --color-* token")
                 continue
-            value = resolved_tokens[theme].get(token)
-            if value is None:
+            if token not in resolved_tokens[theme]:
                 errors.append(f"{where} references unknown token {token!r}")
                 continue
             try:
-                colors[field] = contrast.parse_color(value)
+                color = get_token_color(theme, token)
             except (TypeError, ValueError):
                 errors.append(f"{where} token {token!r} does not resolve to a color")
+                continue
+            if color is not None:
+                colors[field] = color
         if len(colors) != 2:
             continue
         result = contrast.check_pair(colors["fg"], colors["bg"], label, size)
@@ -1173,18 +1306,17 @@ def check_contrast_fixture(
     missing_coverage = sorted(defined_tokens - set(coverage))
     if missing_coverage:
         errors.append(
-            f"{fixture.relative_to(ROOT)}: semantic token(s) without contrast "
+            f"{fixture_rel}: semantic token(s) without contrast "
             f"coverage: {', '.join(missing_coverage)}"
         )
     stale_coverage = sorted(set(coverage) - defined_tokens)
     if stale_coverage:
         errors.append(
-            f"{fixture.relative_to(ROOT)}: coverage references unknown token(s): "
-            f"{', '.join(stale_coverage)}"
+            f"{fixture_rel}: coverage references unknown token(s): {', '.join(stale_coverage)}"
         )
 
     for token, entry in sorted(coverage.items()):
-        where = f"{fixture.relative_to(ROOT)}: coverage for {token}"
+        where = f"{fixture_rel}: coverage for {token}"
         if isinstance(entry, list):
             if not entry:
                 errors.append(f"{where} must list at least one pair or combination")
@@ -1209,43 +1341,44 @@ def check_contrast_fixture(
             errors.append(f"{where} must be a list of labels or a reason string")
 
 
-def check_contrast(errors: list[str]) -> None:
-    script = SKILLS_DIR / "frontend-design" / "scripts" / "contrast.py"
-    fixture = SKILLS_DIR / "frontend-design" / "assets" / "token-contrast-pairs.json"
-    tokens_css = SKILLS_DIR / "frontend-design" / "assets" / "tokens.css"
+def check_contrast(errors: list[str], *, root: Path | None = None) -> None:
+    base_root = ROOT if root is None else root
+    skills_dir = base_root / "skills"
+    script = skills_dir / "frontend-design" / "scripts" / "contrast.py"
+    fixture = skills_dir / "frontend-design" / "assets" / "token-contrast-pairs.json"
+    tokens_css = skills_dir / "frontend-design" / "assets" / "tokens.css"
 
     if not script.is_file():
-        errors.append(f"{script.relative_to(ROOT)}: missing contrast checker")
+        errors.append(f"{script.relative_to(base_root)}: missing contrast checker")
         return
     if not fixture.is_file():
-        errors.append(f"{fixture.relative_to(ROOT)}: missing contrast fixture")
+        errors.append(f"{fixture.relative_to(base_root)}: missing contrast fixture")
     if not tokens_css.is_file():
-        errors.append(f"{tokens_css.relative_to(ROOT)}: missing token source")
+        errors.append(f"{tokens_css.relative_to(base_root)}: missing token source")
 
     try:
         contrast = load_contrast_module(script)
     except Exception as error:  # noqa: BLE001 - report any import failure
-        errors.append(f"{script.relative_to(ROOT)}: cannot import: {error}")
+        errors.append(f"{script.relative_to(base_root)}: cannot import: {error}")
         return
 
-    if fixture.is_file() and tokens_css.is_file():
-        check_contrast_fixture(fixture, tokens_css, contrast, errors)
+    if fixture.is_file():
+        check_contrast_fixture(fixture, tokens_css, contrast, errors, root=base_root)
 
-    for args, label in (
-        ([sys.executable, str(script), "--self-test"], "contrast self-test"),
-        (
-            [sys.executable, str(script), "--pairs", str(fixture), "--check"],
-            "token contrast fixture",
-        ),
-    ):
-        if "--pairs" in args and not fixture.is_file():
-            continue
-        result = subprocess.run(args, capture_output=True, text=True, check=False)
-        if result.returncode != 0:
-            errors.append(f"{label}: failed\n{result.stdout}{result.stderr}".strip())
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        self_test_rc = contrast.self_test()
+    if self_test_rc != 0:
+        errors.append(f"contrast self-test: failed\n{buf.getvalue()}".strip())
 
 
-def check_root_docs(errors: list[str]) -> None:
+def check_root_docs(
+    errors: list[str],
+    *,
+    root: Path | None = None,
+    heading_cache: dict[Path, set[str]] | None = None,
+) -> None:
+    base_root = ROOT if root is None else root
     for name in (
         "AGENTS.md",
         "README.md",
@@ -1256,30 +1389,48 @@ def check_root_docs(errors: list[str]) -> None:
         "GOVERNANCE.md",
         "THIRD_PARTY_NOTICES.md",
     ):
-        path = ROOT / name
+        path = base_root / name
         if not path.is_file():
             errors.append(f"{name}: missing")
             continue
-        check_markdown_links(path, errors)
-    for path in sorted((ROOT / "docs").rglob("*.md")):
+        check_markdown_links(path, errors, root=base_root, heading_cache=heading_cache)
+    docs_dir = base_root / "docs"
+    if docs_dir.is_dir():
+        for path in sorted(docs_dir.rglob("*.md")):
+            if not path.is_file():
+                continue
+            check_markdown_links(path, errors, root=base_root, heading_cache=heading_cache)
+
+
+def check_github_docs(
+    errors: list[str],
+    *,
+    root: Path | None = None,
+    heading_cache: dict[Path, set[str]] | None = None,
+) -> None:
+    base_root = ROOT if root is None else root
+    github_dir = base_root / ".github"
+    if not github_dir.is_dir():
+        return
+    for path in sorted(github_dir.rglob("*.md")):
         if not path.is_file():
             continue
-        check_markdown_links(path, errors)
+        content = path.read_text(encoding="utf-8")
+        if not content:
+            errors.append(f"{path.relative_to(base_root)}: empty markdown file")
+        check_markdown_links(
+            path, errors, root=base_root, text=content, heading_cache=heading_cache
+        )
 
 
-def check_github_docs(errors: list[str]) -> None:
-    for path in sorted((ROOT / ".github").rglob("*.md")):
-        if not path.is_file():
-            continue
-        if path.stat().st_size == 0:
-            errors.append(f"{path.relative_to(ROOT)}: empty markdown file")
-        check_markdown_links(path, errors)
-
-
-def check_yaml(errors: list[str]) -> None:
-    workflows_dir = (ROOT / ".github" / "workflows").resolve()
-    paths = sorted((ROOT / ".github").rglob("*.yml"))
-    paths.extend(sorted((ROOT / ".github").rglob("*.yaml")))
+def check_yaml(errors: list[str], *, root: Path | None = None) -> None:
+    base_root = ROOT if root is None else root
+    github_dir = base_root / ".github"
+    if not github_dir.is_dir():
+        return
+    workflows_dir = (github_dir / "workflows").resolve()
+    paths = sorted(github_dir.rglob("*.yml"))
+    paths.extend(sorted(github_dir.rglob("*.yaml")))
     for path in paths:
         # Workflows are validated structurally and for policy by scripts/check_workflows.py.
         if path.parent.resolve() == workflows_dir:
@@ -1287,39 +1438,69 @@ def check_yaml(errors: list[str]) -> None:
         try:
             yaml.safe_load(path.read_text(encoding="utf-8"))
         except yaml.YAMLError as error:
-            errors.append(f"{path.relative_to(ROOT)}: invalid YAML: {error}")
+            errors.append(f"{path.relative_to(base_root)}: invalid YAML: {error}")
 
 
-def main() -> int:
+def validate_repo(
+    root: Path | None = None,
+    *,
+    skills_dir: Path | None = None,
+) -> tuple[list[str], list[str]]:
+    """Run all repository validations without mutating module globals."""
+    base_root = ROOT if root is None else root
+    target_skills = (
+        skills_dir
+        if skills_dir is not None
+        else (SKILLS_DIR if root is None else base_root / "skills")
+    )
     errors: list[str] = []
+    heading_cache: dict[Path, set[str]] = {}
 
-    if not SKILLS_DIR.is_dir():
-        print("error: skills/ directory not found", file=sys.stderr)
-        return 2
+    if not target_skills.is_dir():
+        raise FileNotFoundError("skills/ directory not found")
 
-    for entry in sorted(SKILLS_DIR.iterdir()):
+    for entry in sorted(target_skills.iterdir()):
         if entry.is_symlink() and not entry.is_dir():
-            errors.append(f"{entry.relative_to(ROOT)}: symlink inside skills/ is not allowed")
+            errors.append(f"{entry.relative_to(base_root)}: symlink inside skills/ is not allowed")
 
-    skill_dirs = sorted(path for path in SKILLS_DIR.iterdir() if path.is_dir())
+    skill_dirs = sorted(path for path in target_skills.iterdir() if path.is_dir())
     if not skill_dirs:
-        print("error: no skills found", file=sys.stderr)
-        return 2
+        raise FileNotFoundError("no skills found")
 
     total_description_bytes = 0
     for skill_dir in skill_dirs:
-        total_description_bytes += check_skill(skill_dir, errors)
+        total_description_bytes += check_skill(
+            skill_dir, errors, root=base_root, heading_cache=heading_cache
+        )
     if total_description_bytes > AGGREGATE_DESCRIPTION_LIMIT:
         errors.append(
             f"skills/: aggregate description bytes ({total_description_bytes} B) "
             f"exceed limit ({AGGREGATE_DESCRIPTION_LIMIT} B)"
         )
 
-    check_installer(errors)
-    check_contrast(errors)
-    check_root_docs(errors)
-    check_github_docs(errors)
-    check_yaml(errors)
+    check_installer(errors, root=base_root)
+    check_contrast(errors, root=base_root)
+    check_root_docs(errors, root=base_root, heading_cache=heading_cache)
+    check_github_docs(errors, root=base_root, heading_cache=heading_cache)
+    check_yaml(errors, root=base_root)
+    return [skill_dir.name for skill_dir in skill_dirs], errors
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=None,
+        help="repository root to validate (default: repository root)",
+    )
+    args = parser.parse_args([] if argv is None else argv)
+
+    try:
+        skill_names, errors = validate_repo(args.root.resolve() if args.root else None)
+    except FileNotFoundError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
 
     if errors:
         print(f"Validation failed with {len(errors)} error(s):\n", file=sys.stderr)
@@ -1327,12 +1508,12 @@ def main() -> int:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
-    print(f"Validated {len(skill_dirs)} skill(s):")
-    for skill_dir in skill_dirs:
-        print(f"  - {skill_dir.name}")
+    print(f"Validated {len(skill_names)} skill(s):")
+    for name in skill_names:
+        print(f"  - {name}")
     print("All checks passed.")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))
