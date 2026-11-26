@@ -26,8 +26,8 @@ A release can proceed only when all of these are true:
 - The tag is annotated and signed, and its signature verifies against the
   owner-provided trust material.
 - The tagged commit is an ancestor of `origin/main`.
-- The required `validate` and `Analyze (python)` check-runs for that commit
-  are completed successfully.
+- The required `validate`, `Analyze (python)`, and `gitleaks` check-runs for
+  that commit are completed successfully from their expected workflows.
 - The protected `release` environment approves the job.
 
 Tags published before this gate (`v1.0.1` and earlier) are unsigned, have no
@@ -43,7 +43,7 @@ created. The workflow fails closed with an `::error::` message.
    `## [X.Y.Z] - YYYY-MM-DD`, leaves an empty `## [Unreleased]`, and uses the
    same version as the future tag. Confirm that `skills/` contains every skill
    listed in the README and that the current-HEAD archive test passes. Merge it.
-3. Wait for `validate` and `Analyze (python)` on `main`, and for
+3. Wait for `validate`, `Analyze (python)`, and `gitleaks` on `main`, and for
    `dependency-review` on the pull request. Do not bypass branch protection.
 4. From a clean `main` checkout, create a signed annotated tag and verify it
    locally:
@@ -70,7 +70,8 @@ created. The workflow fails closed with an `::error::` message.
 
 6. Approve the `release` environment deployment in the Actions run.
 7. Inspect the draft release: `release-notes.md` content, the source archive,
-   `SHA256SUMS`, and the provenance attestation.
+   `SHA256SUMS`, the `.sigstore.json` bundle asset, and the provenance
+   attestation.
 8. Promote the draft manually after review. Do not publish a failed or
    incomplete draft.
 
@@ -196,24 +197,30 @@ an ancestor of `origin/main` fails even if the tag itself is valid.
 
 ## What the workflow checks
 
-1. The tag object must be annotated, and the signature must verify against the
-   configured trust source.
-2. The tag commit must be an ancestor of a freshly fetched `origin/main`.
-3. `gate/scripts/release_checks.py` (from `main`) verifies that the latest
-   `validate` and `Analyze (python)` check-runs for the exact commit completed
-   with conclusion `success`, were created by GitHub Actions, and came from
-   `.github/workflows/ci.yml` and `.github/workflows/codeql.yml`.
-4. `scripts/release_notes.py` validates the tag and extracts the matching
-   changelog section. The workflow passes the result to
-   `gh release create --notes-file`. `CHANGELOG.md` is the only release-notes
-   source; generated release notes and label-based notes are not used. The
-   former `.github/release.yml` label configuration has been removed.
-5. `git archive` creates `skills-hub-<tag>.tar.gz`; `SHA256SUMS` contains its
+1. The dispatched tag input must match the SemVer `vX.Y.Z` (optional prerelease)
+   pattern before git operations run.
+2. The tag object must be annotated, the signature must verify against the
+   configured trust source, and `RELEASE_TAG_ALLOWED_SIGNERS` (when used) must
+   match `gate/docs/release-signing/allowed_signers` on `main`.
+3. The tag commit must be an ancestor of a freshly fetched `origin/main`.
+4. `gate/scripts/release_checks.py` (from `main`) verifies that the latest
+   completed `validate`, `Analyze (python)`, and `gitleaks` check-runs for the
+   exact commit succeeded, were created by GitHub Actions, and came from
+   `.github/workflows/ci.yml`, `.github/workflows/codeql.yml`, and
+   `.github/workflows/secret-scan.yml`.
+5. `gate/scripts/release_notes.py` (from `main`) validates the tag and extracts
+   the matching section from the tagged `CHANGELOG.md`. The workflow passes the
+   result to `gh release create --notes-file`. `CHANGELOG.md` is the only
+   release-notes source; generated release notes and label-based notes are not
+   used. The former `.github/release.yml` label configuration has been removed.
+6. `git archive` creates `skills-hub-<tag>.tar.gz`; `SHA256SUMS` contains its
    SHA-256 digest.
-6. `actions/attest-build-provenance` attests the archive.
-7. `gh release create` creates a draft with the archive, `SHA256SUMS`, and the
-   extracted notes. It uses `--prerelease --latest=false` for a prerelease;
-   stable drafts leave latest selection to the publication step.
+7. `actions/attest-build-provenance` attests the archive and stages its Sigstore
+   bundle as `skills-hub-<tag>.tar.gz.sigstore.json`.
+8. `gh release create` creates a draft with the archive, `SHA256SUMS`, the
+   `.sigstore.json` bundle, and the extracted notes. It uses
+   `--prerelease --latest=false` for a prerelease; stable drafts leave latest
+   selection to the publication step.
 
 ## Verifying a release
 
@@ -222,9 +229,15 @@ Download all assets from the release into one directory:
 ```bash
 VERSION=v1.2.3
 gh release download "$VERSION" --repo snaplyze/skills-hub \
-  --pattern 'skills-hub-*.tar.gz' --pattern 'SHA256SUMS'
+  --pattern 'skills-hub-*.tar.gz' \
+  --pattern 'SHA256SUMS' \
+  --pattern 'skills-hub-*.tar.gz.sigstore.json'
 sha256sum -c SHA256SUMS
 gh attestation verify "skills-hub-${VERSION}.tar.gz" --repo snaplyze/skills-hub
+# Offline verification using the downloaded Sigstore bundle (v1.3.0+):
+gh attestation verify "skills-hub-${VERSION}.tar.gz" \
+  --bundle "skills-hub-${VERSION}.tar.gz.sigstore.json" \
+  --repo snaplyze/skills-hub
 ```
 
 The archive install is checksum-verified but has no `.git` directory, so the

@@ -337,7 +337,62 @@ def test_cli_fails_for_missing_section(tmp_path: Path) -> None:
 
 
 def test_cli_fails_for_missing_changelog(tmp_path: Path) -> None:
-    result = run_cli("--tag", "v1.2.3", "--changelog", str(tmp_path / "missing.md"))
+    changelog = tmp_path / "missing.md"
+
+    result = run_cli("--tag", "v1.2.3", "--changelog", str(changelog))
 
     assert result.returncode == 1
     assert "changelog not found" in result.stderr
+
+
+def test_extracts_four_backtick_fences_footnotes_and_linked_heading(tmp_path: Path) -> None:
+    changelog = make_changelog(
+        tmp_path,
+        """# Changelog
+
+## [1.3.0](https://github.com/snaplyze/skills-hub/releases/tag/v1.3.0) - 2026-11-26
+
+- Supports footnotes[^1] and nested code examples:
+
+````markdown
+```text
+## [1.2.0] - 2026-11-15
+```
+````
+
+[^1]: Footnote stays inside the section.
+
+~~~text
+## [9.9.9] - ignored inside tilde fence
+~~~
+
+- Final bullet.
+
+[1.3.0]: https://github.com/snaplyze/skills-hub/releases/tag/v1.3.0
+""",
+    )
+    notes = release_notes.extract_section(changelog, "1.3.0")
+    assert "[^1]: Footnote stays inside the section." in notes
+    assert "- Final bullet." in notes
+    assert "[1.3.0]: https://" not in notes
+
+
+def test_cli_default_stdout_and_live_changelog(tmp_path: Path) -> None:
+    changelog = make_changelog(
+        tmp_path, "# Changelog\n\n## [1.2.3] - 2026-11-26\n\n- Stdout note.\n"
+    )
+    result = run_cli("--tag", "v1.2.3", "--changelog", str(changelog))
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "- Stdout note.\n"
+
+    # Live repository CHANGELOG.md must cleanly extract v1.2.0.
+    live = release_notes.extract_section(ROOT / "CHANGELOG.md", "1.2.0")
+    assert "orchestration" in live
+
+    # Duplicate version appearing after an intervening section must still be rejected.
+    dup_after = make_changelog(
+        tmp_path,
+        "# Changelog\n\n## [1.2.3]\n\n- First.\n\n## [1.2.2]\n\n- Mid.\n\n## [1.2.3]\n\n- Second.\n",
+    )
+    with pytest.raises(ValueError, match="duplicate"):
+        release_notes.extract_section(dup_after, "1.2.3")
