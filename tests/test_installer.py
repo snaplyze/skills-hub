@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import atexit
 import hashlib
 import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,6 +15,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "install" / "opencode.sh"
+_GIT_TEMPLATES: dict[str, Path] = {}
 
 FRONTEND_SKILL = """---
 name: frontend-design
@@ -113,32 +116,39 @@ def tree_snapshot(root: Path) -> dict[str, tuple[str, str]]:
 
 
 def make_git_checkout(workspace: SimpleNamespace, tag: str = "v1.2.3") -> None:
-    assert run_git(workspace, "init", "-q").returncode == 0
-    assert run_git(workspace, "add", "-A").returncode == 0
-    commit = run_git(
-        workspace,
-        "-c",
-        "user.name=Installer Test",
-        "-c",
-        "user.email=installer@example.test",
-        "commit",
-        "-qm",
-        "initial",
-    )
-    assert commit.returncode == 0, commit.stderr
-    tagged = run_git(
-        workspace,
-        "-c",
-        "user.name=Installer Test",
-        "-c",
-        "user.email=installer@example.test",
-        "tag",
-        "-a",
-        tag,
-        "-m",
-        tag,
-    )
-    assert tagged.returncode == 0, tagged.stderr
+    if tag not in _GIT_TEMPLATES:
+        tpl_root = Path(tempfile.mkdtemp(prefix=f"skills-hub-git-tpl-{tag}-"))
+        atexit.register(shutil.rmtree, tpl_root, True)
+        tpl_ws = make_workspace(tpl_root)
+        assert run_git(tpl_ws, "init", "-q").returncode == 0
+        assert run_git(tpl_ws, "add", "-A").returncode == 0
+        commit = run_git(
+            tpl_ws,
+            "-c",
+            "user.name=Installer Test",
+            "-c",
+            "user.email=installer@example.test",
+            "commit",
+            "-qm",
+            "initial",
+        )
+        assert commit.returncode == 0, commit.stderr
+        tagged = run_git(
+            tpl_ws,
+            "-c",
+            "user.name=Installer Test",
+            "-c",
+            "user.email=installer@example.test",
+            "tag",
+            "-a",
+            tag,
+            "-m",
+            tag,
+        )
+        assert tagged.returncode == 0, tagged.stderr
+        _GIT_TEMPLATES[tag] = tpl_ws.repo
+    shutil.rmtree(workspace.repo)
+    shutil.copytree(_GIT_TEMPLATES[tag], workspace.repo)
 
 
 def test_refuses_unsafe_target_matrix(workspace: SimpleNamespace, tmp_path: Path) -> None:

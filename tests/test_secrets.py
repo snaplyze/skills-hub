@@ -40,6 +40,30 @@ EXISTING_IGNORED = [
 ]
 
 
+@pytest.fixture(scope="module")
+def ignored_set(tmp_path_factory: pytest.TempPathFactory) -> set[str]:
+    """Batch-query git check-ignore once for every candidate path in a module repo."""
+    repo = tmp_path_factory.mktemp("ignore-repo")
+    shutil.copyfile(ROOT / ".gitignore", repo / ".gitignore")
+    subprocess.run(
+        ["git", "init", "--quiet", str(repo)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    candidates = [*REQUIRED_IGNORED, *EXISTING_IGNORED, ".env.example"]
+    result = subprocess.run(
+        ["git", "-C", str(repo), "check-ignore", "--no-index", "--stdin"],
+        input="\n".join(candidates) + "\n",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode not in (0, 1):
+        raise AssertionError(f"git check-ignore failed: {result.stderr}")
+    return set(result.stdout.splitlines())
+
+
 @pytest.fixture()
 def temp_repo(tmp_path: Path) -> Path:
     """Create a throwaway repository with this project's .gitignore."""
@@ -53,18 +77,6 @@ def temp_repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def check_ignore(repo: Path, path: str) -> bool:
-    result = subprocess.run(
-        ["git", "-C", str(repo), "check-ignore", "--no-index", "--quiet", "--", path],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode not in (0, 1):
-        raise AssertionError(f"git check-ignore failed for {path}: {result.stderr}")
-    return result.returncode == 0
-
-
 def create_placeholder(repo: Path, path: str) -> None:
     target = repo / path
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -72,23 +84,17 @@ def create_placeholder(repo: Path, path: str) -> None:
 
 
 @pytest.mark.parametrize("path", REQUIRED_IGNORED)
-def test_secret_path_is_ignored(temp_repo: Path, path: str) -> None:
-    create_placeholder(temp_repo, path)
-
-    assert check_ignore(temp_repo, path)
+def test_secret_path_is_ignored(ignored_set: set[str], path: str) -> None:
+    assert path in ignored_set
 
 
 @pytest.mark.parametrize("path", EXISTING_IGNORED)
-def test_existing_ignore_patterns_are_kept(temp_repo: Path, path: str) -> None:
-    create_placeholder(temp_repo, path)
-
-    assert check_ignore(temp_repo, path)
+def test_existing_ignore_patterns_are_kept(ignored_set: set[str], path: str) -> None:
+    assert path in ignored_set
 
 
-def test_env_example_is_allowed(temp_repo: Path) -> None:
-    create_placeholder(temp_repo, ".env.example")
-
-    assert not check_ignore(temp_repo, ".env.example")
+def test_env_example_is_allowed(ignored_set: set[str]) -> None:
+    assert ".env.example" not in ignored_set
 
 
 def test_git_add_does_not_stage_secret_files(temp_repo: Path) -> None:
@@ -117,9 +123,7 @@ def test_git_add_does_not_stage_secret_files(temp_repo: Path) -> None:
 
 
 def test_secret_scan_pins_rules_and_disables_inline_allow() -> None:
-    workflow = (ROOT / ".github" / "workflows" / "secret-scan.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (ROOT / ".github" / "workflows" / "secret-scan.yml").read_text(encoding="utf-8")
     assert "--config" in workflow
     assert "--gitleaks-ignore-path" in workflow
     assert "--ignore-gitleaks-allow" in workflow
