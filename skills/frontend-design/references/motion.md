@@ -99,7 +99,7 @@ dialog[open] {
 }
 ```
 
-`@starting-style` is progressive enhancement; ensure the final state is visible without it.
+`@starting-style` is progressive enhancement; ensure the final state is visible without it. `overlay ... allow-discrete` is Limited Availability (Chromium-only for exit transitions; Firefox and Safari snap on exit cleanly).
 
 ### List reorder
 
@@ -148,14 +148,17 @@ if (document.startViewTransition) {
 - Do not hijack scroll or pin sections for essential content.
 - Respect reduced motion; show the final state.
 - Keep the unanimated default visible. Never set `opacity: 0` on the base state; unsupported browsers would hide the content.
+- Interactive web maps must also respect `prefers-reduced-motion` (disable animated `flyTo`/camera spins and cluster dense markers).
 - Test on low-end mobile.
 
 ```css
-@media (prefers-reduced-motion: no-preference) {
-  .reveal {
-    animation: reveal linear both;
-    animation-timeline: view();
-    animation-range: entry 10% cover 30%;
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 30%;
+    }
   }
 }
 @keyframes reveal {
@@ -163,6 +166,8 @@ if (document.startViewTransition) {
   to { opacity: 1; transform: translateY(0); }
 }
 ```
+
+`animation-timeline: view()` reached Baseline 2026 Newly Available (Oct 2026); guard it with `@supports` so older browsers skip the animation cleanly.
 
 ### Auto-rotating content
 

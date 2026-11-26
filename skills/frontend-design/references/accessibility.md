@@ -150,6 +150,6 @@ Do not use ARIA if a native element already provides the semantics; incorrect AR
 
 Automated tools catch only a subset. Combine:
 
-- **Automated:** axe DevTools or `@axe-core/playwright`; Lighthouse accessibility; HTML validator; `scripts/contrast.py`; ESLint jsx-a11y.
+- **Automated:** axe DevTools or `@axe-core/playwright`; Lighthouse accessibility; HTML validator; `scripts/contrast.py`; ESLint jsx-a11y. Automated scans must **fail closed**: a partial, crashed, or errored axe/pa11y/Lighthouse run is an incomplete FAIL, never "0 violations".
 - **Manual:** keyboard only (unplug the mouse, complete the primary task); screen reader (NVDA + Firefox/Chrome or VoiceOver + Safari) for names, roles, states, order, announcements; 200% text, 400% page zoom, and 320 px; reduced motion; forced colors; touch on a real phone one-handed with the keyboard open; slow network; long text, long words, no images, translated strings.
 - Report the criterion, element, evidence, and fix. Do not claim "WCAG compliant" from an automated scan. Use the P0/P1/P2 severity in `quality-gates.md`.

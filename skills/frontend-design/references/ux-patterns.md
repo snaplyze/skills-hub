@@ -166,7 +166,7 @@ Error text (specific, adjacent, linked)
 
 - Validate on blur for most fields, not on every keystroke.
 - Validate on submit for the whole form.
-- Show errors after the user has had a chance to finish.
+- Error lifecycle invariants: never display an error before the user has interacted or submitted, and clear the error immediately once the underlying cause is fixed.
 - Do not clear the form on error.
 - Do not disable submit silently; if disabled, explain what is missing.
 - For multiple errors, provide a focusable summary at the top and inline messages; move focus to the summary or first invalid field after submit.
@@ -200,7 +200,8 @@ Use `enterkeyhint` on mobile (`next`, `done`, `search`, `send`). Use `inputmode`
 
 ### Destructive actions
 
-- Confirm irreversible actions with the object and consequence named.
+- Confirm irreversible actions with the object, consequence, and explicit action/cancel button verbs (for example `Delete report` / `Keep report`, never generic `Are you sure?` / `OK`).
+- Use safe synthetic contact and identity placeholders in examples and mockups (`.example` domains, non-real phone/VAT/street numbers).
 - Offer undo for reversible actions.
 - Separate destructive actions from primary actions.
 - Do not use a confirm dialog for every click; it trains people to dismiss them.

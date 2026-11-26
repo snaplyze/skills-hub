@@ -13,14 +13,36 @@ ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "install" / "opencode.sh"
 
 
+def _isolated_git_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["GIT_CONFIG_GLOBAL"] = os.devnull
+    env["GIT_CONFIG_NOSYSTEM"] = "1"
+    return env
+
+
 def git(repo: Path, *args: str) -> None:
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
+        env=_isolated_git_env(),
         capture_output=True,
         text=True,
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def is_git_worktree(path: Path) -> bool:
+    """Return True only when path itself is the root of a git worktree (never a parent repo)."""
+    result = subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
+        env=_isolated_git_env(),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return False
+    return Path(result.stdout.strip()).resolve() == path.resolve()
 
 
 def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
@@ -44,6 +66,8 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
         "user.name=Release Test",
         "-c",
         "user.email=release@example.test",
+        "-c",
+        "commit.gpgsign=false",
         "commit",
         "-qm",
         "fixture",
@@ -54,6 +78,8 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
         "user.name=Release Test",
         "-c",
         "user.email=release@example.test",
+        "-c",
+        "tag.gpgsign=false",
         "tag",
         "-a",
         "v1.2.3",
@@ -74,6 +100,7 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
             str(archive),
             "HEAD",
         ],
+        env=_isolated_git_env(),
         check=True,
     )
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
@@ -124,13 +151,40 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert (target / "frontend-design" / "asset.txt").read_text() == "archive payload\n"
 
-def test_current_head_archive_contains_all_skills(tmp_path: Path) -> None:
+
+def test_current_tree_archive_contains_all_skills(tmp_path: Path) -> None:
+    """Verify release archiving packages every skill in both git checkouts and extracted snapshots."""
     archive = tmp_path / "current.tar.gz"
+    if is_git_worktree(ROOT):
+        source_repo = ROOT
+    else:
+        source_repo = tmp_path / "snapshot-repo"
+        source_repo.mkdir()
+        shutil.copytree(ROOT / "skills", source_repo / "skills")
+        shutil.copytree(ROOT / "install", source_repo / "install")
+        gitattributes = ROOT / ".gitattributes"
+        if gitattributes.is_file():
+            shutil.copy2(gitattributes, source_repo / ".gitattributes")
+        git(source_repo, "init", "-q")
+        git(source_repo, "add", "-A")
+        git(
+            source_repo,
+            "-c",
+            "user.name=Release Test",
+            "-c",
+            "user.email=release@example.test",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-qm",
+            "snapshot",
+        )
+
     result = subprocess.run(
         [
             "git",
             "-C",
-            str(ROOT),
+            str(source_repo),
             "archive",
             "--format=tar.gz",
             "--prefix=skills-hub-test/",
@@ -138,20 +192,17 @@ def test_current_head_archive_contains_all_skills(tmp_path: Path) -> None:
             str(archive),
             "HEAD",
         ],
+        env=_isolated_git_env(),
         capture_output=True,
         text=True,
         check=False,
     )
     assert result.returncode == 0, result.stderr
     expected = {
-        f"skills/{path.parent.name}/SKILL.md"
-        for path in (ROOT / "skills").glob("*/SKILL.md")
+        f"skills/{path.parent.name}/SKILL.md" for path in (ROOT / "skills").glob("*/SKILL.md")
     }
+    assert expected
     with tarfile.open(archive) as bundle:
         names = set(bundle.getnames())
-    missing = {
-        relative
-        for relative in expected
-        if f"skills-hub-test/{relative}" not in names
-    }
+    missing = {relative for relative in expected if f"skills-hub-test/{relative}" not in names}
     assert not missing, missing

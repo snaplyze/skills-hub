@@ -1010,11 +1010,13 @@ def load_contrast_module(script: Path):
 
 
 def css_declarations(text: str) -> list[tuple[tuple[str, ...], str, str]]:
-    """Return (block context, property, value) for simple custom properties."""
-    text = CSS_COMMENT_RE.sub("", text)
+    """Return (block context, property, value) for simple custom properties (string-aware)."""
     declarations: list[tuple[tuple[str, ...], str, str]] = []
     stack: list[str] = []
     buffer: list[str] = []
+    n = len(text)
+    i = 0
+    in_quote = ""
 
     def record() -> None:
         declaration = "".join(buffer).strip()
@@ -1024,26 +1026,69 @@ def css_declarations(text: str) -> list[tuple[tuple[str, ...], str, str]]:
         name, value = declaration.split(":", 1)
         declarations.append((tuple(stack), name.strip(), value.strip()))
 
-    for character in text:
-        if character == "{":
+    while i < n:
+        ch = text[i]
+        if in_quote:
+            buffer.append(ch)
+            if ch == "\\" and i + 1 < n:
+                buffer.append(text[i + 1])
+                i += 2
+                continue
+            if ch == in_quote:
+                in_quote = ""
+            i += 1
+            continue
+        if ch == "/" and i + 1 < n and text[i + 1] == "*":
+            end = text.find("*/", i + 2)
+            i = n if end == -1 else end + 2
+            continue
+        if ch in ("'", '"'):
+            in_quote = ch
+            buffer.append(ch)
+            i += 1
+            continue
+        if ch == "{":
             stack.append("".join(buffer).strip())
             buffer.clear()
-        elif character == "}":
+        elif ch == "}":
             record()
             if stack:
                 stack.pop()
-        elif character == ";":
+        elif ch == ";":
             record()
         else:
-            buffer.append(character)
+            buffer.append(ch)
+        i += 1
     record()
     return declarations
+
+
+def _selector_matches(block: str, target: str) -> bool:
+    for selector in block.split(","):
+        normalized = re.sub(r"\s+", " ", selector.strip())
+        if target == ":root" and normalized == ":root":
+            return True
+        if target == "dark" and normalized in (
+            '[data-theme="dark"]',
+            "[data-theme='dark']",
+            ':root[data-theme="dark"]',
+            ":root[data-theme='dark']",
+        ):
+            return True
+    return False
 
 
 def semantic_tokens_from_declarations(
     declarations: Sequence[tuple[tuple[str, ...], str, str]],
 ) -> set[str]:
-    return {name for _, name, _ in declarations if name.startswith("--color-")}
+    tokens: set[str] = set()
+    for context, name, _ in declarations:
+        if not name.startswith("--color-"):
+            continue
+        if any(block.startswith(("@media", "@supports")) for block in context):
+            continue
+        tokens.add(name)
+    return tokens
 
 
 def semantic_tokens(tokens_css: str) -> set[str]:
@@ -1059,9 +1104,9 @@ def resolve_theme_tokens_from_declarations(
         inside_media = any(block.startswith(("@media", "@supports")) for block in context)
         if inside_media:
             continue
-        if any(block.startswith('[data-theme="dark"') for block in context):
+        if any(_selector_matches(block, "dark") for block in context):
             dark_properties[name] = value
-        elif any(block == ":root" for block in context):
+        elif any(_selector_matches(block, ":root") for block in context):
             root_properties[name] = value
 
     def resolve(name: str, properties: dict[str, str], seen: set[str]) -> str | None:
@@ -1070,7 +1115,11 @@ def resolve_theme_tokens_from_declarations(
         value = properties[name]
         match = VAR_RE.fullmatch(value)
         if match:
-            return resolve(match.group(1), properties, seen | {name})
+            resolved = resolve(match.group(1), properties, seen | {name})
+            if resolved is not None:
+                return resolved
+            fallback = match.group(2)
+            return fallback.strip() if fallback and fallback.strip() else None
         return value
 
     themes: dict[str, dict[str, str]] = {}
@@ -1141,6 +1190,7 @@ def check_contrast_fixture(
     labels: set[str] = set()
     theme_counts = {"light": 0, "dark": 0}
     label_tokens: dict[str, set[str]] = {}
+    label_themes: dict[str, str] = {}
     parsed_token_colors: dict[tuple[str, str], object] = {}
 
     def get_token_color(theme: str, token: str):
@@ -1241,6 +1291,7 @@ def check_contrast_fixture(
                     f"does not match {token} ({expected_hex})"
                 )
         label_tokens[label] = {fg_token, bg_token}
+        label_themes[label] = theme
 
     for theme in ("light", "dark"):
         if theme_counts[theme] != CONTRAST_THEME_PAIR_COUNT:
@@ -1272,6 +1323,8 @@ def check_contrast_fixture(
         combination_labels.add(label)
         if isinstance(fg_token, str) and isinstance(bg_token, str):
             label_tokens[label] = {fg_token, bg_token}
+        if isinstance(theme, str):
+            label_themes[label] = theme
         if theme not in resolved_tokens:
             errors.append(f"{where} has unknown theme {theme!r}")
             continue
@@ -1321,6 +1374,7 @@ def check_contrast_fixture(
             if not entry:
                 errors.append(f"{where} must list at least one pair or combination")
                 continue
+            covered_themes: set[str] = set()
             for label in entry:
                 if not isinstance(label, str) or not label.strip():
                     errors.append(f"{where} needs non-empty pair labels")
@@ -1328,6 +1382,16 @@ def check_contrast_fixture(
                     errors.append(f"{where} references unknown label {label!r}")
                 elif token not in label_tokens.get(label, set()):
                     errors.append(f"{where} label {label!r} does not test {token}")
+                else:
+                    covered_theme = label_themes.get(label)
+                    if covered_theme:
+                        covered_themes.add(covered_theme)
+            for required_theme in ("light", "dark"):
+                if (
+                    token in resolved_tokens.get(required_theme, {})
+                    and required_theme not in covered_themes
+                ):
+                    errors.append(f"{where} is missing {required_theme} theme coverage")
         elif isinstance(entry, str):
             if not entry.strip():
                 errors.append(f"{where} needs a non-empty reason")
