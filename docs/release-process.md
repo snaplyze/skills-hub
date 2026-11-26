@@ -26,8 +26,9 @@ A release can proceed only when all of these are true:
 - The tag is annotated and signed, and its signature verifies against the
   owner-provided trust material.
 - The tagged commit is an ancestor of `origin/main`.
-- The required `validate`, `Analyze (python)`, and `gitleaks` check-runs for
-  that commit are completed successfully from their expected workflows.
+- The required `validate`, `Analyze (python)`, `Analyze (actions)`, and
+  `gitleaks` check-runs for that commit are completed successfully from their
+  expected workflows.
 - The protected `release` environment approves the job.
 
 Tags published before this gate (`v1.0.1` and earlier) are unsigned, have no
@@ -43,8 +44,9 @@ created. The workflow fails closed with an `::error::` message.
    `## [X.Y.Z] - YYYY-MM-DD`, leaves an empty `## [Unreleased]`, and uses the
    same version as the future tag. Confirm that `skills/` contains every skill
    listed in the README and that the current-HEAD archive test passes. Merge it.
-3. Wait for `validate`, `Analyze (python)`, and `gitleaks` on `main`, and for
-   `dependency-review` on the pull request. Do not bypass branch protection.
+3. Wait for `validate`, `Analyze (python)`, `Analyze (actions)`, and `gitleaks`
+   on `main`, and for `dependency-review` on the pull request. Do not bypass
+   branch protection.
 4. From a clean `main` checkout, create a signed annotated tag and verify it
    locally:
 
@@ -204,9 +206,9 @@ an ancestor of `origin/main` fails even if the tag itself is valid.
    match `gate/docs/release-signing/allowed_signers` on `main`.
 3. The tag commit must be an ancestor of a freshly fetched `origin/main`.
 4. `gate/scripts/release_checks.py` (from `main`) verifies that the latest
-   completed `validate`, `Analyze (python)`, and `gitleaks` check-runs for the
-   exact commit succeeded, were created by GitHub Actions, and came from
-   `.github/workflows/ci.yml`, `.github/workflows/codeql.yml`, and
+   completed `validate`, `Analyze (python)`, `Analyze (actions)`, and `gitleaks`
+   check-runs for the exact commit succeeded, were created by GitHub Actions,
+   and came from `.github/workflows/ci.yml`, `.github/workflows/codeql.yml`, and
    `.github/workflows/secret-scan.yml`.
 5. `gate/scripts/release_notes.py` (from `main`) validates the tag and extracts
    the matching section from the tagged `CHANGELOG.md`. The workflow passes the

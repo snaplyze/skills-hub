@@ -42,7 +42,12 @@ def paths(run_id: str) -> tuple[str | None, str | None]:
 
 
 def valid_runs() -> list[dict[str, object]]:
-    return [run("validate", 1), run("Analyze (python)", 2), run("gitleaks", 3)]
+    return [
+        run("validate", 1),
+        run("Analyze (python)", 2),
+        run("Analyze (actions)", 2),
+        run("gitleaks", 3),
+    ]
 
 
 def test_valid_runs_pass() -> None:

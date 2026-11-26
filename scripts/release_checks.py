@@ -14,6 +14,7 @@ from typing import Any
 EXPECTED_WORKFLOWS = {
     "validate": ".github/workflows/ci.yml",
     "Analyze (python)": ".github/workflows/codeql.yml",
+    "Analyze (actions)": ".github/workflows/codeql.yml",
     "gitleaks": ".github/workflows/secret-scan.yml",
 }
 GENERIC_RUN_URL_RE = re.compile(

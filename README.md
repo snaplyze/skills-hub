@@ -63,7 +63,7 @@ No hooks, plugin bootstrap, or session injection are required. Trigger quality c
 
 The installer copies skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default. Copy mode snapshots content and never writes into this checkout. Use `--link` only when you want a live link to the clone. It requires Bash and GNU coreutils/findutils/tar (`realpath -m`, `sort -z`, `mv -T`, `find -printf`, GNU `tar`); on systems without those tools, use the minimal manual copy below.
 
-Release `v1.2.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release
+Release `v1.3.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release
 gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do
 not treat them as signed releases. The protected `release` environment,
 tag-signature trust, tag rules, and immutable-release setup are recorded in

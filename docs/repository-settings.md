@@ -12,7 +12,7 @@ regress.
 | Main ruleset | `main-protection` (#27259237), active | Rulesets API | Maintainer |
 | Pull requests | Required; 0 approving reviews; extra approval for unattributed changes; conversation resolution required | Ruleset `main-protection` | Maintainer |
 | Merge method | Squash only; linear history required | Ruleset and repository settings | Maintainer |
-| Required checks | `validate`, `Analyze (python)`, `dependency-review`; strict up-to-date policy | Ruleset `main-protection` | Maintainer |
+| Required checks | `validate`, `Analyze (python)`, `Analyze (actions)`, `dependency-review`, `gitleaks`; strict up-to-date policy | Ruleset `main-protection` | Maintainer |
 | Code scanning | CodeQL required; errors and high/critical security alerts block | Ruleset `main-protection` | Maintainer |
 | Force push / deletion | Blocked | Ruleset `main-protection` | Maintainer |
 | Tag ruleset | `tag-protection` (#27259245), active; blocks creation, deletion, non-fast-forward; requires signatures; owner-only creation via configured bypass; bypass does not bypass release workflow signature/ancestry/check-run gates | Tag ruleset | Maintainer |
@@ -29,7 +29,7 @@ regress.
 | Default workflow token | Read-only | Actions policy | Maintainer |
 | Fork pull requests | Approval required for all external contributors | Actions policy | Maintainer |
 | Self-hosted runners | None | Actions runners API | Owner decision required |
-| CodeQL | Runs on `main` and pull requests; Python only | `.github/workflows/codeql.yml` | Maintainer |
+| CodeQL | Runs on `main` and pull requests; Python and GitHub Actions | `.github/workflows/codeql.yml` | Maintainer |
 | Scorecard | Weekly, on push, and on `branch_protection_rule`; ruleset changes are covered by the weekly run; SARIF uploaded to code scanning | `.github/workflows/scorecard.yml` | Maintainer |
 
 The repository has no self-hosted runners. If one is added, route only jobs

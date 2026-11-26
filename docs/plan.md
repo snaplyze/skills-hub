@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 2 OPEN (#81–#82), 13 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26; этапы 01–09; веха #9 «Аудит 2026-11-26»: 1 OPEN (`AUD-42` #81), 14 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-43` #82, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -33,7 +33,7 @@
 | 06 | `06 — Native orchestration` (#6) | closed | `ORC-01` #38 |
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
-| 09 | `Аудит 2026-11-26` (#9) | open | 2 OPEN (`AUD-42` #81, `AUD-43` #82), 13 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-44` #84) |
+| 09 | `Аудит 2026-11-26` (#9) | open | 1 OPEN (`AUD-42` #81), 14 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-43` #82, `AUD-44` #84) |
 
 ## Аудит 2026-11-26
 
@@ -182,10 +182,10 @@
 
 #### AUD-43 — Dependency bumps, CI/tooling polish, `bug_report.yml`, and `AGENTS.md` sync
 
-- `IN_PROGRESS` · Аудит 2026-11-26 · `ci/dependencies/docs` · **P3 (низкий риск):** 0 открытых CVE, плановые патчи и мелкая гигиена (аллокации `contrast.py` перенесены в `AUD-37` по шагу 3) · уверенность: высокая · [#82](https://github.com/snaplyze/skills-hub/issues/82) (веха #9) · исполнитель: владелец (остаток `AGENTS.md`) · deps: `AUD-30`.
-- **Границы / результат:** смержены зелёные Dependabot PR #66 (`ruff` 0.17.6) и #87 (заменивший #67: `dependency-review-action` 5.0.1, `scorecard-action` 2.6.0, `codeql-action` v4.39.4); обновлены `PyYAML 6.0.4` (фикс DoS `#937` + Python 3.15), `codeql-action v4.39.5`, `markdownlint-cli2 0.24.2`; добавлены workflow-навыки в `.github/ISSUE_TEMPLATE/bug_report.yml:18`; добавлены `#.venv`/`#.playwright-cli` в `Makefile:34`/`package.json:10` (`[--strict]` в `scripts/check_workflows.py:17` закрыт в `AUD-30`, `v1.2.0`/`vX.Y.Z` в `install/opencode.sh:9,58` закрыты в `AUD-34`); в `codeql.yml` добавлен язык `actions` и удалён no-op `autobuild`; добавлена справка V2 `skills[]`/`permission.skill` в `README.md`. Остаток на владельце: согласование правок `AGENTS.md:3,16,36` (сфера, атрибуция, дата, `experimental.subagent_depth`).
-- **Доказательство:** смерженные PR #66/#87, обновлённые lock-файлы `requirements-dev.txt`/`package-lock.json`, `.github/workflows/{codeql,scorecard}.yml`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `Makefile`, `package.json`, `README.md`.
-- **Приёмка:** зависимости/шаблоны обновлены, `make check` и CI (`Analyze (python)` + `Analyze (actions)`) PASS; закрытие #82 после решения владельца по `AGENTS.md`. **Текущая запись:** статус `IN_PROGRESS`; вся исполнимая агентом часть завершена и проверена `make check` + CI, `AGENTS.md` намеренно не трогался до подтверждения владельца; неудачных попыток: нет.
+- `DONE` · Аудит 2026-11-26 · `ci/dependencies/docs` · **P3 (низкий риск):** 0 открытых CVE, плановые патчи и мелкая гигиена (аллокации `contrast.py` перенесены в `AUD-37` по шагу 3) · уверенность: высокая · [#82](https://github.com/snaplyze/skills-hub/issues/82) (веха #9) · исполнитель: агент (с одобрения владельца) · deps: `AUD-30`.
+- **Границы / результат:** смержены Dependabot PR #66 (`ruff` 0.17.6) и #87 (заменивший #67: `dependency-review-action` 5.0.1, `scorecard-action` 2.6.0, `codeql-action` v4.39.4); обновлены `PyYAML 6.0.4`, `codeql-action v4.39.5`, `markdownlint-cli2 0.24.2`; добавлены workflow-навыки в `.github/ISSUE_TEMPLATE/bug_report.yml:18`; добавлены `#.venv`/`#.playwright-cli` в `Makefile:34`/`package.json:10` (`[--strict]` в `scripts/check_workflows.py:17` закрыт в `AUD-30`, `v1.2.0`/`v1.3.0` в `install/opencode.sh` закрыты в `AUD-34`/`v1.3.0`); в `codeql.yml` добавлен язык `actions` и удалён no-op `autobuild`; добавлена справка V2 `skills[]`/`permission.skill` в `README.md`; обновлён и очищен от локальных деталей окружения `AGENTS.md` (`experimental.subagent_depth=2`, 11 навыков, дата `2026-11-26`, обязательные проверки с `gitleaks` и `Analyze (actions)`).
+- **Доказательство:** смерженные PR #66/#87/#96, обновлённый `AGENTS.md`, ruleset #27259237 (`validate`, `Analyze (python)`, `Analyze (actions)`, `dependency-review`, `gitleaks`), `scripts/release_checks.py` и `docs/repository-settings.md`.
+- **Приёмка:** зависимости/шаблоны/`AGENTS.md` обновлены, `make check` и CI (`Analyze (python)` + `Analyze (actions)` + `gitleaks`) PASS. **Текущая запись:** статус `DONE`; все пункты выполнены и проверены `make check` + CI; закрывает #82; неудачных попыток: нет.
 
 ## Решения и исключения владельца
 
@@ -227,9 +227,9 @@
 
 ## Владельцу / вне объёма
 
-- **Публичный `AGENTS.md`:** раскрывает локальные permissions, secret reads, `opencode-full` и пользовательские MCP (`context7`, `gh_grep`, а в текущей среде ещё `browse`); при этом глобальные permissions уже allow-all, а `opencode-full` добавляет `--auto` (если «только через обёртку» относится и к permissions — отдельное изменение пользовательской области). Решить: вынести пользовательские детали в приватный supplement или обновить снимок среды (вместе с `AUD-43`).
-- **Окружение пользователя:** `opencode-full`, глобальные skills/MCP существуют только локально у владельца; Claude Code/Codex не установлены и не проверялись.
-- **Ruleset & Scorecard:** добавить `gitleaks` (`Secret Scan`, ~6 s) в обязательные проверки ruleset #27259237 (синхронно с `AUD-35`); потолок Scorecard (сейчас 6.2/10) при solo-maintainer ограничен структурными нулями (`Maintained` <90 дней, `Code-Review`, `Contributors`, `Fuzzing`, `CII-Best-Practices`) — наибольший технический прирост дадут `AUD-30` (`Pinned-Dependencies` 8→10) и `AUD-35` (`Signed-Releases` 0→8–10); для approvals/code-owner review нужен второй maintainer.
+- **Публичный `AGENTS.md`:** очищен от локальных деталей permissions/secret-reads/MCP (`~/.config/opencode/` — единственный источник пользовательской конфигурации) и синхронизирован с `2026-11-26` (11 навыков, `experimental.subagent_depth=2`, обязательные проверки с `gitleaks` и `Analyze (actions)`).
+- **Окружение пользователя:** глобальные skills/MCP существуют только локально у владельца; Claude Code/Codex не установлены и не проверялись.
+- **Ruleset & Scorecard:** `gitleaks` и `Analyze (actions)` добавлены в обязательные проверки ruleset #27259237 и `scripts/release_checks.py`; потолок Scorecard при solo-maintainer ограничен структурными нулями (`Maintained` <90 дней, `Code-Review`, `Contributors`, `Fuzzing`, `CII-Best-Practices`) — для approvals/code-owner review нужен второй maintainer.
 - **Инфраструктурный горизонт:** Node.js 22 EOL `2027-04-30` (миграция на Node.js 24 LTS); `gitleaks` в `secret-scan.yml` отслеживается вручную; `ossf/scorecard-action` внутри `action.yaml` использует Docker-тег, а не digest.
 - **Продуктовые решения:** (а) выделять ли `accessibility-engineering` в отдельный навык или оставить в `frontend-design/references/accessibility.md`; (б) добавлять ли опциональный headless behavioral eval runner (`opencode run --standalone --archived --format json`); (в) подтвердить политику «только идеи» для `sickn33` (`taste-skill` MIT и `anthropics/skills/skills/skill-creator` Apache-2.0 уже подтверждены).
 - **Защищённая история:** `CHANGELOG.md` (`v1.1.0`) не упоминал возврат загрузки SARIF Scorecard из `6bec3ee` после отключения в `1.0.1` — задним числом не переписывалось.

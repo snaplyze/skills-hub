@@ -6,8 +6,8 @@ name: Release
 #   2. the tag is annotated and its signature verifies against owner-provided
 #      trust material (matching gate/docs/release-signing/allowed_signers);
 #   3. the tagged commit is an ancestor of origin/main;
-#   4. the required `validate`, `Analyze (python)`, and `gitleaks` check-runs
-#      succeeded from their expected workflows;
+#   4. the required `validate`, `Analyze (python)`, `Analyze (actions)`, and
+#      `gitleaks` check-runs succeeded from their expected workflows;
 #   5. the owner has verified immutable releases outside the workflow;
 #   6. only then are notes read via gate/scripts/release_notes.py, assets built
 #      and attested (with the Sigstore bundle attached), and a DRAFT release
