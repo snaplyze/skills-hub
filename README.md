@@ -151,7 +151,7 @@ mkdir -p -- ~/.config/opencode/skills
 cp -R -- skills/frontend-design ~/.config/opencode/skills/
 ```
 
-OpenCode discovers directory skills with a `SKILL.md` and advertises them by their `description`. The skill ID is the directory name (`frontend-design`).
+OpenCode discovers directory skills with a `SKILL.md` and advertises them by their `description`. The skill ID is the directory name (`frontend-design`). In OpenCode V2, project-local skill directories take precedence over global `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/`, extra skill paths can be configured via `skills[]`, and per-skill access can be controlled with `permission.skill` (`allow` / `ask` / `deny`) in OpenCode configuration.
 
 ### Other harnesses
 

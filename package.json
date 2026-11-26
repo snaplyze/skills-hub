@@ -7,12 +7,12 @@
     "node": ">=22"
   },
   "scripts": {
-    "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.venv\" \"#.playwright-cli\"",
     "check:css": "csstree-validator skills/frontend-design/assets/tokens.css"
   },
   "devDependencies": {
     "csstree-validator": "4.0.1",
-    "markdownlint-cli2": "0.24.1"
+    "markdownlint-cli2": "0.24.2"
   },
   "overrides": {
     "katex": "0.18.2"
