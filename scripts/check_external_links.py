@@ -49,7 +49,7 @@ DEFAULT_WORKERS = 8
 DEFAULT_MAX_PER_HOST = 2
 MAX_REDIRECTS = 10
 
-_FENCE_OPEN_RE = re.compile(r"^((?:[ \t]*>[ \t]*)*)[ \t]*(`{3,}|~{3,})")
+_FENCE_OPEN_RE = re.compile(r"^((?:[ \t]*>)*)[ \t]*(`{3,}|~{3,})")
 _HTTP_URL_START_RE = re.compile(r"https?://", re.IGNORECASE)
 _SSL_CONTEXT_LOCK = threading.Lock()
 _SSL_CONTEXT: ssl.SSLContext | None = None
