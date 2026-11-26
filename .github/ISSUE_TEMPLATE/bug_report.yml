@@ -16,6 +16,7 @@ body:
       description: What is affected?
       options:
         - frontend-design skill
+        - Agent workflow skills (orchestration, planning, execution, review, etc.)
         - OpenCode installer
         - Validation or contrast script
         - Documentation
