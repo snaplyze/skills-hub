@@ -174,3 +174,40 @@ def test_cli_subprocess_smoke() -> None:
     bad = run_contrast_cli("not-a-color", "#ffffff")
     assert bad.returncode == 2
     assert "error:" in bad.stderr
+
+
+@pytest.mark.parametrize(
+    "bad_color",
+    [
+        "####000000",
+        "#+f+f+f",
+        "#-1-1-1",
+        "rgb(0, 0, 0, 1, 999)",
+        "rgb(0, 0, 0 / 0.5)",
+        "rgb(nan 0 0)",
+        "rgb(inf 0 0)",
+        "hsl(1deg20 50% 50%)",
+        "hsl(0 50% 50% / 0.5 / 0.5)",
+    ],
+)
+def test_malformed_hex_rgb_hsl_and_non_finite_colors_exit_two(bad_color: str) -> None:
+    result = run_contrast(bad_color, "#ffffff")
+    assert result.returncode == 2
+    assert "error:" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("fg", "bg", "expected"),
+    [
+        ("#0008", "#ffffff", "4.48"),
+        ("hsl(0 0 0)", "#ffffff", "21.00"),
+        ("hsl(0.5turn 100 50)", "#000000", "16.75"),
+        ("hsl(200grad 100% 50%)", "#000000", "16.75"),
+        ("hsl(3.14159265rad 100% 50%)", "#000000", "16.75"),
+    ],
+)
+def test_css_color4_hsl_angles_unitless_and_rgba_hex(fg: str, bg: str, expected: str) -> None:
+    result = run_contrast(fg, bg, "--label", "color4 probe", "--size", "large")
+    assert result.returncode == 0, result.stderr
+    assert "color4 probe" in result.stdout
+    assert f"contrast: {expected}:1" in result.stdout

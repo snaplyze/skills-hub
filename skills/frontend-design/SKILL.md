@@ -67,7 +67,7 @@ Do not spend a free design axis on a default unless the brief asks: cream + seri
 
 Hard **32,768 B** per typical set. Counted: this file, `references/**/*.md`, `assets/**/*.md`; excluded: `assets/tokens.css`, `assets/token-contrast-pairs.json`, `scripts/*`, `LICENSE`, and the optional `assets/worked-example.md`. Exact sets: `assets/reading-sets.json`; every set is under 32,768, including the new-page set with `assets/design-brief.md`.
 
-Typical sets: **new page** — design-direction, visual-craft, quality-gates; **component/state** — design-system, quality-gates; **audit** — quality-gates, accessibility or responsive-mobile, audit-report; **implementation or motion** — the matching reference, quality-gates; **brief or attribution** — design-brief or sources.
+Typical sets: **new-page** — design-direction, visual-craft, quality-gates, design-brief; **design-system** — design-system, quality-gates; **ux-flows** — ux-patterns, quality-gates; **audit-accessibility / audit-mobile** — quality-gates, accessibility or responsive-mobile, audit-report; **implementation / motion** — the matching reference, quality-gates; **brief** — design-direction, design-brief; **attribution** — sources.
 
 Assets: `assets/tokens.css`, `assets/token-contrast-pairs.json`, `assets/design-brief.md`, `assets/audit-report.md`, `assets/worked-example.md`, `scripts/contrast.py`.
 

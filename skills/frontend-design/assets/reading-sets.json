@@ -27,14 +27,6 @@
         "assets/design-brief.md"
       ]
     },
-    "component-state": {
-      "limit_bytes": 32768,
-      "files": [
-        "SKILL.md",
-        "references/design-system.md",
-        "references/quality-gates.md"
-      ]
-    },
     "audit-accessibility": {
       "limit_bytes": 32768,
       "files": [

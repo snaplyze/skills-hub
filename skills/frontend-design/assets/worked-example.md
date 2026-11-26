@@ -1,6 +1,6 @@
 # Worked example: the tool library
 
-A complete direction from brief to critique. Use it as a model, not a template; values are illustrative and should be replaced with project tokens. The method is in `../references/design-direction.md`; the brief form is in `design-brief.md`.
+A complete direction from brief to critique. Use it as a model, not a template; values are illustrative and should be replaced with project tokens. The method is in `references/design-direction.md`; the brief form is in `assets/design-brief.md`.
 
 ## Brief
 
@@ -9,7 +9,7 @@ Subject:       A neighborhood tool-lending library
 Audience:      Renters and homeowners within walking distance, often on a phone
 Primary job:   Find whether a specific tool is available this weekend and reserve it
 Content:       42 tools with photos, availability windows, replacement values, pickup instructions
-Constraints:   Mobile-first, small budget, existing green brand, WCAG 2.2 AA
+Constraints:   Mobile-first, small budget, existing forest-green library sign (paired with safety-orange action tags), WCAG 2.2 AA
 Success:       First-time reservation in under two minutes; no horizontal scroll at 320 px
 ```
 

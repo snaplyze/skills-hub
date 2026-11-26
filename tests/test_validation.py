@@ -386,22 +386,66 @@ def test_new_semantic_token_with_coverage_passes(tmp_path: Path) -> None:
     tokens = repo / "skills" / "frontend-design" / "assets" / "tokens.css"
     tokens.write_text(
         tokens.read_text(encoding="utf-8")
-        + "\n:root {\n  --color-mystery: var(--neutral-900);\n}\n",
+        + '\n:root {\n  --color-mystery: var(--neutral-900);\n}\n[data-theme="dark"] {\n  --color-mystery: var(--neutral-50);\n}\n',
         encoding="utf-8",
     )
     data = load_fixture(repo)
-    data["combinations"].append(
-        {
-            "label": "light: mystery / canvas",
-            "theme": "light",
-            "fg": "--color-mystery",
-            "bg": "--color-canvas",
-            "size": "normal",
-        }
+    data["combinations"].extend(
+        [
+            {
+                "label": "light: mystery / canvas",
+                "theme": "light",
+                "fg": "--color-mystery",
+                "bg": "--color-canvas",
+                "size": "normal",
+            },
+            {
+                "label": "dark: mystery / canvas",
+                "theme": "dark",
+                "fg": "--color-mystery",
+                "bg": "--color-canvas",
+                "size": "normal",
+            },
+        ]
     )
-    data["coverage"]["--color-mystery"] = ["light: mystery / canvas"]
+    data["coverage"]["--color-mystery"] = [
+        "light: mystery / canvas",
+        "dark: mystery / canvas",
+    ]
     save_fixture(repo, data)
     assert_validation_passes(repo)
+
+
+def test_single_theme_coverage_fails(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    data = load_fixture(repo)
+    data["coverage"]["--color-surface-raised"] = ["dark: text / surface-raised"]
+    save_fixture(repo, data)
+    assert_validation_fails(repo, "missing light theme coverage")
+
+
+def test_string_aware_css_parser_and_var_fallback() -> None:
+    css = (
+        ':root, [data-theme="light"] {\n'
+        '  --font-note: "a { ; } /* not comment */";\n'
+        "  --base: #111111;\n"
+        "  --color-a: var(--base);\n"
+        "  --color-b: var(--missing, #222222);\n"
+        "}\n"
+        ':root[data-theme="dark"] {\n'
+        "  --color-a: #eeeeee;\n"
+        "}\n"
+        "@media (prefers-color-scheme: dark) {\n"
+        "  :root { --color-media-only: #333333; }\n"
+        "}\n"
+    )
+    decls = validate.css_declarations(css)
+    tokens = validate.semantic_tokens_from_declarations(decls)
+    assert tokens == {"--color-a", "--color-b"}
+    resolved = validate.resolve_theme_tokens_from_declarations(decls)
+    assert resolved["light"]["--color-a"] == "#111111"
+    assert resolved["light"]["--color-b"] == "#222222"
+    assert resolved["dark"]["--color-a"] == "#eeeeee"
 
 
 def test_token_literal_parity_fails(tmp_path: Path) -> None:

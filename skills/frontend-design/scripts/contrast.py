@@ -49,6 +49,10 @@ NAMED_COLORS = {
     "blue": (0.0, 0.0, 255.0, 1.0),
 }
 
+HEX_RE = re.compile(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+FN_RE = re.compile(r"^([a-zA-Z]+)\((.*)\)$")
+HUE_RE = re.compile(r"^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(deg|rad|grad|turn)?$")
+
 
 @dataclass(frozen=True)
 class Color:
@@ -66,15 +70,10 @@ class Color:
         )
 
     def hex(self) -> str:
-        r, g, b, a = (
-            self.clamped().r,
-            self.clamped().g,
-            self.clamped().b,
-            self.clamped().a,
-        )
-        if a < 1.0:
-            return f"#{round(r):02x}{round(g):02x}{round(b):02x}{round(a * 255):02x}"
-        return f"#{round(r):02x}{round(g):02x}{round(b):02x}"
+        c = self.clamped()
+        if c.a < 1.0:
+            return f"#{round(c.r):02x}{round(c.g):02x}{round(c.b):02x}{round(c.a * 255):02x}"
+        return f"#{round(c.r):02x}{round(c.g):02x}{round(c.b):02x}"
 
 
 WHITE = Color(255.0, 255.0, 255.0, 1.0)
@@ -90,19 +89,51 @@ class Result:
     aa: bool
     aaa: bool
     threshold: float
+    aaa_threshold: float = math.nan
+    size_label: str = ""
+
+
+def _parse_finite_float(raw: str) -> float:
+    val = float(raw)
+    if not math.isfinite(val):
+        raise ValueError(f"Non-finite numeric value: {raw!r}")
+    return val
 
 
 def parse_channel(value: str, scale: float = 255.0) -> float:
     value = value.strip()
     if value.endswith("%"):
-        return float(value[:-1]) / 100.0 * scale
-    return float(value)
+        return _parse_finite_float(value[:-1]) / 100.0 * scale
+    return _parse_finite_float(value)
+
+
+def parse_hsl_percent(value: str) -> float:
+    """Parse CSS Color 4 HSL saturation/lightness (percentage or unitless 0..100)."""
+    value = value.strip()
+    raw = _parse_finite_float(value[:-1]) if value.endswith("%") else _parse_finite_float(value)
+    return min(1.0, max(0.0, raw / 100.0))
+
+
+def parse_hue(value: str) -> float:
+    match = HUE_RE.fullmatch(value.strip().lower())
+    if not match:
+        raise ValueError(f"Invalid hue value: {value!r}")
+    angle = _parse_finite_float(match.group(1))
+    unit = match.group(2) or "deg"
+    if unit == "rad":
+        angle = math.degrees(angle)
+    elif unit == "grad":
+        angle *= 0.9
+    elif unit == "turn":
+        angle *= 360.0
+    return angle % 360.0
 
 
 def parse_hex(value: str) -> Color:
-    raw = value.strip().lstrip("#")
-    if len(raw) not in (3, 4, 6, 8):
+    match = HEX_RE.fullmatch(value.strip())
+    if not match:
         raise ValueError(f"Invalid hex color: {value!r}")
+    raw = match.group(1)
     if len(raw) in (3, 4):
         raw = "".join(ch * 2 for ch in raw)
     r = int(raw[0:2], 16)
@@ -116,12 +147,11 @@ def parse_alpha(value: str | None) -> float:
     if value is None:
         return 1.0
     value = value.strip()
+    if not value:
+        raise ValueError("Empty alpha channel")
     if value.endswith("%"):
-        return min(1.0, max(0.0, float(value[:-1]) / 100.0))
-    return min(1.0, max(0.0, float(value)))
-
-
-FN_RE = re.compile(r"^([a-zA-Z]+)\((.*)\)$")
+        return min(1.0, max(0.0, _parse_finite_float(value[:-1]) / 100.0))
+    return min(1.0, max(0.0, _parse_finite_float(value)))
 
 
 def parse_function(value: str) -> Color:
@@ -131,36 +161,45 @@ def parse_function(value: str) -> Color:
     name = match.group(1).lower()
     body = match.group(2).strip()
 
-    if "/" in body:
+    has_slash = "/" in body
+    if has_slash:
+        if body.count("/") > 1:
+            raise ValueError(f"Invalid color function: {value!r}")
         main, alpha_part = body.split("/", 1)
-        alpha = parse_alpha(alpha_part.strip())
+        if "," in main:
+            raise ValueError(f"Mixed comma and slash syntax in color function: {value!r}")
+        alpha = parse_alpha(alpha_part)
     else:
         main = body
         alpha = 1.0
 
-    # Support both comma-separated and space-separated syntax.
+    # Support both comma-separated (legacy) and space-separated (CSS Color 4) syntax.
     if "," in main:
         parts = [p.strip() for p in main.split(",")]
+        if any(not p for p in parts):
+            raise ValueError(f"Empty argument in color function: {value!r}")
     else:
-        parts = [p for p in re.split(r"\s+", main) if p]
+        parts = main.split()
+
+    if has_slash:
+        if len(parts) != 3:
+            raise ValueError(f"Invalid {name}() color: {value!r}")
+    elif len(parts) not in (3, 4):
+        raise ValueError(f"Invalid {name}() color: {value!r}")
 
     if name in ("rgb", "rgba"):
-        if len(parts) < 3:
-            raise ValueError(f"Invalid rgb color: {value!r}")
         r = parse_channel(parts[0])
         g = parse_channel(parts[1])
         b = parse_channel(parts[2])
-        if len(parts) >= 4 and "/" not in body:
+        if len(parts) == 4:
             alpha = parse_alpha(parts[3])
         return Color(r, g, b, alpha).clamped()
 
     if name in ("hsl", "hsla"):
-        if len(parts) < 3:
-            raise ValueError(f"Invalid hsl color: {value!r}")
-        hue = float(parts[0].replace("deg", "").strip()) % 360.0
-        sat = parse_channel(parts[1], 1.0)
-        light = parse_channel(parts[2], 1.0)
-        if len(parts) >= 4 and "/" not in body:
+        hue = parse_hue(parts[0])
+        sat = parse_hsl_percent(parts[1])
+        light = parse_hsl_percent(parts[2])
+        if len(parts) == 4:
             alpha = parse_alpha(parts[3])
         r, g, b = colorsys.hls_to_rgb(hue / 360.0, light, sat)
         return Color(r * 255.0, g * 255.0, b * 255.0, alpha).clamped()
@@ -185,12 +224,13 @@ def parse_color(value: str) -> Color:
 def flatten(color: Color, backdrop: Color = WHITE) -> Color:
     """Composite a possibly translucent color over an opaque backdrop."""
     if color.a >= 1.0:
-        return Color(color.r, color.g, color.b, 1.0)
+        return color if color.a == 1.0 else Color(color.r, color.g, color.b, 1.0)
     a = color.a
+    inv = 1.0 - a
     return Color(
-        color.r * a + backdrop.r * (1 - a),
-        color.g * a + backdrop.g * (1 - a),
-        color.b * a + backdrop.b * (1 - a),
+        color.r * a + backdrop.r * inv,
+        color.g * a + backdrop.g * inv,
+        color.b * a + backdrop.b * inv,
         1.0,
     )
 
@@ -209,18 +249,22 @@ def linear_channel(channel: float) -> float:
     return ((c + 0.055) / 1.055) ** 2.4
 
 
+def _opaque_luminance(color: Color) -> float:
+    return (
+        0.2126 * linear_channel(color.r)
+        + 0.7152 * linear_channel(color.g)
+        + 0.0722 * linear_channel(color.b)
+    )
+
+
 def luminance(color: Color) -> float:
-    color = flatten(color)
-    r = linear_channel(color.r)
-    g = linear_channel(color.g)
-    b = linear_channel(color.b)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return _opaque_luminance(flatten(color))
 
 
 def contrast_ratio(fg: Color, bg: Color) -> float:
     fg_eff, bg_eff = composite(fg, bg)
-    l1 = luminance(fg_eff)
-    l2 = luminance(bg_eff)
+    l1 = _opaque_luminance(fg_eff)
+    l2 = _opaque_luminance(bg_eff)
     lighter, darker = (l1, l2) if l1 >= l2 else (l2, l1)
     return (lighter + 0.05) / (darker + 0.05)
 
@@ -238,15 +282,16 @@ def thresholds(size: str) -> tuple[float, float, str]:
 
 
 def check_pair(fg: Color, bg: Color, label: str, size: str = "normal") -> Result:
-    aa_threshold, aaa_threshold, _ = thresholds(size)
+    aa_threshold, aaa_threshold, size_label = thresholds(size)
     ratio = contrast_ratio(fg, bg)
     aa = ratio + 1e-9 >= aa_threshold
     aaa = (ratio + 1e-9 >= aaa_threshold) if not math.isnan(aaa_threshold) else False
-    return Result(label, fg, bg, ratio, size, aa, aaa, aa_threshold)
+    return Result(label, fg, bg, ratio, size, aa, aaa, aa_threshold, aaa_threshold, size_label)
 
 
 def format_result(result: Result) -> str:
-    _, aaa_threshold, size_label = thresholds(result.size)
+    aaa_threshold = result.aaa_threshold
+    size_label = result.size_label or thresholds(result.size)[2]
     lines = [
         f"{result.label}",
         f"  fg {result.fg.hex()}  bg {result.bg.hex()}  size: {size_label}",
@@ -348,7 +393,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
     if args.self_test:
         return self_test()
@@ -358,7 +404,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             results = run_pairs(load_pairs(args.pairs))
         else:
             if not args.fg or not args.bg:
-                build_parser().error("Provide fg and bg, or use --pairs")
+                parser.error("Provide fg and bg, or use --pairs")
             label = args.label or f"{args.fg} on {args.bg}"
             results = [check_pair(parse_color(args.fg), parse_color(args.bg), label, args.size)]
     except (ValueError, TypeError, OSError, json.JSONDecodeError) as error:
@@ -374,25 +420,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "size": result.size,
                 "ratio": round(result.ratio, 2),
                 "aa": result.aa,
-                "aaa": result.aaa if not math.isnan(thresholds(result.size)[1]) else None,
+                "aaa": None if math.isnan(result.aaa_threshold) else result.aaa,
                 "aa_threshold": result.threshold,
             }
             for result in results
         ]
-        print(json.dumps(payload, indent=2, ensure_ascii=False))
-    elif args.quiet:
-        failures = [result for result in results if not result.aa]
-        for index, result in enumerate(failures):
-            if index:
-                print()
-            print(format_result(result))
-        passed = len(results) - len(failures)
-        print(f"Checked {len(results)} pair(s): {passed} pass, {len(failures)} fail (AA)")
+        print(json.dumps(payload, indent=2))
     else:
-        for index, result in enumerate(results):
-            if index:
-                print()
+        for result in results:
+            if args.quiet and result.aa:
+                continue
             print(format_result(result))
+        if args.quiet or len(results) > 1:
+            passed = sum(1 for r in results if r.aa)
+            failed = len(results) - passed
+            print(f"\nSummary: {passed} pass, {failed} fail (AA)")
 
     if args.check and any(not result.aa for result in results):
         return 1

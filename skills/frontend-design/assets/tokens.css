@@ -18,6 +18,8 @@
  * Validate text/background pairs with scripts/contrast.py before shipping.
  */
 
+/* Starter layer order; full apps typically use:
+ * @layer reset, tokens, base, components, utilities; (see references/implementation.md). */
 @layer tokens, base;
 
 @layer tokens {
@@ -374,6 +376,7 @@
     color: var(--color-text);
   }
 
+  /* Blanket safety net; components should also define targeted reduced-motion rules (see references/motion.md). */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -398,7 +401,7 @@
     padding: 0 !important;
     margin: -1px !important;
     overflow: hidden !important;
-    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
     white-space: nowrap !important;
     border: 0 !important;
   }
