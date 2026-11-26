@@ -34,10 +34,14 @@ SEMVER_TAG_RE = re.compile(
     r"(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?"
     r"(?:\+(?P<build>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
 )
-SECTION_RE = re.compile(r"^##[ \t]+\[(?P<version>[^\]]+)\](?:[ \t]+-[ \t]+.*)?[ \t]*$")
+SECTION_RE = re.compile(
+    r"^##[ \t]+\[(?P<version>[^\]]+)\](?:\([^)\n]+\))?(?:[ \t]+-[ \t]+.*)?[ \t]*$"
+)
 H2_RE = re.compile(r"^##(?:[ \t]|$)")
-REFERENCE_RE = re.compile(r"^\[[^\]]+\]:[ \t]*\S")
-FENCE_RE = re.compile(r"^[ \t]*(?P<fence>```|~~~)")
+# Match Markdown link reference definitions, excluding footnotes such as [^1]:.
+REFERENCE_RE = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:[ \t]*\S")
+OPEN_BACKTICK_FENCE_RE = re.compile(r"^ {0,3}(`{3,})[^`]*$")
+OPEN_TILDE_FENCE_RE = re.compile(r"^ {0,3}(~{3,}).*$")
 
 
 class ReleaseTag(NamedTuple):
@@ -66,26 +70,30 @@ def parse_tag(tag: str) -> ReleaseTag:
 
 
 def _section_bounds(lines: Sequence[str], version: str) -> tuple[int, int]:
-    """Return the start and end line indexes of the matching changelog section."""
+    """Return the start and end line indexes of the matching changelog section in one pass."""
     start: int | None = None
+    end: int | None = None
     start_heading = ""
-    in_fence = False
-    fence = ""
+    fence_char = ""
+    close_re: re.Pattern[str] | None = None
 
     for index, line in enumerate(lines):
-        fence_match = FENCE_RE.match(line)
+        if fence_char:
+            assert close_re is not None
+            if close_re.match(line):
+                fence_char = ""
+                close_re = None
+            continue
+
+        fence_match = OPEN_BACKTICK_FENCE_RE.match(line) or OPEN_TILDE_FENCE_RE.match(line)
         if fence_match:
-            marker = fence_match.group("fence")
-            if not in_fence:
-                in_fence = True
-                fence = marker
-            elif marker == fence:
-                in_fence = False
+            fence = fence_match.group(1)
+            fence_char = fence[0]
+            close_re = re.compile(rf"^ {{0,3}}{re.escape(fence_char)}{{{len(fence)},}}[ \t]*$")
             continue
-        if in_fence:
-            continue
-        match = SECTION_RE.match(line)
-        if match and match.group("version") == version:
+
+        section_match = SECTION_RE.match(line)
+        if section_match and section_match.group("version") == version:
             if start is not None:
                 raise ValueError(
                     f"CHANGELOG.md has duplicate sections for {version!r}: "
@@ -93,31 +101,15 @@ def _section_bounds(lines: Sequence[str], version: str) -> tuple[int, int]:
                 )
             start = index + 1
             start_heading = line.strip()
+            continue
+
+        if start is not None and end is None and (H2_RE.match(line) or REFERENCE_RE.match(line)):
+            end = index
 
     if start is None:
         raise ValueError(f"CHANGELOG.md is missing a '## [{version}]' section")
 
-    end = len(lines)
-    in_fence = False
-    fence = ""
-    for index in range(start, len(lines)):
-        line = lines[index]
-        fence_match = FENCE_RE.match(line)
-        if fence_match:
-            marker = fence_match.group("fence")
-            if not in_fence:
-                in_fence = True
-                fence = marker
-            elif marker == fence:
-                in_fence = False
-            continue
-        if in_fence:
-            continue
-        if H2_RE.match(line) or REFERENCE_RE.match(line):
-            end = index
-            break
-
-    return start, end
+    return start, len(lines) if end is None else end
 
 
 def extract_section(changelog: Path, version: str) -> str:
@@ -170,7 +162,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--notes-file",
-        "--output",
         dest="notes_file",
         type=Path,
         help="write release notes to this file instead of standard output",

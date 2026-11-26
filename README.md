@@ -61,7 +61,7 @@ No hooks, plugin bootstrap, or session injection are required. Trigger quality c
 
 ### OpenCode
 
-The installer copies skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default. Copy mode snapshots content and never writes into this checkout. Use `--link` only when you want a live link to the clone. It requires Bash and GNU `realpath -m`; on systems without that command, use the minimal manual copy below.
+The installer copies skills into `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` by default. Copy mode snapshots content and never writes into this checkout. Use `--link` only when you want a live link to the clone. It requires Bash and GNU coreutils/findutils/tar (`realpath -m`, `sort -z`, `mv -T`, `find -printf`, GNU `tar`); on systems without those tools, use the minimal manual copy below.
 
 Release `v1.2.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release
 gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do
@@ -119,7 +119,7 @@ cd skills-hub
 
 | Flag | Behavior |
 |---|---|
-| `--copy` | Copy the skill tree (default). Excludes generated artifacts including `__pycache__`, `*.pyc`, `.ruff_cache`, `.pytest_cache`, `.mypy_cache`, `.venv`, `.git`, `.playwright-cli`, and `node_modules`. |
+| `--copy` | Copy the skill tree (default). Excludes generated artifacts and secret-like files (`__pycache__`, `*.py[cod]`, `.ruff_cache`, `.pytest_cache`, `.mypy_cache`, `.venv`, `venv`, `.git`, `.playwright-cli`, `node_modules`, `.DS_Store`, `.env`, `.env.*` except `.env.example`, `*.key`, `*.pem`, `*.p12`, `secrets`, `credentials*`, `id_*` SSH keys, `.opencode`, `.claude`, `.agents`). |
 | `--link` | Symlink the skill directory. Explicit opt-in; links follow the clone and break if it moves or is deleted. |
 | `--all` | Install every discovered skill. Invalid kebab-case IDs are rejected. |
 | `--force` | Move an existing installation to `<target>/.skills-hub-backups/` and atomically replace it. |
@@ -131,8 +131,9 @@ cd skills-hub
 
 The installer canonicalizes target and source paths and refuses `/`, `$HOME`,
 the repository root or a path inside it, the source skill or its
-ancestors/descendants, symlinked source/target roots, and paths with control
-characters. It installs through a staging directory inside the target and keeps
+ancestors/descendants, symlinked source/target roots, symlinks inside skill
+trees, and paths with control characters. It runs a pre-flight check before
+writing, installs through a staging directory inside the target, and keeps
 replaced skills under `.skills-hub-backups`.
 
 To update a copy install, re-run with `--force`; the previous version is kept in
@@ -143,8 +144,7 @@ remove the installed skill:
 rm -rf -- "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/frontend-design"
 ```
 
-Start a new OpenCode session or run `/reload` after installing. A minimal
-manual copy (without the installer's safety checks or artifact exclusions) is:
+OpenCode reloads skills automatically after install; run `opencode reload` (or `/reload` / Command Palette → Reload configuration) to force a refresh without restarting. A minimal manual copy (without the installer's safety checks or artifact exclusions) is:
 
 ```bash
 mkdir -p -- ~/.config/opencode/skills
@@ -155,7 +155,7 @@ OpenCode discovers directory skills with a `SKILL.md` and advertises them by the
 
 ### Other harnesses
 
-The skill is written in plain Markdown with relative references, so the content is portable. Harness-specific installers will be added when their target paths and frontmatter requirements are verified. Do not assume a Claude Code or Codex path until the installer exists.
+The skills are written in plain Markdown with relative references, so the content is portable. Harness-specific installers will be added when their target paths and frontmatter requirements are verified. Do not assume a Claude Code or Codex path until the installer exists.
 
 ## Repository layout
 
@@ -172,6 +172,7 @@ skills-hub/
 ├── THIRD_PARTY_NOTICES.md
 ├── Makefile                     # local validation entry points
 ├── package.json                 # pinned Markdown/CSS tools
+├── package-lock.json            # locked npm dependency tree
 ├── pyproject.toml               # Ruff configuration
 ├── requirements-dev.in          # direct Python development inputs
 ├── requirements-dev.txt         # hash-locked Python development tools
@@ -181,6 +182,7 @@ skills-hub/
 │   ├── plans/                   # project-local task plans and ledgers
 │   ├── opencode-orchestration.md # native routing architecture and limits
 │   ├── release-process.md       # release gate and owner setup
+│   ├── release-signing/         # public SSH allowed-signers and rotation
 │   └── repository-settings.md   # settings evidence and owner actions
 ├── install/
 │   └── opencode.sh              # global OpenCode installer
@@ -197,9 +199,9 @@ skills-hub/
     └── ...                      # nine workflow skills
 ```
 
-## Using the skill
+## Using the skills
 
-Once installed, mention it in a prompt or let OpenCode load it when relevant:
+Once installed, mention a skill in a prompt or let OpenCode load it when relevant:
 
 ```text
 Use @frontend-design to redesign the pricing page. The product is a
@@ -228,7 +230,7 @@ It supports hex, `rgb()`, `hsl()`, alpha compositing, text/large-text/UI thresho
 
 1. **Progressive disclosure.** `SKILL.md` is the entry point; references are loaded only when the task needs them.
 2. **Deterministic where possible.** Scripts handle measurable checks; the model handles judgment.
-3. **Evidence over claims.** The skill requires verification and reports gaps.
+3. **Evidence over claims.** Skills require verification and report gaps.
 4. **Portable content.** Plain Markdown, relative paths, no harness-specific APIs in the body.
 5. **No vendor lock-in.** Skills do not install packages, modify the OS, or authorize unrelated changes.
 6. **Attribution.** Sources and licenses are recorded; adapted text is not copied wholesale.
@@ -250,7 +252,7 @@ Or run individual checks:
 
 ```bash
 make validate   # frontmatter, links, anchors, tokens, fixture, installer syntax
-make lint       # ruff + markdownlint (pinned npm tools)
+make lint       # ruff + markdownlint (pinned Python/npm tools)
 make test       # pytest suite, including contrast CLI and negative fixtures
 make shellcheck # ShellCheck on the installer
 make workflows  # pinned-action and permissions policy
@@ -275,7 +277,8 @@ This is a public repository. `main` is protected by a repository ruleset:
   alerts;
 - CODEOWNERS is advisory under the current solo-maintainer ruleset.
 
-Tags matching `v*` block deletion and force updates. The release workflow is dispatched from `main` with an annotated signed tag;
+Tags matching `v*` restrict creation (owner bypass), block deletion and force
+updates, and require signed tags. The release workflow is dispatched from `main` with an annotated signed tag;
 it verifies the signature against owner-configured trust material, requires the
 tagged commit to be an ancestor of `origin/main`, requires successful
 `validate` and `Analyze (python)` check-runs for that commit, and requires the
@@ -297,7 +300,8 @@ Security features enabled:
   SARIF is uploaded to code scanning. Ruleset changes are covered by the
   weekly run because Actions has no `repository_ruleset` trigger;
 - GitHub Actions with a read-only default token, job-scoped write permissions,
-  pinned action commits, a GitHub-owned/verified action allowlist, and approval
+  pinned action commits, a GitHub-owned/verified action allowlist (with an
+  explicit exception for `ossf/scorecard-action@*`), and approval
   required for all external fork contributors;
 - explicit settings evidence and owner-only release controls in
   [docs/repository-settings.md](docs/repository-settings.md).
@@ -309,7 +313,7 @@ live in [AGENTS.md](AGENTS.md); audit and remediation tasks live in
 
 ## Adding a skill
 
-1. Create `skills/<skill-id>/SKILL.md` with YAML frontmatter (`name`, `description`, `license`, optional `compatibility`).
+1. Create `skills/<skill-id>/SKILL.md` with YAML frontmatter (`name`, `description`, `license`, optional `compatibility`, `metadata`, `disable-model-invocation`).
 2. Keep the description trigger-rich and scoped: what it does and when to use it.
 3. Put detailed material in `references/`, templates in `assets/`, deterministic helpers in `scripts/`.
 4. Use relative paths from the skill directory.
@@ -333,4 +337,4 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT for this repository. See [LICENSE](LICENSE). Third-party sources are recorded in the canonical [`sources.md`](skills/frontend-design/references/sources.md); [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) points to that registry. Two community sources are explicitly marked for upstream verification.
+MIT for this repository. See [LICENSE](LICENSE). Third-party sources for `frontend-design` are recorded in [`sources.md`](skills/frontend-design/references/sources.md); [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) points to that registry and serves as the canonical attribution registry for the agent workflow skills. Sources without verified upstream license files remain ideas-only.

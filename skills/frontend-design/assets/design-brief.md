@@ -1,50 +1,20 @@
 # Design brief and plan
 
-The canonical brief, design-plan, and design-read template. Fill it before writing UI code; keep it short enough to use and specific enough to guide decisions. Delete sections that do not apply.
+Canonical brief, design-plan, and design-read template. Fill before coding; delete sections that do not apply.
 
 ## 1. Brief
 
-| Field | Answer |
-|---|---|
-| Subject |  |
-| Audience |  |
-| Primary job |  |
-| Content |  |
-| Constraints |  |
-| Success |  |
-
-### Assumptions
-
-List anything you inferred because the user did not specify it:
-
--
--
-
-### Non-goals
-
-What this work deliberately does not change:
-
--
--
+- **Subject / Audience / Primary job:**
+- **Content / Constraints / Success:**
+- **Assumptions (inferred):**
+- **Non-goals:**
 
 ## 2. Direction
 
-### Options considered
+Options considered (`A / B / C` — name, thesis, fit, distinctiveness, risk):
 
-| Name | Thesis | Fit | Distinctiveness | Risk |
-|---|---|---|---|---|
-| A |  |  |  |  |
-| B |  |  |  |  |
-| C |  |  |  |  |
-
-### Chosen direction
-
-- **Name:**
+- **Chosen direction:** name, spine, why it fits, why it might fail, what would make it generic.
 - **Thesis:** For [audience] who need [job], this should feel like [metaphor], expressed through [three devices].
-- **Spine:**
-- **Why it fits:**
-- **Why it might fail:**
-- **What would make it generic:**
 
 ### Design read
 
@@ -60,92 +30,16 @@ Main risk and how I will test it:
 
 ## 3. System
 
-### Color
+- **Color tokens** (value, role, contrast pair): `--color-canvas`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-border` (decorative), `--color-border-strong` (3:1 UI boundaries), `--color-accent`, `--color-accent-ink`, `--color-focus`; dark mode notes.
+- **Typography:** Display, H1, H2/H3, Body, Label, Mono (family, size, weight, line-height, tracking); measure `___ch`; font loading `___`.
+- **Space & layout:** base unit, scale, container, gutter, section spacing, breakpoints, density.
+- **Radius, borders, shadows, z-index, motion:** tokens + one orchestrated motion moment.
 
-| Token | Value | Role | Contrast checked against |
-|---|---|---|---|
-| `--color-canvas` |  |  |  |
-| `--color-surface` |  |  |  |
-| `--color-text` |  |  |  |
-| `--color-text-muted` |  |  |  |
-| `--color-border` |  |  |  |
-| `--color-accent` |  |  |  |
-| `--color-accent-ink` |  |  |  |
-| `--color-focus` |  |  |  |
+## 4. Wireframe & states
 
-Dark mode notes:
+Sketch the primary layout spine, then specify **States** (loading, empty, error, success, disabled, focus — appearance + announcement) and **Responsive changes** across `320 / 390 / 768 / 1024 / 1440 px`.
 
--
+## 5. Risks & verification
 
-### Typography
-
-| Role | Family | Size | Weight | Line height | Tracking |
-|---|---|---|---|---|---|
-| Display |  |  |  |  |  |
-| H1 |  |  |  |  |  |
-| H2 |  |  |  |  |  |
-| Body |  |  |  |  |  |
-| Label |  |  |  |  |  |
-| Mono |  |  |  |  |  |
-
-Measure: `___ch`. Font loading: `___`.
-
-### Space and layout
-
-- Base unit:
-- Spacing scale:
-- Container:
-- Gutter:
-- Section spacing:
-- Breakpoints:
-- Density:
-
-### Radius, border, elevation, motion
-
-- Radius:
-- Borders:
-- Shadows:
-- Z-index layers:
-- Motion durations/easings:
-- One orchestrated motion moment:
-
-## 4. Wireframe
-
-```text
-+--------------------------------------------------+
-|                                                  |
-|                                                  |
-|                                                  |
-+--------------------------------------------------+
-```
-
-## 5. States
-
-| State | What it looks like | How it is announced |
-|---|---|---|
-| Loading |  |  |
-| Empty |  |  |
-| Error |  |  |
-| Success |  |  |
-| Disabled |  |  |
-| Focus |  |  |
-
-## 6. Responsive plan
-
-| Width | Layout change |
-|---|---|
-| 320 px |  |
-| 390 px |  |
-| 768 px |  |
-| 1024 px |  |
-| 1440 px |  |
-
-## 7. Risks and unknowns
-
-- What could make the direction fail?
-- What is assumed rather than evidenced?
-- What remains unverified?
-
-## 8. Verification and critique
-
-Plan and run the gates in `../references/quality-gates.md`; record results in `audit-report.md`. Use the critique prompts in `../references/design-direction.md#critique-prompts`. Do not duplicate those checklists here.
+- Risks, unverified assumptions, and unknowns.
+- Run gates in `references/quality-gates.md`, record evidence in `assets/audit-report.md`, and run critique prompts from `references/design-direction.md`.

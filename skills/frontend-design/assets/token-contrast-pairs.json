@@ -587,6 +587,7 @@
       "dark: text / surface"
     ],
     "--color-surface-raised": [
+      "light: text / surface-raised",
       "dark: text / surface-raised"
     ],
     "--color-surface-sunken": [
@@ -686,6 +687,13 @@
     ]
   },
   "combinations": [
+    {
+      "label": "light: text / surface-raised",
+      "theme": "light",
+      "fg": "--color-text",
+      "bg": "--color-surface-raised",
+      "size": "normal"
+    },
     {
       "label": "light: text-subtle / success-surface",
       "theme": "light",

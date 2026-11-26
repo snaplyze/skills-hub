@@ -1,6 +1,6 @@
 # Visual Craft
 
-Use with `design-direction.md` for visual craft. `../assets/tokens.css` is the canonical starter sheet: use its `var(--...)` roles rather than copied values. `design-system.md` covers tokens, components, themes, and handoff.
+Use with `references/design-direction.md` for visual craft. `assets/tokens.css` is the canonical starter sheet: use its `var(--...)` roles rather than copied values. `references/design-system.md` covers tokens, components, themes, and handoff.
 
 ## Typography
 
@@ -8,7 +8,7 @@ Define roles before sizes: **display** (one expressive moment), **H1**, **H2/H3*
 
 Use one family with multiple weights and widths, or two clearly distinct families. Choose a superfamily for product UI, display plus text for marketing, serif plus sans for long-form, or condensed plus humanist for data-dense work. Choose a licensed family that fits the subject; do not default to Inter. Prefer OFL/Apache, self-host, subset, use `font-display: swap` or `optional`, and preload at most one critical face.
 
-Choose a scale ratio from density: 1.125 compact for dense UI; 1.2 balanced for most apps; 1.25 editorial; 1.333 dramatic for landing pages. Use `rem` and the fluid `--text-*` roles in `../assets/tokens.css`; do not add `--step-*` aliases. Test at 320, 768, and 1440 px: a display size that works at 1440 px may wrap to five lines at 320 px.
+Choose a scale ratio from density: 1.125 compact for dense UI; 1.2 balanced for most apps; 1.25 editorial; 1.333 dramatic for landing pages. Use `rem` and the fluid `--text-*` roles in `assets/tokens.css`; do not add `--step-*` aliases. Test at 320, 768, and 1440 px: a display size that works at 1440 px may wrap to five lines at 320 px.
 
 Set text deliberately: body line-height 1.5–1.7 (serif can take more), display 1.05–1.2, measure 45–75 characters (about 65 ch; mobile 35–60). Left-align body for LTR, center only short blocks, justify only with hyphenation and support. Use negative tracking for large display, zero for body, positive only for short all-caps labels. Use `text-wrap: balance` for headings and `pretty` for body, and `font-variant-numeric: tabular-nums` for aligned numbers. Avoid all-caps body, fake small caps, gradient or outlined text, and tight tracking on lowercase prose. Do not accent one headline word with italic, bold, or color by default.
 

@@ -26,12 +26,14 @@ The ledger is the recovery map, not a progress essay. Keep one row or block per 
 ```text
 Plan: docs/plans/2026-11-16-feature.md
 Task: T2 — add validation
+Owner / Session: main | <subagent sessionID>
 BASE: <commit before the task>
 Status: in_progress | done | blocked
 Files: <owned paths>
 Commands: <command> -> <expected> -> <actual>
 Evidence: <test/build output summary>
 Ruling: <decision + why + cost if wrong>
+Deferred: <minor/P2 items forwarded to final review>
 Next: T3
 ```
 
@@ -46,13 +48,13 @@ use the separate `progress.md` file. Never hide it in a tool-owned directory.
 4. **Write the failing test first.** Run it and capture the failure. Use `test-driven-development` for the red-green-refactor loop.
 5. **Make the smallest coherent change.** Do not add unrelated cleanup or speculative abstractions.
 6. **Run the narrow check, then the affected checks.** Add the full project check before declaring the task complete.
-7. **Review the diff.** Remove dead code, debug output, generated artifacts, and secrets. Check scope.
+7. **Review the diff.** Remove dead code, debug output, generated artifacts, and secrets. When scanning diffs for secrets, report file paths or `file:line` only (for example `--name-only`) and never echo matched secret values into terminal output or transcripts. Check scope.
 8. **Commit the task and append the ledger line in the same turn.** Commit only the task's files; keep the message focused.
 9. **Update the ledger.** Record status, commands, evidence, and the next task. Continue without asking permission between planned tasks.
 
 ## Task briefs
 
-A subagent gets one task brief, not the whole plan. The brief contains the goal, exact files/interfaces, acceptance, constraints, expected output, verification command, stop condition, and any ruling from an earlier task that changes this one. Put it in the dispatch prompt or a temporary file; it is not repository state. The main session owns the plan, cross-task interfaces, Git, publication, and final acceptance.
+A subagent gets one self-contained task brief, not the whole plan: role, goal, plan task, relevant files/interfaces, explicit write ownership bounded to the repository/worktree root (or `read-only`), acceptance, constraints, expected output, verification command, stop condition, and any prior `Ruling:` that affects this task. Put it in the dispatch prompt or a temporary file; it is not repository state. The main session owns the plan, cross-task interfaces, user interaction, Git, publication, and final acceptance.
 
 ## Rulings and recovery
 
@@ -69,17 +71,23 @@ After every two broad reads or searches, write the useful findings to the ledger
 
 ## Isolation
 
-Check whether the workspace is already isolated before creating anything. Use the current checkout by default; create a worktree or equivalent only when the task needs a clean branch alongside other work and the project/user permits it. Prefer the harness's native isolation; if using `git worktree`, verify the branch/base, do not copy ignored directories such as `node_modules` or caches, and check the ignore rules before adding files. Install/setup as the project requires and run the baseline checks there. Remove only your own clean worktree at the end; do not delete another agent's workspace or uncommitted work.
+Check whether the workspace is already isolated before creating anything. Use the current checkout by default; create a worktree or equivalent only when the task needs a clean branch alongside other work and the project/user permits it. Prefer the harness's native isolation: when using native worktree tools, create the worktree, move the session in its own step before running destination-dependent commands (session moves take effect at the next safe boundary), and remove clean worktrees with the matching native remove operation without forcing removal unless confirmed. If using `git worktree`, verify the branch/base, do not copy ignored directories such as `node_modules` or caches, and check the ignore rules before adding files. Install/setup as the project requires and run the baseline checks there. Remove only your own clean worktree at the end; do not delete another agent's workspace or uncommitted work.
 
 ## Review gate
 
-After each task, if a fresh reviewer or subagent is available, dispatch `code-review` with the task spec, BASE..HEAD diff, tests, and open questions. A P0/P1 finding blocks the next task; fix it, rerun the affected checks, and re-review the delta. If independent review is unavailable, perform the same checklist yourself, record that it is a self-review, and do not claim independent approval. Do not accumulate unreviewed tasks until the end.
+After each task, if a fresh reviewer or subagent is available, dispatch `code-review` (using `general` or a dedicated read-only reviewer agent, fresh child without reusing an implementer session) with the task spec, BASE..HEAD diff, tests, and open questions. If independent review is unavailable, perform the same checklist yourself, record that it is a self-review, and do not claim independent approval. Do not accumulate unreviewed tasks until the end.
 
-Before delivery, send the whole BASE..HEAD diff, plan acceptance map, and final evidence to a fresh reviewer for a whole-branch review. The final reviewer checks cross-task interfaces, missing acceptance, and scope that per-task reviews could not see.
+Keep the review-fix loop bounded:
+
+1. **Triage:** P0/P1 findings block the next task. Keep P2/minor findings out of the per-task fix loop; log them under `Deferred:` in the ledger and pass that list to the final whole-branch review.
+2. **Fix rounds (max 3–5):** resume the original implementer first; if stalled after 2–3 rounds, dispatch a fresh implementer with the diff and evidence. At the cap, adjudicate explicitly in the ledger (`parked` or a load-bearing `Ruling:`) rather than looping or dropping silently.
+3. **Scoped re-review:** send the fix delta (`FIX_BASE..HEAD`) for re-review (reusing the reviewer session or starting fresh): verdict each prior finding `ADDRESSED` or `NOT ADDRESSED`, and flag only new breakage introduced by the fix.
+
+Before delivery, send the whole BASE..HEAD diff, plan acceptance map, deferred minor list, and final evidence to a fresh reviewer (new session) for a whole-branch review. Dispatch **one** batched fix pass for final-review findings (never one fixer per finding), followed by one scoped re-review.
 
 ## Subagents and parallelism
 
-Give each subagent a self-contained brief: goal, context and paths, write ownership, constraints, expected result, verification, and stop condition. Subagents do not own the goal, Git/publication, or the ledger. Do not let two agents write the same file. When results return, inspect the diff and rerun the relevant checks rather than trusting the report.
+Use the Task briefs schema above for every subagent dispatch. Subagents run asynchronously in the background and return immediately: continue only disjoint safe work or end the turn and wait for completion notifications — never sleep, poll, or touch a running child's files. Subagents cannot prompt the user directly; instruct them to stop and return blockers to the main session. Reuse a child's `sessionID` for follow-ups on the same brief or delta; start a fresh child (no `sessionID`) when independent context is needed. Subagents do not own the goal, Git/publication, or the ledger. Do not let two agents write the same file. When results return, inspect the diff and rerun the relevant checks rather than trusting the report.
 
 Use parallelism only for independent work: separate files, separate investigations, separate test failures. Do not parallelize a design decision, a shared refactor, or a sequence with a hidden dependency.
 
@@ -102,6 +110,7 @@ A blocker does not stop unrelated safe work. Record it and continue independent 
 - Run the full required checks fresh.
 - Review the complete diff against the base.
 - Confirm every acceptance check and every planned task is accounted for.
+- Include an exhaustive **Rulings made** rollup copied from the ledger with each ruling's cost if wrong (no ruling should die quietly in the ledger).
 - Report PASS/FAIL/NOT_TESTED with exact commands and outputs.
 - Hand off to `code-review` and then `delivery`; do not merge on your own authority.
 

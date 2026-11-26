@@ -31,7 +31,7 @@ Use PASS, FAIL, or NOT_TESTED. A local check does not replace a required CI chec
 1. Re-read the spec and acceptance checks.
 2. Run the full required local suite on the final tree.
 3. Review the complete diff against the base, not only your last edit.
-4. Check for secrets, generated files, debug output, unrelated changes, and broken links.
+4. Check for secrets, generated files, debug output, unrelated changes, and broken links. When scanning diffs for secrets, report file paths or `file:line` only (`--name-only`) — never echo matched secret values into terminal output or transcripts.
 5. Confirm every issue/acceptance item is represented in the change.
 6. Update documentation, changelog, and plan/tracker status as required.
 
@@ -47,7 +47,7 @@ Before merging, confirm the base branch and present the integration choice:
 2. Push the branch and open a PR; keep the branch for review.
 3. Keep the branch/worktree as-is.
 
-Discard is allowed only after an explicit request and confirmation. Do not choose a destructive discard or force-push on your own. If the change came from a worktree, verify the base and test the merged result, then remove only the clean worktree.
+Discard is allowed only after an explicit request and confirmation. Do not choose a destructive discard or force-push on your own. When working on a detached `HEAD`, offer only pushing to a new branch (`git push origin HEAD:refs/heads/<branch>`) + PR or keeping as-is. If the change came from a worktree, capture the worktree path, verify the base and test the merged result, `cd` to the main repository root before removing the worktree (using the harness's native remove operation when created natively), and never `--force` remove a dirty worktree without explicit confirmation.
 
 ## Merge gate
 

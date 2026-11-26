@@ -11,7 +11,7 @@ compatibility: opencode
 
 Orchestration is a decision layer, not a runtime. The main session owns the conversation, plan, Git, and final judgment. It uses OpenCode's native `subagent` tool when a bounded specialist saves context or exposes independent work; otherwise it works directly.
 
-Do not add a plugin, hook, background job service, marketplace, TUI, or model profile to use this skill. `explore` is the read-only mapper; `general` is the writer/reviewer/tester when the brief says so.
+Do not add a plugin, hook, background job service, marketplace, TUI, or model profile to use this skill. Built-in `explore` denies edits, `skill`, and `question` by default while still permitting `shell` — keep its briefs self-contained inline and explicitly forbid mutating shell commands. Built-in `general` handles implementation, testing, or read-only review when the brief says so, and denies `question` and `subagent` by default.
 
 When a plan is already approved and the user asked to execute it, hand off to `autonomous-execution`; do not re-plan or orchestrate the same work.
 
@@ -38,26 +38,31 @@ Every delegated task is self-contained:
 Role: observer | implementer | tester | reviewer
 Goal: one observable outcome
 Plan task: <plan path#task or "read-only investigation">
-Context: relevant paths, current behavior, and the spec/acceptance
-Ownership: files or subsystem you may write; "read-only" if none
-Constraints: no subagents, no Git/publication, no secrets, project checks
-Expected output: files changed and evidence, or findings with file:line
+Context: relevant paths, current behavior, interfaces, prior rulings, and acceptance
+Ownership: files or subsystem within the repository/worktree root you may write; "read-only" if none
+Constraints: no subagents, no mutating shell if read-only, no Git/publication, no secrets, project checks
+Expected output: files changed and evidence, or findings with file:line (partial done + remaining if work outgrows the brief)
 Verification: command(s) and expected result
-Stop: what forces a question instead of a guess
+Stop: what forces returning a blocker/question to the main session instead of guessing
 ```
 
 A subagent does not inherit the goal, the plan, or the user's permission to change scope. Give it the minimum context it needs, not the whole session.
 
 ## Rules
 
-- **One writer per file.** Parallel writers must have disjoint ownership. Shared files and shared refactors are sequential.
+- **One writer per file.** Parallel writers must have disjoint ownership explicitly bounded to the repository/worktree root (external directories may be allowed by default). Shared files and shared refactors are sequential.
 - **One brief, not the whole plan.** A subagent gets the task block and cross-task decisions it needs; do not paste the entire plan or session history.
-- **Read-only means read-only.** Say it explicitly in the brief and do not ask an `explore` agent to implement.
+- **Async background lifecycle.** Subagents always run in the background and return a `sessionID` immediately: continue only disjoint safe work or end the turn and wait for completion notifications. Never sleep, poll, or inspect a running writer's files.
+- **Continuation vs fresh context.** Reuse a child's `sessionID` for follow-ups on the same brief or delta; omit `sessionID` (fresh child) when independent context is required (such as initial or whole-branch review).
+- **Read-only means read-only.** Say it explicitly in the brief, forbid mutating shell commands, and keep `explore` briefs self-contained inline (do not assume `explore` can load skills).
+- **No direct user prompts from subagents.** Children return stop-condition blockers and questions to the main session; only the main session asks the user.
+- **Bound by brief, not turn caps.** Size each brief for one delegate, encourage parallel independent reads per turn, and instruct the child to return a clean partial report (done + remaining) if work outgrows the brief.
+- **Direct visual inspection.** Read screenshots and visual artifacts directly when your active model supports vision; delegate only when it does not or when parallel visual audit saves context.
 - **Subagents do not publish.** They do not commit, push, open/merge PRs, create releases, change settings, or edit the user's global config.
 - **No recursive delegation.** A child works the brief; it does not spawn more agents or invent a new plan.
 - **Wait for dependencies.** Do not integrate a result from a running child. Parallelize only independent read-only work or disjoint writers.
 - **Inspect the result.** Read the diff and rerun the affected checks; do not trust a report as evidence.
-- **Keep the ledger.** Record the task, owner, session ID, BASE, status, commands, evidence, rulings, and next action.
+- **Keep the ledger.** For planned work, keep the unified ledger (`docs/plans/<plan-basename>.progress.md` or inline `## Ledger`) with plan, task, owner/session ID, BASE, status, files, commands, evidence, rulings, deferred items, and next action.
 - **Do not use orchestration as a substitute for thinking.** If the next step is unclear, plan or debug first; more agents do not remove ambiguity.
 
 ## Loop
@@ -66,9 +71,9 @@ A subagent does not inherit the goal, the plan, or the user's permission to chan
 2. Draw the dependency graph: what must be known, what can run in parallel, what one writer owns.
 3. Choose direct, one delegate, or a bounded parallel set.
 4. Dispatch with the brief template.
-5. Continue only safe independent work; do not touch a child's files.
+5. Continue only safe independent work or yield the turn for background notifications; never sleep/poll or touch a child's files.
 6. Integrate results, resolve conflicts, run the full checks.
-7. Send the material diff to a fresh reviewer; fix and recheck.
+7. Send the material diff to a fresh reviewer (new child session); fix and recheck.
 8. Deliver from the main session with evidence.
 
 Use `specification` and `implementation-planning` when the request is still ambiguous. Use `systematic-debugging` before delegating a symptom. Use `test-driven-development` for implementation. Use `code-review` and `delivery` for the final gates.

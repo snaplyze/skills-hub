@@ -78,8 +78,9 @@ If you are unsure whether a test is acceptable, ask first.
 - `main` requires pull requests, passing checks, resolved conversations, linear
   history, and blocks force pushes and deletions.
 - GitHub Actions use a read-only default token, job-scoped write permissions,
-  pinned action commits, and a GitHub-owned/verified action allowlist.
-  Dependency Review's `pull-requests: write` is job-scoped.
+  pinned action commits, and a GitHub-owned/verified action allowlist (with an
+  explicit exception for `ossf/scorecard-action@*`). Dependency Review's
+  `pull-requests: write` is job-scoped.
 - Workflows from external forks require maintainer approval; there are no
   self-hosted runners.
 - CODEOWNERS is advisory under the current solo-maintainer ruleset.

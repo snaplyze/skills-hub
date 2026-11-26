@@ -96,14 +96,20 @@ Start with this set and add only what the product needs:
 --color-accent-hover
 --color-accent-active
 --color-accent-ink
+--color-accent-subtle
 --color-focus
+--color-selection
 --color-success
+--color-success-surface
 --color-success-ink
 --color-warning
+--color-warning-surface
 --color-warning-ink
 --color-danger
+--color-danger-surface
 --color-danger-ink
 --color-info
+--color-info-surface
 --color-info-ink
 --color-overlay
 ```
@@ -227,16 +233,16 @@ CSS custom properties cannot be used in media queries. Document the values in a 
 
 ### Layout tokens
 
+Starter sheet tokens (`assets/tokens.css`):
+
 ```css
---layout-max: 90rem;
---layout-gutter: var(--gutter);
---sidebar-width: 16rem;
---sidebar-width-wide: 20rem;
+--container-2xl: 80rem;
+--gutter: clamp(1rem, 2.5vw, 2rem);
+--measure: 65ch;
 --header-height: 4rem;
---reading-measure: 65ch;
 ```
 
-Use `min-height: 100dvh` rather than `100vh` for full-height layouts; `dvh` tracks browser chrome. Test the address bar and on-screen keyboard behavior.
+Add optional layout roles (such as sidebar widths) when the product layout needs them. Use `min-height: 100dvh` rather than `100vh` for full-height layouts; `dvh` tracks browser chrome. Test the address bar and on-screen keyboard behavior.
 
 ### Z-index scale
 
@@ -277,8 +283,7 @@ Not every element needs the same radius. Inputs, buttons, cards, and modals ofte
 ```css
 --border-width: 1px;
 --border-width-strong: 2px;
---border-color: var(--color-border);
---border-color-strong: var(--color-border-strong);
+/* Semantic border colors live in assets/tokens.css: --color-border and --color-border-strong */
 ```
 
 Use borders for structure and grouping; use shadows for elevation, not both at random. In dark mode, borders often do more work than shadows.
@@ -462,7 +467,7 @@ Document:
 
 For design-to-code handoff:
 
-- tokens are the source of truth, not screenshots;
+- tokens are the source of truth, not screenshots (optionally export W3C Design Tokens Community Group / DTCG JSON with `$value`/`$type` alongside CSS custom properties for multi-platform handoff);
 - name components by role, not appearance;
 - provide spacing and type specs as tokens, not absolute pixels;
 - include error, empty, loading, and long-content examples;

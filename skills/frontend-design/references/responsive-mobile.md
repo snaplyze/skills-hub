@@ -9,8 +9,8 @@ Mobile is not a smaller desktop. The constraints are different: one thumb, inter
 - [Touch and thumb zones](#touch-and-thumb-zones)
 - [Safe areas and browser chrome](#safe-areas-and-browser-chrome)
 - [Responsive patterns](#responsive-patterns)
+  - [Navigation on mobile](#navigation-on-mobile)
 - [Mobile forms](#mobile-forms)
-- [Navigation on mobile](#navigation-on-mobile)
 - [Images and media](#images-and-media)
 - [Mobile performance](#mobile-performance)
 - [Testing matrix](#testing-matrix)
@@ -232,12 +232,7 @@ Do not remove header associations or hide essential data. Do not use horizontal 
 
 ### Forms
 
-- One column on mobile; do not use side-by-side fields unless they are naturally paired (e.g., expiry date).
-- Labels above inputs.
-- Inputs at least 16 px to avoid iOS zoom.
-- Use the right `inputmode` and `autocomplete`.
-- Keep the submit action visible or reachable after the last field.
-- Do not use a fixed footer that covers the keyboard.
+Use one column on mobile with labels above inputs, `≥16 px` input font size, appropriate `inputmode`/`autocomplete`, and a reachable submit control not covered by a fixed footer (see [Mobile forms](#mobile-forms) below for the full contract).
 
 ### Media
 
@@ -386,7 +381,7 @@ Test on at least one real iOS device and one real Android device if the product 
 
 ## Mobile checklist
 
-- [ ] The primary job works at 320 px.
+- [ ] The primary job works at 320 px with no overlapping or colliding elements at 320/390 px.
 - [ ] No horizontal page scroll.
 - [ ] Body text ≥16 px; inputs ≥16 px.
 - [ ] Touch targets ≥44×44 px.
