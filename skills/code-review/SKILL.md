@@ -1,6 +1,6 @@
 ---
 name: Code Review
-description: Use before merging or after completing a task to request a fresh-context review and to evaluate review feedback rigorously. Covers correctness, edge cases, security, tests, compatibility, performance, and scope, with P0/P1/P2 findings and evidence. Not for performative agreement or for reviewing your own work as an independent approval.
+description: Use before merging or after completing a task to request a fresh-context review and to evaluate review feedback rigorously. Covers correctness, edge cases, security, tests, compatibility, performance, and scope, with P0/P1/P2 findings and evidence. Not for UI/visual design audits (use frontend-design), performative agreement, or reviewing your own work as an independent approval.
 license: MIT
 compatibility: opencode
 ---
@@ -25,13 +25,13 @@ Known risks / not tested:
 Specific questions:
 ```
 
-If the harness has subagents, dispatch a read-only reviewer with this brief and the exact diff range; do not let it edit or take over the branch. If no separate reviewer is available, do a structured self-review using the same checklist and state that it is not independent. After fixes, send the delta (or the new diff) for a re-review before merge.
+If the harness has subagents, dispatch a fresh read-only reviewer (new child session, using `general` or a dedicated reviewer agent) with this brief and the exact diff range; do not let it edit or take over the branch. If no separate reviewer is available, do a structured self-review using the same checklist and state that it is not independent. After fixes, send the fix delta (or the new diff) for a scoped re-review (continuing the same reviewer session or starting a fresh one) before merge.
 
 ## Review order
 
 1. **Tests first.** Read the test diff before the implementation: names, assertions, edge cases, and whether the tests would fail on the old behavior.
 2. **Then the implementation.** Walk the five axes below with the spec and diff in front of you.
-3. **Then the evidence.** Re-run the narrow test and the affected suite; do not trust a pasted result.
+3. **Then the evidence.** Before running probes or tests, verify the tree is clean (`git status --short` empty) and `HEAD` matches the reviewed commit, citing that SHA in the review. Re-run the narrow test and the affected suite; do not trust a pasted result.
 4. **Then scope.** Check for unrelated refactors, generated files, secrets, and behavior changes not in the spec.
 
 ## Five axes
@@ -70,7 +70,7 @@ Use P0/P1/P2 and mark optional feedback separately:
 - **P2 — minor:** polish, clarity, or a small edge case. Fix when reasonable. Mark optional suggestions as `optional:` rather than P2.
 - **Nit:** formatting or preference with no functional impact; never block on it.
 
-Calibrate by impact and likelihood: external security/data loss is P0/P1; missing tests for a critical path is at least P2; style is a nit. Every finding needs `path:line`, evidence, impact, and a concrete fix. Do not pad the list with generic advice. Mark uncertainty as a question, not a finding.
+Calibrate by impact and likelihood: external security/data loss is P0/P1; missing tests for a critical path is at least P2; style is a nit. Verify every candidate finding against callers, guards, and tests before reporting, and drop claims ruled out by the codebase. Separate pre-existing base defects from regressions introduced by the diff. Zero findings is a valid result — never pad the list with generic advice. Every finding needs `path:line`, evidence, impact, and a concrete fix. Mark uncertainty as a question, not a finding.
 
 ## Structural remedies
 
@@ -89,7 +89,7 @@ Separate refactoring from behavior changes. A large mechanical rename or file de
 1. Restate the claim and find the relevant code.
 2. If any item is unclear, stop and ask for the missing context before implementing any of it.
 3. Reproduce the problem or inspect the test that proves it.
-4. Classify: blocking defect, valid improvement, question, YAGNI/scope concern, or incorrect assumption.
+4. Classify: blocking defect, valid improvement, question, YAGNI/scope concern, or incorrect assumption. Grade by real user impact — do not dismiss a real user-facing bug just because a reviewer labeled it Minor where the spec was silent.
 5. Implement valid blocking changes; reply to questions; explain a reasoned rejection. Treat feedback from a human, an external reviewer, and a bot by the same technical standard, not by authority.
 6. Rerun the affected checks, reply in the review thread with evidence, and request a re-review of the delta.
 7. Do not silently dismiss feedback, and do not rewrite unrelated code to satisfy a local comment.

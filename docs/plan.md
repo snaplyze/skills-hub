@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 7 OPEN (#71, #76–#79, #81–#82), 8 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 5 OPEN (#76, #78–#79, #81–#82), 10 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-38` #77, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -33,7 +33,7 @@
 | 06 | `06 — Native orchestration` (#6) | closed | `ORC-01` #38 |
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
-| 09 | `Аудит 2026-11-26` (#9) | open | 7 OPEN (`AUD-32` #71, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82), 8 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-41` #80, `AUD-44` #84) |
+| 09 | `Аудит 2026-11-26` (#9) | open | 5 OPEN (`AUD-37` #76, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82), 10 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-38` #77, `AUD-41` #80, `AUD-44` #84) |
 
 ## Аудит 2026-11-26
 
@@ -79,13 +79,13 @@
 
 #### AUD-32 — Align orchestration, planning, execution, delivery skills and `docs/opencode-orchestration.md` with OpenCode V2
 
-- `OPEN` · Аудит 2026-11-26 · `compatibility/architecture/skill-content` · **P1 (высокий ущерб):** прямые конфликты с правами `plan`/`explore`/`general` и асинхронным `subagent` в OpenCode `v2.4.1` · уверенность: высокая · [#71](https://github.com/snaplyze/skills-hub/issues/71) (веха #9) · исполнитель: не назначен · deps: none.
+- `DONE` · Аудит 2026-11-26 · `compatibility/architecture/skill-content` · **P1 (высокий ущерб):** прямые конфликты с правами `plan`/`explore`/`general` и асинхронным `subagent` в OpenCode `v2.4.1` · уверенность: высокая · [#71](https://github.com/snaplyze/skills-hub/issues/71) (веха #9) · исполнитель: агент · deps: none.
 - **Результат / границы:** переносимые Markdown-обновления 6 навыков (`implementation-planning`, `specification`, `orchestration`, `autonomous-execution`, `code-review`, `delivery`) и `docs/opencode-orchestration.md` под V2 без плагинов/хуков и упоминаний `opencode.json` в `SKILL.md`.
 - **Доказательство:** `opencode.ai/docs/` + `opencode debug agents --standalone` (`v2.4.1`): `plan` запрещает `edit: *` кроме `~/.opencode/plan/*` (бьёт по `implementation-planning/SKILL.md:40` и `specification/SKILL.md:27`); `subagent` всегда фоновый с `sessionID`/`<background-result>` и TUI cancel (`ctrl+d`); `explore` запрещает `skill`/`question`, но разрешает `shell` и `external_directory`; `general` запрещает `question`/`subagent` и разрешает `external_directory`; `session.move` вступает в силу на следующей безопасной границе, `worktree_remove` требует подтверждения для `force`. Upstream-уроки: brief-bounded вместо `maxTurns` + partial handoff (`claude-orchestration` `1c71ec2e0df0`), запрет `question` подагентам + прямой multimodal read (`oh-my-opencode-slim` `#1631`, `a052f07a990c`), CWD-безопасный `git worktree remove` + detached HEAD (`superpowers` `22f0b463e7a5`). Расхождения в `docs/opencode-orchestration.md:15,25,68-70` и `SKILL.md` указанных навыков.
 - **Влияние:** permission deny в `plan`, polling/sleep циклы, сбои `explore`/`question`, запись вне репо, поломка CWD при удалении worktree, неточная документация.
 - **Решение:** read-only fallback для `plan`-режима без обхода через `shell`; асинхронный протокол (yield без sleep/poll, `sessionID` vs свежий child, границы `explore`/`general`/worktree, brief-bounded + partial handoff, прямой multimodal read); обновление worktree-шагов (`session.move` отдельным шагом, `cd` в корень репо до remove, detached HEAD); правка `docs/opencode-orchestration.md`. Трудоёмкость: 2–3 ч; риски: низкие (сохранить контракты `tests/test_skill_suite.py`).
 - **Приёмка:** все `SKILL.md` ≤32 KiB; `tests/test_skill_suite.py` и `make check` PASS; `docs/opencode-orchestration.md` соответствует `opencode v2.4.1`.
-- **Текущая запись:** не начато; проверка не выполнялась; следующий шаг — стартовать в волне 1; неудачных попыток: нет.
+- **Текущая запись:** статус `DONE`; обновлены `specification`, `implementation-planning`, `orchestration`, `autonomous-execution`, `code-review`, `delivery` и `docs/opencode-orchestration.md` под асинхронный `subagent`, права `plan`/`explore`/`general`, нативные worktree/`session.move` и CWD/detached-HEAD; проверка: `make check` PASS; закрывает #71; неудачных попыток: нет.
 
 #### AUD-33 — Harden `scripts/validate.py` path containment, link/GFM parsing, `docs/**` recursion, and generic reading-sets
 
@@ -149,13 +149,13 @@
 
 #### AUD-38 — Upgrade workflow skills from Nov 2026 upstreams and harmonize cross-skill schemas
 
-- `OPEN` · Аудит 2026-11-26 · `skill-content/architecture` · **P1 (высокий ущерб):** утечка секретов при проверке diff, нет ограничителя цикла ревью-фиксов, расхождение схем ledger/brief · уверенность: высокая · [#77](https://github.com/snaplyze/skills-hub/issues/77) (веха #9) · исполнитель: не назначен · deps: `AUD-31`, `AUD-32`.
+- `DONE` · Аудит 2026-11-26 · `skill-content/architecture` · **P1 (высокий ущерб):** утечка секретов при проверке diff, нет ограничителя цикла ревью-фиксов, расхождение схем ledger/brief · уверенность: высокая · [#77](https://github.com/snaplyze/skills-hub/issues/77) (веха #9) · исполнитель: агент · deps: `AUD-31`, `AUD-32`.
 - **Результат / границы:** компактный оригинальный синтез ноябрьских практик (`superpowers` v7.0.2, `addyosmani` 0.6.18, `anthropics/skills`, `alirezarezvani`, OpenCode V2) в 8 workflow-навыков + унификация схем и триггеров без плагинов/хуков/скрытых каталогов.
 - **Доказательство:** `addyosmani` (`924995886b`, `9c7f62d20cf2`, `c55b84224f`, `d463d94fb6`, `f1f6fbf398`, `480bed1391`): clean-checkout + HEAD check (`code-review:34`), secret-safe `--name-only`/`file:line` (`delivery:34`, `autonomous-execution:49`), caller-verification, base vs regression, zero-findings valid, dead-code confirmation, pasted snippets/stack traces, delta specs; `superpowers` v7.0.2 (`22f0b463e7a5`): bounded review-fix loop (3–5 раундов, resume→fresh→breaker), scoped `ADDRESSED`/`NOT ADDRESSED`, deferred minors, 1-wave final fix, `"Rulings made"` rollup (`autonomous-execution`), open-why/proposal-over-question/anti-goals/Builder Check (`specification`), Minor re-grade (`code-review`), backward tracing/defense-in-depth/condition-based waiting (`systematic-debugging`), failure-form table + 5-rep micro-tests (`skill-authoring`); `anthropics` (`e4bb5d960d87`) + `alirezarezvani` (`6278f7302d5e`, `#885`) + V2: Lack of Surprise, old-version baseline, user-vocab triggers, запрет имён встроенных slash-команд (`status`, `review`, `init`, `config`, `help`, `resume`), лимит 10 файлов V2, headless `opencode run --standalone --archived --format json`; внутренний дрейф схем ledger (`autonomous-execution:27-36` vs `orchestration:60`), brief (`orchestration:37-47`, `autonomous-execution:55,82`), `Approval:`/`Risks:` (`implementation-planning:18-26,52`; `specification:22,33-44`) и триггеров (`frontend-design`/`code-review`/`clean-code`, `tdd`/`debugging`).
 - **Влияние:** риск утечки секретов в транскрипты, зацикливание фикс-ревью, потеря rulings, рассогласование бриф/ledger и двойная загрузка навыков.
 - **Решение:** обновить 8 навыков компактно (сохраняя `tests/test_skill_suite.py` и запрет `opencode.json` в `SKILL.md`) и унифицировать схемы и anti-triggers. Трудоёмкость: 3–4 ч; риски: низкие.
 - **Приёмка:** все 10 workflow `SKILL.md` компактны (≤32 KiB), схемы ledger/brief едины, триггеры разведены, `make check` PASS.
-- **Текущая запись:** не начато; проверка не выполнялась; следующий шаг — взять после `AUD-31` и `AUD-32`; неудачных попыток: нет.
+- **Текущая запись:** статус `DONE`; синтезированы все ноябрьские upstream-практики и V2-правила across 10 workflow-навыков, унифицированы схемы ledger/brief/шаблонов и разведены anti-triggers; проверка: все 10 `SKILL.md` ≤10.5 KiB и `make check` PASS; закрывает #77; неудачных попыток: нет.
 
 ### Дальние задачи (P2–P3 — компактно)
 

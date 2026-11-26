@@ -17,15 +17,23 @@ Collect a real prompt or session where the current agent failed. Name the behavi
 
 ## Directory shape
 
-Use `skills/<lowercase-kebab-id>/SKILL.md`, optional `references/` for depth, `assets/` for templates/data, and `scripts/` only for deterministic checks. Keep the entry point short; a reference must be named in routing and loaded only when needed. When a skill adds Markdown files under `references/` or `assets/`, also add `skills/<lowercase-kebab-id>/assets/reading-sets.json` (`{"sets": {"<name>": ["SKILL.md", ...]}}`, each set ≤ 32,768 B) so the repository validator enforces the reading budget.
+Use `skills/<lowercase-kebab-id>/SKILL.md`, optional `references/` for depth, `assets/` for templates/data, and `scripts/` only for deterministic checks. Keep the entry point short; harnesses may sample only a subset of supporting files on load (OpenCode V2 caps at 10), so every required reference, asset, or script must be named explicitly in `SKILL.md` routing. When a skill adds Markdown files under `references/` or `assets/`, also add `skills/<lowercase-kebab-id>/assets/reading-sets.json` (`{"sets": {"<name>": ["SKILL.md", ...]}}`, each set ≤ 32,768 B) so the repository validator enforces the reading budget. Follow the Principle of Lack of Surprise (no hidden side effects or deceptive instructions), and never name a skill after a bare built-in slash command (`status`, `review`, `init`, `config`, `help`, `resume`).
 
 ## Design before prose
 
 1. **Name the behavior change.** What should an agent do differently after loading this skill? If the answer is "know more", the skill is probably documentation.
-2. **Define the trigger and the anti-trigger.** Write the description with the situation, the job, and what it is not for. Test it against realistic prompts.
-3. **Choose the smallest workflow.** One job per skill. Remove rules the model already follows, duplicated global instructions, and advice that does not change a decision.
-4. **Design the failure path.** What does the agent do when the input is ambiguous, a check is unavailable, or the task is outside scope?
-5. **Decide progressive disclosure.** Keep the core workflow inline. Move long tables, examples, templates, or platform-specific details to references or assets and link them.
+2. **Define the trigger and the anti-trigger.** Write the description in user vocabulary ("Use when..."), not internal script filenames, with the situation, the job, and what it is not for. Test it against realistic messy prompts and near-miss negatives.
+3. **Match form to failure.** Explain *why* rather than stacking brittle `MUST`s, avoid vague nuance clauses ("unless it matters"), and pick the instruction form matching the failure mode (see table below).
+4. **Choose the smallest workflow.** One job per skill. Remove rules the model already follows, duplicated global instructions, and advice that does not change a decision.
+5. **Design the failure path.** What does the agent do when the input is ambiguous, a check is unavailable, or the task is outside scope?
+6. **Decide progressive disclosure.** Keep the core workflow inline. Move long tables, examples, templates, or platform-specific details to references or assets and link them.
+
+| Failure class | Instruction form |
+|---|---|
+| Discipline violation | Explicit prohibition + rationalization counter |
+| Output-shape failure | Positive recipe/contract (prohibitions often backfire) |
+| Omitted item | Required template slot |
+| Conditional rule | Observable predicate (no vague nuance clause) |
 
 ## SKILL.md structure
 
@@ -73,9 +81,9 @@ If there is no real behavior change or no credible trigger, do not add the skill
 
 Use TDD for behavior-shaping documentation:
 
-1. **Baseline:** run realistic prompts without the skill; record the failure mode (for example, jumps to code, skips verification, invents requirements).
+1. **Baseline:** run realistic messy prompts without the skill (and against a snapshot of the previous skill version when editing an existing skill); record the failure mode.
 2. **Write:** add the smallest instruction that addresses that failure.
-3. **Retest:** run the same prompts and pressure variants; check that the behavior changes for the intended reason.
+3. **Wording micro-test & retest:** before full scenarios, run 5+ fresh-context reps per variant checking variance across runs; retest the prompts and pressure variants (optionally using headless `opencode run --standalone --archived --format json` and blind A/B comparison for major rewrites) and verify behavior changes for the intended reason.
 4. **Trigger test:** confirm the description fires on relevant prompts and not on nearby false positives.
 5. **Mutation test:** remove or weaken a rule and confirm the test scenario catches the regression.
 6. **Budget test:** keep the loaded set small; link references instead of dumping them.
