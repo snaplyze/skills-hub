@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26; этапы 01–09; веха #9 «Аудит 2026-11-26»: 1 OPEN (`AUD-42` #81), 14 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-43` #82, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26; этапы 01–09; веха #9 «Аудит 2026-11-26»: 0 OPEN, 15 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-42` #81, `AUD-43` #82, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -33,7 +33,7 @@
 | 06 | `06 — Native orchestration` (#6) | closed | `ORC-01` #38 |
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
-| 09 | `Аудит 2026-11-26` (#9) | open | 1 OPEN (`AUD-42` #81), 14 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-43` #82, `AUD-44` #84) |
+| 09 | `Аудит 2026-11-26` (#9) | closed | 0 OPEN, 15 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-42` #81, `AUD-43` #82, `AUD-44` #84) |
 
 ## Аудит 2026-11-26
 
@@ -175,10 +175,10 @@
 
 #### AUD-42 — Cut next signed release (`v1.3.0`) after audit fixes (owner-gated)
 
-- `OPEN` · Аудит 2026-11-26 · `delivery/release` · **P2 (обычное):** на `main` 8+ коммитов (вкл. Skill Suite v2), отсутствующих в `v1.2.0` · уверенность: высокая · [#81](https://github.com/snaplyze/skills-hub/issues/81) (веха #9) · исполнитель: владелец · deps: `AUD-30`, `AUD-31`, `AUD-32`, `AUD-33`, `AUD-34`, `AUD-35`, `AUD-37`, `AUD-38`.
-- **Границы / результат:** подписанный immutable релиз `v1.3.0` (`CHANGELOG.md`, `git tag -s`, `release.yml` с `main`, `SHA256SUMS`, Sigstore bundle, attestation, обновление `README.md`/`docs/repository-settings.md`). **Условие выполнения:** только по отдельному поручению владельца (теги `v*`, `release` env, promotion).
-- **Доказательство:** `git log v1.2.0..5f0a620`: 8 коммитов (+772/-99), PR #62 (`README.md:58` и `CHANGELOG.md:8-19` описывают v2, тогда как `v1.2.0` от 2026-11-15 содержит v1). Трудоёмкость: 1 ч; риски: участие владельца.
-- **Приёмка:** `v1.3.0` — latest immutable release с 11 обновлёнными навыками; `verify-tag`, `sha256sum -c`, `gh attestation verify` PASS. **Текущая запись:** ожидает завершения deps и поручения владельца; неудачных попыток: нет.
+- `DONE` · Аудит 2026-11-26 · `delivery/release` · **P2 (обычное):** на `main` накоплены изменения этапа 09 (вкл. Skill Suite v2 и OpenCode V2), отсутствовавшие в `v1.2.0` · уверенность: высокая · [#81](https://github.com/snaplyze/skills-hub/issues/81) (веха #9) · исполнитель: агент (по поручению владельца) · deps: `AUD-30`, `AUD-31`, `AUD-32`, `AUD-33`, `AUD-34`, `AUD-35`, `AUD-37`, `AUD-38`.
+- **Границы / результат:** подписанный immutable релиз `v1.3.0` (`f633a27`, run `45772598608`, `CHANGELOG.md`, `git tag -s`, `release.yml` с `main`, `SHA256SUMS`, `.sigstore.json` bundle, provenance attestation, публикация Latest, обновление `README.md`/`docs/repository-settings.md`).
+- **Доказательство:** `https://github.com/snaplyze/skills-hub/releases/tag/v1.3.0` (`isDraft: false`, `isImmutable: true`, `Latest`); проверены `git verify-tag -- refs/tags/v1.3.0`, `sha256sum -c SHA256SUMS`, `gh attestation verify` и офлайн `gh attestation verify --bundle skills-hub-v1.3.0.tar.gz.sigstore.json` — все PASS; все 11 навыков в архиве.
+- **Приёмка:** `v1.3.0` — latest immutable release с 11 обновлёнными навыками; `verify-tag`, `sha256sum -c`, `gh attestation verify` PASS. **Текущая запись:** статус `DONE`; релиз `v1.3.0` опубликован и верифицирован; закрывает #81; неудачных попыток: нет.
 
 #### AUD-43 — Dependency bumps, CI/tooling polish, `bug_report.yml`, and `AGENTS.md` sync
 
