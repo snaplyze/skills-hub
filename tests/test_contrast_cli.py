@@ -1,17 +1,23 @@
 from __future__ import annotations
 
+import io
 import json
 import subprocess
 import sys
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from scripts import validate
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONTRAST = REPO_ROOT / "skills" / "frontend-design" / "scripts" / "contrast.py"
+_CONTRAST_MODULE = validate.load_contrast_module(CONTRAST)
 
 
-def run_contrast(*args: str, input_text: str | None = None) -> subprocess.CompletedProcess[str]:
+def run_contrast_cli(*args: str, input_text: str | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(CONTRAST), *args],
         capture_output=True,
@@ -20,6 +26,22 @@ def run_contrast(*args: str, input_text: str | None = None) -> subprocess.Comple
         timeout=30,
         check=False,
     )
+
+
+def run_contrast(*args: str, input_text: str | None = None) -> SimpleNamespace:
+    out, err = io.StringIO(), io.StringIO()
+    old_stdin = sys.stdin
+    try:
+        if input_text is not None:
+            sys.stdin = io.StringIO(input_text)
+        with redirect_stdout(out), redirect_stderr(err):
+            try:
+                rc = _CONTRAST_MODULE.main(list(args))
+            except SystemExit as exc:
+                rc = exc.code if isinstance(exc.code, int) else 2
+    finally:
+        sys.stdin = old_stdin
+    return SimpleNamespace(returncode=rc, stdout=out.getvalue(), stderr=err.getvalue())
 
 
 @pytest.mark.parametrize(
@@ -133,3 +155,22 @@ def test_self_test() -> None:
     assert result.returncode == 0, result.stderr
     assert not any(line.startswith("FAIL:") for line in result.stdout.splitlines())
     assert result.stdout.count("ok:") >= 7
+
+
+def test_cli_subprocess_smoke() -> None:
+    ok = run_contrast_cli("#000000", "#ffffff", "--check")
+    assert ok.returncode == 0, ok.stderr
+    assert "contrast: 21.00:1" in ok.stdout
+
+    stdin_fail = run_contrast_cli(
+        "--pairs",
+        "-",
+        "--check",
+        input_text=json.dumps([{"label": "cli fail", "fg": "#777777", "bg": "#ffffff"}]),
+    )
+    assert stdin_fail.returncode == 1
+    assert "cli fail" in stdin_fail.stdout
+
+    bad = run_contrast_cli("not-a-color", "#ffffff")
+    assert bad.returncode == 2
+    assert "error:" in bad.stderr

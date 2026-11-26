@@ -54,6 +54,7 @@ def server() -> str:
         yield f"http://127.0.0.1:{httpd.server_port}"
     finally:
         httpd.shutdown()
+        httpd.server_close()
         thread.join(timeout=2)
 
 

@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import io
 import shutil
 import subprocess
 import sys
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+
+from scripts import check_workflows
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKER = ROOT / "scripts" / "check_workflows.py"
@@ -39,7 +44,7 @@ jobs:
 """
 
 
-def run_checker(root: Path, *, strict: bool = False) -> subprocess.CompletedProcess[str]:
+def run_checker_cli(root: Path, *, strict: bool = False) -> subprocess.CompletedProcess[str]:
     command = [sys.executable, str(CHECKER), "--root", str(root)]
     if strict:
         command.append("--strict")
@@ -51,7 +56,17 @@ def run_checker(root: Path, *, strict: bool = False) -> subprocess.CompletedProc
     )
 
 
-def write_workflow(root: Path, text: str, name: str = "ci.yml") -> subprocess.CompletedProcess[str]:
+def run_checker(root: Path, *, strict: bool = False) -> SimpleNamespace:
+    args = ["--root", str(root)]
+    if strict:
+        args.append("--strict")
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        rc = check_workflows.main(args)
+    return SimpleNamespace(returncode=rc, stdout=out.getvalue(), stderr=err.getvalue())
+
+
+def write_workflow(root: Path, text: str, name: str = "ci.yml") -> SimpleNamespace:
     directory = root / ".github" / "workflows"
     directory.mkdir(parents=True, exist_ok=True)
     (directory / name).write_text(text, encoding="utf-8")
@@ -59,10 +74,22 @@ def write_workflow(root: Path, text: str, name: str = "ci.yml") -> subprocess.Co
 
 
 def test_repository_workflows_pass() -> None:
-    result = run_checker(ROOT, strict=True)
+    result = run_checker_cli(ROOT, strict=True)
 
     assert result.returncode == 0, result.stderr
     assert "workflow file" in result.stdout
+
+
+def test_cli_exits_one_on_policy_violation(tmp_path: Path) -> None:
+    directory = tmp_path / ".github" / "workflows"
+    directory.mkdir(parents=True)
+    (directory / "bad.yml").write_text(
+        VALID_WORKFLOW.replace(f"actions/checkout@{CHECKOUT_SHA}", "actions/checkout@v7"),
+        encoding="utf-8",
+    )
+    result = run_checker_cli(tmp_path)
+    assert result.returncode == 1
+    assert "40-character commit SHA" in result.stderr
 
 
 def test_valid_workflow_passes(tmp_path: Path) -> None:
@@ -262,12 +289,11 @@ def test_missing_required_workflow_fails(tmp_path: Path) -> None:
     assert "required workflow file is missing" in result.stderr
 
 
-@pytest.mark.parametrize("suffix", [".yml", ".yaml"])
-def test_both_workflow_extensions_are_checked(tmp_path: Path, suffix: str) -> None:
+def test_yaml_workflow_extension_is_checked(tmp_path: Path) -> None:
     text = VALID_WORKFLOW.replace(f"actions/checkout@{CHECKOUT_SHA}", "actions/checkout@main")
     assert text != VALID_WORKFLOW
 
-    result = write_workflow(tmp_path, text, name=f"ci{suffix}")
+    result = write_workflow(tmp_path, text, name="ci.yaml")
 
     assert result.returncode == 1
 

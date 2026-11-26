@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import atexit
 import json
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
+
+from scripts import validate
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 IGNORE = shutil.ignore_patterns(
@@ -15,13 +19,30 @@ IGNORE = shutil.ignore_patterns(
     "__pycache__",
     ".pytest_cache",
     ".playwright-cli",
+    ".mypy_cache",
+    ".venv",
+    "venv",
+    "node_modules",
+    "*.pyc",
     "tests",
 )
+_TEMPLATE_DIR: Path | None = None
+
+
+def _clean_template() -> Path:
+    global _TEMPLATE_DIR
+    if _TEMPLATE_DIR is None:
+        base = Path(tempfile.mkdtemp(prefix="skills-hub-val-tpl-"))
+        atexit.register(shutil.rmtree, base, True)
+        dest = base / "repo"
+        shutil.copytree(REPO_ROOT, dest, ignore=IGNORE)
+        _TEMPLATE_DIR = dest
+    return _TEMPLATE_DIR
 
 
 def copy_repo(tmp_path: Path) -> Path:
     destination = tmp_path / "repo"
-    shutil.copytree(REPO_ROOT, destination, ignore=IGNORE)
+    shutil.copytree(_clean_template(), destination)
     return destination
 
 
@@ -37,15 +58,16 @@ def run_validate(repo: Path) -> subprocess.CompletedProcess[str]:
 
 
 def assert_validation_passes(repo: Path) -> None:
-    result = run_validate(repo)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "All checks passed." in result.stdout
+    _, errors = validate.validate_repo(repo)
+    assert not errors, "\n".join(errors)
 
 
-def assert_validation_fails(repo: Path, needle: str) -> None:
-    result = run_validate(repo)
-    assert result.returncode == 1, result.stdout + result.stderr
-    assert needle in result.stderr, result.stdout + result.stderr
+def assert_validation_fails(repo: Path, *needles: str) -> None:
+    _, errors = validate.validate_repo(repo)
+    assert errors, f"expected validation failure matching {needles!r}, got 0 errors"
+    joined = "\n".join(errors)
+    for needle in needles:
+        assert needle in joined, joined
 
 
 def append_to_skill(repo: Path, text: str) -> None:
@@ -102,7 +124,19 @@ def relax_reading_budget(repo: Path) -> None:
 
 
 def test_repository_validates_on_current_interpreter(tmp_path: Path) -> None:
-    assert_validation_passes(copy_repo(tmp_path))
+    repo = copy_repo(tmp_path)
+    result = run_validate(repo)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "All checks passed." in result.stdout
+
+
+def test_cli_exits_one_on_validation_error(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    relax_reading_budget(repo)
+    append_to_skill(repo, "\n\n[broken](references/does-not-exist.md)\n")
+    result = run_validate(repo)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "broken link" in result.stderr
 
 
 def test_skill_link_formats_pass(tmp_path: Path) -> None:
@@ -305,8 +339,7 @@ def test_new_semantic_token_without_coverage_fails(tmp_path: Path) -> None:
         tokens.read_text(encoding="utf-8") + "\n:root {\n  --color-mystery: var(--brand-500);\n}\n",
         encoding="utf-8",
     )
-    assert_validation_fails(repo, "--color-mystery")
-    assert_validation_fails(repo, "without contrast coverage")
+    assert_validation_fails(repo, "--color-mystery", "without contrast coverage")
 
 
 @pytest.mark.parametrize(
@@ -452,11 +485,14 @@ def test_reading_sets_missing_manifest_fails(tmp_path: Path) -> None:
     assert_validation_fails(repo, "missing reading-set manifest")
 
 
-def test_reading_sets_valid_manifest_passes(tmp_path: Path) -> None:
+def test_reading_sets_object_shape_manifest_passes(tmp_path: Path) -> None:
     repo = copy_repo(tmp_path)
     relax_reading_budget(repo)
     data = load_reading_sets(repo)
-    data["sets"]["component-state"] = data["sets"]["new-page"]
+    data["sets"] = {
+        "new-page": {"limit_bytes": 32768, "files": ["SKILL.md"]},
+        "component-state": {"limit_bytes": 16384, "files": ["SKILL.md"]},
+    }
     write_reading_sets(repo, data)
     assert_validation_passes(repo)
 

@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+import io
 import subprocess
 import sys
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from scripts import release_notes
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "release_notes.py"
-sys.path.insert(0, str(ROOT / "scripts"))
-
-import release_notes  # noqa: E402
 
 
 def make_changelog(tmp_path: Path, body: str) -> Path:
@@ -21,13 +23,20 @@ def make_changelog(tmp_path: Path, body: str) -> Path:
     return path
 
 
-def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
+def run_cli_subprocess(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
         capture_output=True,
         text=True,
         check=False,
     )
+
+
+def run_cli(*args: str) -> SimpleNamespace:
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        rc = release_notes.main(list(args))
+    return SimpleNamespace(returncode=rc, stdout=out.getvalue(), stderr=err.getvalue())
 
 
 @pytest.mark.parametrize(
@@ -264,7 +273,7 @@ def test_cli_writes_notes_and_github_output(tmp_path: Path) -> None:
     notes_file = tmp_path / "notes.md"
     github_output = tmp_path / "github-output"
 
-    result = run_cli(
+    result = run_cli_subprocess(
         "--tag",
         "v1.2.3",
         "--changelog",

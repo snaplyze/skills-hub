@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 10 OPEN (#71, #73–#79, #81–#82), 5 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 9 OPEN (#71, #73–#74, #76–#79, #81–#82), 6 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-36` #75, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -33,7 +33,7 @@
 | 06 | `06 — Native orchestration` (#6) | closed | `ORC-01` #38 |
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
-| 09 | `Аудит 2026-11-26` (#9) | open | 10 OPEN (`AUD-32` #71, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82), 5 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-41` #80, `AUD-44` #84) |
+| 09 | `Аудит 2026-11-26` (#9) | open | 9 OPEN (`AUD-32` #71, `AUD-34` #73, `AUD-35` #74, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82), 6 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-36` #75, `AUD-41` #80, `AUD-44` #84) |
 
 ## Аудит 2026-11-26
 
@@ -109,13 +109,13 @@
 
 #### AUD-36 — Eliminate `node_modules` copy amplification (8.0 s) and subprocess fan-out in `tests/`
 
-- `OPEN` · Аудит 2026-11-26 · `performance/tests` · **P1 (высокий ущерб):** 27.7× лишнего I/O (~764 MB / 91k файлов) и >320 подпроцессов на каждый `make check` (сужено до стоимости `tests/`; оптимизация `validate.py` вынесена в `AUD-44`) · уверенность: высокая · [#75](https://github.com/snaplyze/skills-hub/issues/75) (веха #9) · исполнитель: не назначен · deps: `AUD-30`, `AUD-44`.
+- `DONE` · Аудит 2026-11-26 · `performance/tests` · **P1 (высокий ущерб):** 27.7× лишнего I/O (~764 MB / 91k файлов) и >320 подпроцессов на каждый `make check` (сужено до стоимости `tests/`; оптимизация `validate.py` вынесена в `AUD-44`) · уверенность: высокая · [#75](https://github.com/snaplyze/skills-hub/issues/75) (веха #9) · исполнитель: агент · deps: `AUD-30`, `AUD-44`.
 - **Результат / границы:** быстрый `pytest` без копирования `node_modules`/`.venv` и лишних подпроцессов при полном сохранении покрытия, мутационной чувствительности и 1–2 CLI smoke-тестов на скрипт. Продукт и `validate.py` не меняются.
 - **Доказательство:** `tests/test_validation.py:12-25` (`IGNORE`) пропускает `node_modules` (1 990 файлов / 16.8 MB) и `.venv` → 44 копии = 91 256 файлов / ~764 MB + ~182 подпроцесса (`test_validation.py` = 15.82 s из 21.63 s); fan-out в `test_secrets.py` (51 `git`), `test_contrast_cli.py` (22 Python), `test_workflows.py` (21 Python; `check_workflows.main()` без `argv`), `test_installer.py` (28 `git`), `test_release_notes.py` (5 Python + мутация `sys.path:13`); холостые/дублирующие тесты (`test_validation.py:295-296, 442-448, 521-528`, `test_workflows.py:265-272`) и утечка сокета `httpd.server_close()` (`test_external_links.py:56`).
 - **Производительность (шаг 4):** путь и нагрузка — `pytest` (202 теста в 12 модулях); инварианты — все граничные/мутационные кейсы и CLI exit-code контракты сохранены; базовый замер (`5f0a620`, B-09/B-11) — `pytest` 21.63 s (`make check` 22.6 s), `copy_repo` 44× 8.30 s с `node_modules` vs 0.30 s без него, `check_workflows` 21× 1 225.8 ms vs 407.0 ms in-process; целевой предел — из требований владельца `make check ≤30 s` (более жёсткий порог для `pytest` — цель не задана: нужно решение владельца); сравнение — `pytest --durations=25`, per-file тайминги и B-09/B-11 в снимке до/после; удаляется — копирование `node_modules`/`.venv`/`.mypy_cache`/`*.pyc`, ~250+ лишних подпроцессов, дубль прогона `:295-296`, no-op `:442-448`, дубль `.yml` `:265-272`, `sys.path` мутация.
 - **Решение:** расширить `IGNORE`; перевести unit-мутации `test_validation.py`, `test_workflows.py` (добавив `argv` в `check_workflows.main`), `test_contrast_cli.py`, `test_release_notes.py` в in-process; батчировать `git check-ignore --stdin` в `test_secrets.py` и шаблонный git-репо в `test_installer.py`; очистить холостые тесты и закрывать `httpd.server_close()`. Трудоёмкость: 2–3 ч; риски: низкие.
 - **Приёмка:** сравнение до/после в снимке подтверждает ускорение `pytest`; все 202+ кейсов и мутации сохранены; `make check` PASS.
-- **Текущая запись:** не начато; проверка не выполнялась; следующий шаг — взять после `AUD-44`; неудачных попыток: нет.
+- **Текущая запись:** статус `DONE`; замер до/после на `83e4e99`: полный `pytest` `23.65 s → 9.35 s` (`2.5×`, 272 теста; `test_validation.py` `18.13 → 5.49 s`, `test_workflows.py` `2.31 → 0.39 s`, `test_secrets.py` `1.48 → 0.27 s`, `test_contrast_cli.py` `0.85 → 0.29 s`, `test_installer.py` `3.34 → 2.12 s`); исключены `node_modules`/`.venv`/`.mypy_cache`/`*.pyc`, сохранён CLI smoke на каждый скрипт, удалены холостые дубли, добавлен `httpd.server_close()`; проверка: `make check` PASS; закрывает #75; неудачных попыток: нет.
 
 #### AUD-34 — Fix `install/opencode.sh` YAML parser, symlink/`--verify` hygiene, reload hint, CLI edge cases, and scaling
 
