@@ -18,13 +18,13 @@ Use it when the request is multi-step, affects other people, changes existing be
 ## Workflow
 
 1. **Read before asking.** Inspect the relevant code, docs, tests, and project conventions. Do not ask questions the repository already answers.
-2. **Ask only decision-changing questions.** Batch the smallest set of questions whose answers change scope, behavior, data, compatibility, or acceptance. If an answer is unavailable, state an assumption and its consequence.
-3. **Write the spec in seven parts:** problem, users and job, observable outcome, non-goals, constraints, acceptance checks, and review focus. Add risks, assumptions, and open questions only when they are real.
+2. **Ask only decision-changing questions.** Ask open "why" questions first when intent is unclear; once options are concrete, present named tradeoffs plus a recommendation. State non-material defaults as proposals to correct, and never ask permission for routine process steps (reading files or choosing standard paths). Batch remaining user-only questions; if an answer is unavailable, state an assumption and its consequence.
+3. **Write the spec cleanly:** problem, users and job, observable outcome, non-goals and anti-goals (what would make it a failure even if it technically works), constraints, approaches (when material), acceptance checks, review focus, risks, assumptions, deferred (`V2+`) items, and open questions (include only sections that carry real signal).
 4. **Make acceptance observable.** Each check should name a command, behavior, screen, API response, or measurable result. Avoid "works well", "clean", and "fast" without a target.
 5. **Size and options.** If the work is large, split it into outcomes instead of one giant spec. If the solution space is open, list two or three viable approaches with tradeoffs and a recommendation; do not pretend the first idea is the only option. Keep a short design note in the spec when the choice is material; do not create a hidden design file.
 6. **Name the review focus.** List the failure modes or inputs the acceptance does not explicitly cover: empty/large data, retries, permissions, compatibility, migration, and the most likely misuse. Each item should get a test in the plan.
-7. **Play it back.** Give a five-line summary: problem, outcome, non-goals, main constraint, and acceptance. Ask for confirmation when a wrong decision would be expensive. For small work, a one-line intent is enough.
-8. **Persist it for multi-step work.** Save to `docs/specs/YYYY-MM-DD-<slug>.md` or the project's existing spec location. Do not create a spec file for a trivial change.
+7. **Builder check and playback.** For large or multi-step specs, run a fresh read-only builder check (subagent or self-pass) reporting only ambiguities where a wrong guess would change the plan, and fold them into one consolidated round. Then play back a five-line summary (problem, outcome, non-goals, main constraint, acceptance) and confirm before expensive decisions.
+8. **Persist it for multi-step work.** Save to `docs/specs/YYYY-MM-DD-<slug>.md` or the project's existing spec location. Do not create a spec file for a trivial change. If the active agent cannot edit project files (for example in read-only or plan mode), present the complete spec with target path `docs/specs/YYYY-MM-DD-<slug>.md`, do not bypass edit restrictions via shell writes, and hand off to a writable agent to save it. For post-ship changes to an existing spec, write a focused delta spec (`docs/specs/YYYY-MM-DD-<slug>-delta.md`) covering current behavior, new behavior, unchanged invariants, and boundary deltas instead of rewriting the shipped spec.
 9. **Hand off.** Use the `implementation-planning` skill when the spec is accepted. Use `systematic-debugging` instead when the task is a defect with unknown cause.
 
 ## Spec template
@@ -34,11 +34,13 @@ Use it when the request is multi-step, affects other people, changes existing be
 Problem:      the concrete pain or opportunity
 Users / job:  who needs what, in what situation
 Outcome:      the observable change
-Non-goals:    what this deliberately does not change
+Non-goals:    what this deliberately does not change (plus anti-goals)
+Deferred:     out-of-scope V2+ backlog items (optional)
 Constraints:  compatibility, data, security, performance, design, time
 Approaches:   2–3 viable options, tradeoffs, recommendation (when material)
 Acceptance:   checkable conditions, including failure and edge behavior
 Review focus: failure modes/inputs not covered explicitly by acceptance
+Risks:        concrete failure or migration risks (when real)
 Assumptions:  inferred facts and what happens if they are wrong
 Open questions: only questions that still change the design
 ```

@@ -17,10 +17,12 @@ Do not fix a symptom you cannot explain. The first useful output is a reproducib
 - Make the reproduction as small and deterministic as possible. Remove unrelated steps one at a time.
 - Find the first bad state, not the last error message.
 - If the failure is intermittent, measure the conditions and rate; do not call it random.
+- This workflow also applies to pasted stack traces, diffs, or snippets without a local checkout: isolate what the snippet proves and explicitly list the missing runtime/environment evidence.
 
 ## Phase 2 — Localize
 
 - Read the failing path and its tests before changing it.
+- Trace backward through callers from the failure site to the earliest point where invalid state originated (**root-cause tracing**).
 - Compare a working case with the failing case: input, configuration, data, ordering, and version.
 - Use logs, assertions, a debugger, tracing, or `git bisect` to narrow the boundary. Add temporary instrumentation only where it answers a question; remove it afterward.
 - Check recent changes and the assumptions at every boundary: caller, parser, storage, network, clock, locale, permissions.
@@ -31,8 +33,8 @@ State one falsifiable sentence: "If X causes the failure, then Y should change Z
 
 ## Phase 4 — Fix and prove
 
-1. Write a regression test that fails for the reproduced cause.
-2. Apply the smallest fix at the cause, not at every downstream symptom.
+1. Write a regression test that fails for the reproduced cause. For flaky async tests, use **condition-based waiting** (predicate polling with a bounded timeout) instead of fixed sleeps; reserve fixed delays only when testing explicit timing behavior such as debounce.
+2. Apply the smallest fix at the cause, not at every downstream symptom. For invalid-data bugs, pair the root fix with **defense-in-depth** validation at entry, domain, and environment boundaries where appropriate.
 3. Run the regression test, the affected tests, and the full required suite.
 4. Remove temporary instrumentation and confirm the diff contains only the fix and its test.
 5. Explain why the fix prevents recurrence.
