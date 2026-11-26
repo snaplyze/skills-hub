@@ -3,18 +3,29 @@
 
 Policy enforced for every file in ``.github/workflows/``:
 
-* every ``uses:`` reference is pinned to a full 40-character commit SHA;
-* every job declares a bounded ``timeout-minutes``;
-* every ``actions/checkout`` step sets ``persist-credentials: false``;
+* valid YAML mapping with no duplicate mapping keys (case-insensitive),
+  ``<<`` merge keys, or cyclic YAML aliases;
+* explicit top-level ``name``, ``on``, ``permissions``, and non-empty ``jobs``;
+* every ``uses:`` reference is pinned to a full 40-character commit SHA with
+  valid owner/repo/subpath segments (no ``.`` or ``..``);
+* every standard job declares a pinned GitHub-hosted ``runs-on`` runner (no
+  ``self-hosted`` or ``*-latest``), a bounded unquoted base-10 integer
+  ``timeout-minutes`` (1..360), and non-empty ``steps`` without ``${{ ... }}``
+  in ``run:``;
+* every ``actions/checkout`` step (case-insensitive, including any subpath)
+  sets ``persist-credentials: false``;
 * ``pull_request_target`` is not used;
-* top-level permissions are explicit and read-only, and ``write-all`` is
-  never used;
-* write permissions live only at job scope and only for the approved scopes
+* top-level permissions are an explicit read-only mapping (no ``write-all``
+  or ``read-all``);
+* write permissions live only at job scope for approved scopes
   (``attestations``, ``contents``, ``security-events``, ``id-token``,
-  ``pull-requests``).
+  ``pull-requests``), and untrusted-input workflows (``pull_request``,
+  ``pull_request_review``, ``pull_request_review_comment``, ``issue_comment``,
+  ``workflow_run``) cannot grant ``contents: write``, ``id-token: write``, or
+  ``attestations: write``.
 
 Usage:
-    python3 scripts/check_workflows.py [--root PATH]
+    python3 scripts/check_workflows.py [--root PATH] [--strict]
 
 Exit codes:
     0  all workflows satisfy the policy
@@ -27,6 +38,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 try:
@@ -51,7 +63,11 @@ REQUIRED_WORKFLOWS = frozenset(
         "secret-scan.yml",
     }
 )
+OWNER_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$")
 ACTION_SHA_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*@[0-9a-f]{40}$")
+PINNED_HOSTED_RUNNER_RE = re.compile(r"^(?:ubuntu|macos|windows)-[0-9][A-Za-z0-9.-]*$")
+BASE10_POS_INT_RE = re.compile(r"^[1-9][0-9]*$")
+EXPRESSION_RE = re.compile(r"\$\{\{")
 VALID_PERMISSIONS = frozenset(
     {
         "actions",
@@ -73,6 +89,16 @@ VALID_PERMISSIONS = frozenset(
 JOB_WRITE_SCOPES = frozenset(
     {"attestations", "contents", "security-events", "id-token", "pull-requests"}
 )
+UNTRUSTED_WRITE_RESTRICTED_EVENTS = frozenset(
+    {
+        "pull_request",
+        "pull_request_review",
+        "pull_request_review_comment",
+        "issue_comment",
+        "workflow_run",
+    }
+)
+PR_FORBIDDEN_WRITE_SCOPES = frozenset({"attestations", "contents", "id-token"})
 VALID_EVENTS = frozenset(
     {
         "branch_protection_rule",
@@ -121,10 +147,14 @@ def mapping_items(node: object) -> list[tuple[yaml.ScalarNode, yaml.Node]]:
     return [(key, value) for key, value in node.value if isinstance(key, yaml.ScalarNode)]
 
 
-def find(node: object, key: str) -> tuple[yaml.ScalarNode, yaml.Node] | None:
-    """Return the first mapping entry named *key*."""
+def find(
+    node: object, key: str, *, case_insensitive: bool = False
+) -> tuple[yaml.ScalarNode, yaml.Node] | None:
+    """Return the mapping entry named *key*."""
+    target = key.lower() if case_insensitive else key
     for key_node, value_node in mapping_items(node):
-        if key_node.value == key:
+        candidate = key_node.value.lower() if case_insensitive else key_node.value
+        if candidate == target:
             return key_node, value_node
     return None
 
@@ -136,6 +166,11 @@ def scalar_value(node: object) -> str | None:
     return None
 
 
+def is_null_node(node: object) -> bool:
+    """Return True when *node* is a YAML null scalar."""
+    return isinstance(node, yaml.ScalarNode) and node.tag == "tag:yaml.org,2002:null"
+
+
 def line_of(node: yaml.Node) -> int:
     """Return the 1-based line where *node* starts."""
     return node.start_mark.line + 1
@@ -143,6 +178,50 @@ def line_of(node: yaml.Node) -> int:
 
 def add(errors: list[Error], relative: str, node: yaml.Node, message: str) -> None:
     errors.append((relative, line_of(node), message))
+
+
+def check_ast_integrity(
+    errors: list[Error],
+    relative: str,
+    node: yaml.Node,
+    active: set[int] | None = None,
+    visited: set[int] | None = None,
+) -> None:
+    """Reject duplicate YAML mapping keys (case-insensitive), ``<<`` merges, and cyclic aliases."""
+    if active is None:
+        active = set()
+    if visited is None:
+        visited = set()
+
+    node_id = id(node)
+    if node_id in active:
+        add(errors, relative, node, "cyclic YAML alias is not allowed")
+        return
+    if node_id in visited:
+        return
+
+    active.add(node_id)
+    try:
+        if isinstance(node, yaml.MappingNode):
+            seen: set[str] = set()
+            for key_node, value_node in node.value:
+                if isinstance(key_node, yaml.ScalarNode):
+                    normalized = key_node.value.lower()
+                    if key_node.tag == "tag:yaml.org,2002:merge" or key_node.value == "<<":
+                        add(errors, relative, key_node, "YAML merge key '<<' is not allowed")
+                    elif normalized in seen:
+                        add(errors, relative, key_node, f"duplicate YAML key '{key_node.value}'")
+                    else:
+                        seen.add(normalized)
+                else:
+                    add(errors, relative, key_node, "mapping key must be a scalar")
+                check_ast_integrity(errors, relative, value_node, active, visited)
+        elif isinstance(node, yaml.SequenceNode):
+            for item in node.value:
+                check_ast_integrity(errors, relative, item, active, visited)
+    finally:
+        active.remove(node_id)
+        visited.add(node_id)
 
 
 def check_action_ref(errors: list[Error], relative: str, node: yaml.Node) -> None:
@@ -155,18 +234,34 @@ def check_action_ref(errors: list[Error], relative: str, node: yaml.Node) -> Non
             node,
             f"action '{shown}' must be pinned to a full 40-character commit SHA",
         )
+        return
+
+    action_path = value.partition("@")[0]
+    segments = action_path.split("/")
+    if not OWNER_RE.fullmatch(segments[0]) or any(seg in {".", ".."} for seg in segments):
+        add(
+            errors,
+            relative,
+            node,
+            f"action '{value}' has an invalid owner or path segment",
+        )
 
 
 def check_checkout_credentials(errors: list[Error], relative: str, step: yaml.MappingNode) -> None:
     uses = find(step, "uses")
     if uses is None:
         return
-    action = (scalar_value(uses[1]) or "").partition("@")[0]
-    if action != "actions/checkout":
+    action_segments = (scalar_value(uses[1]) or "").partition("@")[0].lower().split("/")
+    if action_segments[:2] != ["actions", "checkout"]:
         return
 
     with_entry = find(step, "with")
-    persist = find(with_entry[1], "persist-credentials") if with_entry else None
+    if with_entry is not None and not isinstance(with_entry[1], yaml.MappingNode):
+        add(errors, relative, with_entry[1], "actions/checkout 'with' must be a mapping")
+        return
+    persist = (
+        find(with_entry[1], "persist-credentials", case_insensitive=True) if with_entry else None
+    )
     if persist is None:
         add(
             errors,
@@ -184,21 +279,36 @@ def check_checkout_credentials(errors: list[Error], relative: str, step: yaml.Ma
         )
 
 
-def check_permissions(errors: list[Error], relative: str, node: yaml.Node, scope: str) -> None:
+def check_permissions(
+    errors: list[Error],
+    relative: str,
+    node: yaml.Node,
+    scope: str,
+    *,
+    events: set[str] | None = None,
+) -> None:
     value = scalar_value(node)
     if value is not None:
-        if value == "read-all":
-            return
         if value == "write-all":
             add(errors, relative, node, "permissions must not use write-all")
+            return
+        if value == "read-all":
+            add(
+                errors,
+                relative,
+                node,
+                "permissions must not use read-all; declare explicit minimal scopes or {}",
+            )
             return
         add(errors, relative, node, f"unsupported {scope} permissions value '{value}'")
         return
 
-    items = mapping_items(node)
-    if not items:
+    if not isinstance(node, yaml.MappingNode):
+        add(errors, relative, node, f"{scope} permissions must be a mapping")
         return
-    for key_node, value_node in items:
+
+    restricted = sorted((events or set()) & UNTRUSTED_WRITE_RESTRICTED_EVENTS)
+    for key_node, value_node in mapping_items(node):
         name = key_node.value
         permission = scalar_value(value_node) or ""
         if name not in VALID_PERMISSIONS:
@@ -222,6 +332,14 @@ def check_permissions(errors: list[Error], relative: str, node: yaml.Node, scope
                     value_node,
                     f"job-level permission '{name}: write' is not allowed",
                 )
+            elif restricted and name in PR_FORBIDDEN_WRITE_SCOPES:
+                add(
+                    errors,
+                    relative,
+                    value_node,
+                    f"job-level permission '{name}: write' is not allowed on "
+                    f"{', '.join(restricted)} workflows",
+                )
             continue
         add(
             errors,
@@ -231,26 +349,45 @@ def check_permissions(errors: list[Error], relative: str, node: yaml.Node, scope
         )
 
 
-def check_triggers(errors: list[Error], relative: str, workflow: yaml.MappingNode) -> None:
+def check_triggers(errors: list[Error], relative: str, workflow: yaml.MappingNode) -> set[str]:
     trigger = find(workflow, "on")
     if trigger is None:
         add(errors, relative, workflow, "workflow must define 'on'")
-        return
+        return set()
 
     node = trigger[1]
     names: list[tuple[str, yaml.Node]] = []
     if isinstance(node, yaml.ScalarNode):
+        if is_null_node(node) or not node.value.strip():
+            add(errors, relative, node, "workflow 'on' must not be empty")
+            return set()
         names.append((node.value, node))
     elif isinstance(node, yaml.SequenceNode):
-        names.extend((item.value, item) for item in node.value if isinstance(item, yaml.ScalarNode))
-    else:
+        if not node.value:
+            add(errors, relative, node, "workflow 'on' must not be empty")
+            return set()
+        for item in node.value:
+            if isinstance(item, yaml.ScalarNode) and not is_null_node(item):
+                names.append((item.value, item))
+            else:
+                add(errors, relative, item, "workflow event name must be a scalar")
+    elif isinstance(node, yaml.MappingNode):
+        if not node.value:
+            add(errors, relative, node, "workflow 'on' must not be empty")
+            return set()
         names.extend((key.value, key) for key, _ in mapping_items(node))
+    else:
+        add(errors, relative, node, "workflow 'on' must be a scalar, sequence, or mapping")
+        return set()
 
+    seen_events: set[str] = set()
     for name, name_node in names:
+        seen_events.add(name)
         if name not in VALID_EVENTS:
             add(errors, relative, name_node, f"unsupported workflow event '{name}'")
         if name == "pull_request_target":
             add(errors, relative, name_node, "pull_request_target is not allowed")
+    return seen_events
 
 
 def check_timeout(
@@ -260,13 +397,47 @@ def check_timeout(
     if timeout is None:
         add(errors, relative, job_node, "job must set timeout-minutes")
         return
-    raw = scalar_value(timeout[1])
-    try:
-        minutes = int(raw) if raw is not None else 0
-    except ValueError:
-        minutes = 0
+    timeout_node = timeout[1]
+    raw = scalar_value(timeout_node)
+    if (
+        raw is None
+        or timeout_node.tag != "tag:yaml.org,2002:int"
+        or not BASE10_POS_INT_RE.fullmatch(raw)
+    ):
+        add(errors, relative, timeout_node, "timeout-minutes must be an integer from 1 to 360")
+        return
+    minutes = int(raw)
     if not 1 <= minutes <= 360:
-        add(errors, relative, timeout[1], "timeout-minutes must be an integer from 1 to 360")
+        add(errors, relative, timeout_node, "timeout-minutes must be an integer from 1 to 360")
+
+
+def check_runs_on(
+    errors: list[Error], relative: str, job: yaml.MappingNode, job_node: yaml.Node
+) -> None:
+    runs_on = find(job, "runs-on")
+    if runs_on is None:
+        add(errors, relative, job_node, "job must set runs-on")
+        return
+    value = scalar_value(runs_on[1])
+    if value is None or is_null_node(runs_on[1]):
+        add(
+            errors,
+            relative,
+            runs_on[1],
+            "runs-on must be a pinned GitHub-hosted runner (for example ubuntu-24.04)",
+        )
+        return
+    lower = value.lower()
+    if "self-hosted" in lower:
+        add(errors, relative, runs_on[1], "self-hosted runners are not allowed by current policy")
+        return
+    if not PINNED_HOSTED_RUNNER_RE.fullmatch(lower) or lower.endswith("-latest"):
+        add(
+            errors,
+            relative,
+            runs_on[1],
+            f"runs-on '{value}' must be a pinned GitHub-hosted runner (for example ubuntu-24.04)",
+        )
 
 
 def check_steps(errors: list[Error], relative: str, job: yaml.MappingNode) -> None:
@@ -277,6 +448,9 @@ def check_steps(errors: list[Error], relative: str, job: yaml.MappingNode) -> No
     if not isinstance(steps[1], yaml.SequenceNode):
         add(errors, relative, steps[1], "steps must be a sequence")
         return
+    if not steps[1].value:
+        add(errors, relative, steps[1], "steps must not be empty")
+        return
 
     for step in steps[1].value:
         if not isinstance(step, yaml.MappingNode):
@@ -286,9 +460,23 @@ def check_steps(errors: list[Error], relative: str, job: yaml.MappingNode) -> No
         if uses is not None:
             check_action_ref(errors, relative, uses[1])
             check_checkout_credentials(errors, relative, step)
+        run_entry = find(step, "run")
+        if run_entry is not None:
+            script = scalar_value(run_entry[1])
+            if script is None or is_null_node(run_entry[1]):
+                add(errors, relative, run_entry[1], "step 'run' must be a scalar")
+            elif EXPRESSION_RE.search(script):
+                add(
+                    errors,
+                    relative,
+                    run_entry[1],
+                    "do not interpolate ${{ ... }} directly in run:; pass values via env:",
+                )
 
 
-def check_jobs(errors: list[Error], relative: str, workflow: yaml.MappingNode) -> None:
+def check_jobs(
+    errors: list[Error], relative: str, workflow: yaml.MappingNode, *, events: set[str]
+) -> None:
     jobs = find(workflow, "jobs")
     if jobs is None:
         add(errors, relative, workflow, "workflow must define jobs")
@@ -296,21 +484,34 @@ def check_jobs(errors: list[Error], relative: str, workflow: yaml.MappingNode) -
     if not isinstance(jobs[1], yaml.MappingNode):
         add(errors, relative, jobs[1], "jobs must be a mapping")
         return
+    job_items = mapping_items(jobs[1])
+    if not job_items:
+        add(errors, relative, jobs[1], "jobs must not be empty")
+        return
 
-    for job_key, job in mapping_items(jobs[1]):
+    for job_key, job in job_items:
         if not isinstance(job, yaml.MappingNode):
             add(errors, relative, job_key, f"job '{job_key.value}' must be a mapping")
             continue
-        check_timeout(errors, relative, job, job_key)
 
         permissions = find(job, "permissions")
         if permissions is not None:
-            check_permissions(errors, relative, permissions[1], "job")
+            check_permissions(errors, relative, permissions[1], "job", events=events)
 
         job_uses = find(job, "uses")
+        job_steps = find(job, "steps")
         if job_uses is not None:
             check_action_ref(errors, relative, job_uses[1])
+            if job_steps is not None:
+                add(
+                    errors,
+                    relative,
+                    job_steps[0],
+                    f"reusable workflow job '{job_key.value}' cannot define steps",
+                )
         else:
+            check_runs_on(errors, relative, job, job_key)
+            check_timeout(errors, relative, job, job_key)
             check_steps(errors, relative, job)
 
 
@@ -325,14 +526,24 @@ def check_workflow(path: Path, root: Path) -> list[Error]:
     if not isinstance(workflow, yaml.MappingNode):
         return [(relative, 1, "workflow must be a mapping")]
 
+    check_ast_integrity(errors, relative, workflow)
+
+    name_entry = find(workflow, "name")
+    if (
+        name_entry is None
+        or is_null_node(name_entry[1])
+        or not (scalar_value(name_entry[1]) or "").strip()
+    ):
+        add(errors, relative, workflow, "workflow must define a non-empty 'name'")
+
     permissions = find(workflow, "permissions")
     if permissions is None:
         add(errors, relative, workflow, "workflow must declare top-level permissions")
     else:
         check_permissions(errors, relative, permissions[1], "workflow")
 
-    check_triggers(errors, relative, workflow)
-    check_jobs(errors, relative, workflow)
+    events = check_triggers(errors, relative, workflow)
+    check_jobs(errors, relative, workflow, events=events)
     return errors
 
 
@@ -341,12 +552,12 @@ def workflow_paths(root: Path) -> list[Path]:
     if not directory.is_dir():
         return []
     return sorted(
-        [*directory.glob("*.yml"), *directory.glob("*.yaml")],
+        [p for p in (*directory.glob("*.yml"), *directory.glob("*.yaml")) if p.is_file()],
         key=lambda path: path.name,
     )
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--root",
@@ -359,7 +570,7 @@ def main() -> int:
         action="store_true",
         help="require the repository's mandatory workflow files to exist",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     root = args.root.resolve()
 
     paths = workflow_paths(root)

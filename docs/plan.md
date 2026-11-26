@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 14 OPEN (#69–#79, #81–#82, #84), 1 DONE (`AUD-41` #80); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 13 OPEN (#70–#79, #81–#82, #84), 2 DONE (`AUD-30` #69, `AUD-41` #80); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -33,7 +33,7 @@
 | 06 | `06 — Native orchestration` (#6) | closed | `ORC-01` #38 |
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
-| 09 | `Аудит 2026-11-26` (#9) | open | 14 OPEN (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82, `AUD-44` #84), `AUD-41` #80 DONE |
+| 09 | `Аудит 2026-11-26` (#9) | open | 13 OPEN (`AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82, `AUD-44` #84), 2 DONE (`AUD-30` #69, `AUD-41` #80) |
 
 ## Аудит 2026-11-26
 
@@ -59,13 +59,13 @@
 
 #### AUD-30 — Code Scanning alert #13 (`pip==26.3`) and `check_workflows.py` policy bypasses
 
-- `OPEN` · Аудит 2026-11-26 · `ci/security/duplication` · **P1 (высокий ущерб):** открытый Code Scanning `error` alert и обходы CI-гейта безопасности · уверенность: высокая · [#69](https://github.com/snaplyze/skills-hub/issues/69) (веха #9) · исполнитель: не назначен · deps: none.
+- `DONE` · Аудит 2026-11-26 · `ci/security/duplication` · **P1 (высокий ущерб):** открытый Code Scanning `error` alert и обходы CI-гейта безопасности · уверенность: высокая · [#69](https://github.com/snaplyze/skills-hub/issues/69) (веха #9) · исполнитель: агент · deps: none.
 - **Результат / границы:** удалить unhashed `pip==26.3`, закрыть обходы в `scripts/check_workflows.py`, убрать дубль проверки workflows в `scripts/validate.py`, сузить `permissions` в `scorecard.yml`. Продуктовые навыки и настройки аккаунта не меняются.
 - **Доказательство:** (1) Code Scanning `alerts/13` (`open`, `Scorecard/PinnedDependenciesID`, `error`) на `.github/workflows/ci.yml:48` (no-op под `setup-python@v7.1.0`, расходится с `Makefile:25-27`, роняет `Pinned-Dependencies` 10→8); (2) `scripts/check_workflows.py:124-129` (`find`) берёт первый дубликат ключа YAML, хотя Actions применяет последний; `:320` не отклоняет `<<: *alias`; `:164-165` регистрозависим к `Actions/Checkout`; `:190-200, 242-248, 265, 300-314` пропускают `permissions: [write-all]`, `read-all`, `on: []`, `jobs: {}`, `1_0`, `uses`+`steps`, `${{ }}` в `run:`, `runs-on` (`self-hosted`/`ubuntu-latest`) и write-права в `pull_request`-workflows; (3) `.github/workflows/scorecard.yml:12` использует `permissions: read-all`; (4) *шаг 5 (дубль):* `scripts/validate.py:878-897` повторно парсит `workflows/` через YAML 1.1 `safe_load` (`true:` проходит как `on:`); инвариант (валидный mapping с `name`/`on`/`jobs` и политикой) на неизменном git-дереве в одном процессе уже гарантирует `check_workflows.py` после переноса проверки `"name"`.
 - **Влияние:** открытый security-alert, риск обхода правил CI (включая правила 20–21), двойной разбор workflows.
 - **Решение:** удалить `ci.yml:48`; ужесточить `check_workflows.py` (запрет дублей ключей и `<<`, lower-case `actions/checkout`, строгие типы узлов, запрет `read-all`, проверка `"name"`, `${{ }}` в `run:`, `runs-on`, write-прав на `pull_request`); удалить `validate.py:887-896` и пропускать `workflows/` в `check_yaml`; в `scorecard.yml` поставить `permissions: {}` + `if: always()` + default-branch guard. Трудоёмкость: 1.5–2 ч; риски: низкие.
 - **Приёмка:** негативные тесты в `tests/test_workflows.py` ловят все обходы; `make check` PASS; после слияния на `main` очередной Scorecard закрывает alert #13.
-- **Текущая запись:** не начато; проверка не выполнялась; следующий шаг — стартовать в волне 1; неудачных попыток: нет.
+- **Текущая запись:** статус `DONE`; удалён unhashed `pip==26.3` из `ci.yml`, `scorecard.yml` переведён на `permissions: {}` + default-branch guard + `!cancelled() && hashFiles('results.sarif') != ''`, усилен `scripts/check_workflows.py` (циклические/DAG YAML-алиасы, case-insensitive дубли/`<<`, сегменты `.`/`..` и регистр `actions/checkout`, строгие типы, запрет `read-all`/`${{ }}` в `run:`/`self-hosted`/untrusted-event write, проверка `name`, `main(argv)`), удалён дубль workflows в `validate.py:check_yaml`; проверка: `make check` PASS; закрывает #69; неудачных попыток: нет.
 
 #### AUD-31 — Support OpenCode V2 frontmatter fields (`metadata`, `disable-model-invocation`) and strict YAML
 

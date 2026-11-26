@@ -391,10 +391,14 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
             errors.append(f"{manifest.relative_to(ROOT)}: excluded path must be a non-empty string")
             continue
         if not isinstance(reason, str) or not reason.strip():
-            errors.append(f"{manifest.relative_to(ROOT)}: excluded path {raw_path!r} needs a reason")
+            errors.append(
+                f"{manifest.relative_to(ROOT)}: excluded path {raw_path!r} needs a reason"
+            )
         candidate = (skill_dir / raw_path).resolve()
         if not candidate.is_file():
-            errors.append(f"{manifest.relative_to(ROOT)}: excluded path does not exist -> {raw_path}")
+            errors.append(
+                f"{manifest.relative_to(ROOT)}: excluded path does not exist -> {raw_path}"
+            )
             continue
         excluded_paths.add(candidate)
 
@@ -402,8 +406,7 @@ def check_reading_sets(skill_dir: Path, body: str, errors: list[str]) -> None:
     all_markdown.update(path.resolve() for path in (skill_dir / "references").rglob("*.md"))
     all_markdown.update(path.resolve() for path in (skill_dir / "assets").rglob("*.md"))
     missing_sets = sorted(
-        path.relative_to(skill_dir).as_posix()
-        for path in all_markdown - covered - excluded_paths
+        path.relative_to(skill_dir).as_posix() for path in all_markdown - covered - excluded_paths
     )
     if missing_sets:
         errors.append(
@@ -703,7 +706,9 @@ def check_contrast_fixture(
                 f"does not match label theme {label_theme!r}"
             )
         if theme not in resolved_tokens:
-            errors.append(f"{fixture.relative_to(ROOT)}: pair {label!r} has unknown theme {theme!r}")
+            errors.append(
+                f"{fixture.relative_to(ROOT)}: pair {label!r} has unknown theme {theme!r}"
+            )
             continue
         for field, token, literal in (
             ("fg", fg_token, item.get("fg")),
@@ -711,7 +716,9 @@ def check_contrast_fixture(
         ):
             value = resolved_tokens[theme].get(token)
             if value is None:
-                errors.append(f"{fixture.relative_to(ROOT)}: pair {label!r} has unknown {field} token")
+                errors.append(
+                    f"{fixture.relative_to(ROOT)}: pair {label!r} has unknown {field} token"
+                )
                 continue
             try:
                 expected = contrast.parse_color(value).hex()
@@ -876,24 +883,17 @@ def check_github_docs(errors: list[str]) -> None:
 
 
 def check_yaml(errors: list[str]) -> None:
+    workflows_dir = (ROOT / ".github" / "workflows").resolve()
     paths = sorted((ROOT / ".github").rglob("*.yml"))
     paths.extend(sorted((ROOT / ".github").rglob("*.yaml")))
     for path in paths:
+        # Workflows are validated structurally and for policy by scripts/check_workflows.py.
+        if path.parent.resolve() == workflows_dir:
+            continue
         try:
-            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+            yaml.safe_load(path.read_text(encoding="utf-8"))
         except yaml.YAMLError as error:
             errors.append(f"{path.relative_to(ROOT)}: invalid YAML: {error}")
-            continue
-        if path.parent.name == "workflows":
-            if not isinstance(data, dict):
-                errors.append(f"{path.relative_to(ROOT)}: workflow must be a mapping")
-                continue
-            for key in ("name", "jobs"):
-                if key not in data:
-                    errors.append(f"{path.relative_to(ROOT)}: workflow missing '{key}'")
-            # PyYAML implements YAML 1.1, where the unquoted key `on` becomes True.
-            if "on" not in data and True not in data:
-                errors.append(f"{path.relative_to(ROOT)}: workflow missing 'on'")
 
 
 def main() -> int:
