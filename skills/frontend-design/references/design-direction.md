@@ -1,6 +1,6 @@
 # Design Direction
 
-Use for new pages, redesigns, and visual identity work. The goal is a direction that could only belong to this subject, not a style applied from outside. See `visual-craft.md` for craft, `../assets/design-brief.md` for the brief and plan, and the optional `../assets/worked-example.md` for a complete example.
+Use for new pages, redesigns, and visual identity work. The goal is a direction that could only belong to this subject, not a style applied from outside. See `references/visual-craft.md` for craft, `assets/design-brief.md` for the brief and plan, and the optional `assets/worked-example.md` for a complete example.
 
 ## The brief
 

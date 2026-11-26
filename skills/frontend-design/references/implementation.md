@@ -142,7 +142,7 @@ Container queries make components portable across sidebars, modals, and grids. U
 ### `:has()`
 
 ```css
-.field:has(input:invalid) {
+.field:has(input:user-invalid) {
   --field-border: var(--color-danger);
 }
 .card:has(img) {
@@ -150,7 +150,7 @@ Container queries make components portable across sidebars, modals, and grids. U
 }
 ```
 
-`:`has()` is widely supported in modern browsers. Provide a sensible fallback for critical behavior.
+`:has()` and `:user-invalid` are Baseline Widely Available (prefer `:user-invalid` over `:invalid` so untouched required fields do not flash red before user input). Provide a sensible fallback for critical behavior.
 
 ### `color-mix()`
 
@@ -173,7 +173,7 @@ p {
 }
 ```
 
-Use `balance` for short headings, `pretty` for body text. Both are progressive enhancements.
+Use `balance` for short headings, `pretty` for body text. Both are progressive enhancements (`pretty` is not yet supported in Firefox).
 
 ### `accent-color`
 
@@ -185,7 +185,7 @@ input[type="range"] {
 }
 ```
 
-This gives native controls a brand color without rebuilding them.
+This gives native controls a brand color without rebuilding them (Limited Availability on Chrome Android; treat as progressive enhancement).
 
 ### `scrollbar-gutter`
 
@@ -216,7 +216,10 @@ Prevents layout shift when a modal locks scroll or content grows.
 dialog[open] {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity var(--duration-normal), transform var(--duration-normal);
+  transition:
+    opacity var(--duration-normal),
+    transform var(--duration-normal),
+    display var(--duration-normal) allow-discrete;
 }
 @starting-style {
   dialog[open] {
@@ -226,7 +229,7 @@ dialog[open] {
 }
 ```
 
-Progressive enhancement for entry animations without JS.
+Progressive enhancement for entry animations without JS (`overlay ... allow-discrete` for exit transitions is Chromium-only; Firefox and Safari snap on exit cleanly).
 
 ### `prefers-*` and `forced-colors`
 
@@ -344,7 +347,7 @@ Avoid prop drilling deeper than three levels. Avoid global state for local UI.
 ### Rendering
 
 - Use stable, unique keys; do not use array index for reorderable lists.
-- Memoize only after measuring; unnecessary `memo`/`useMemo` adds complexity.
+- Memoize manually only after measuring (or as an effect-dependency escape hatch); when React Compiler v1.0 (`reactCompiler: true` in Next.js 16+) is enabled, it handles component/value memoization automatically.
 - Use `Suspense` and error boundaries for loading and failure.
 - Avoid hydration mismatches: do not render `Date.now()`, `Math.random()`, or browser-only values on the server.
 - Use `suppressHydrationWarning` only for genuinely unavoidable cases.
@@ -353,8 +356,8 @@ Avoid prop drilling deeper than three levels. Avoid global state for local UI.
 
 - Use `next/image` or the framework's image component.
 - Provide `width`/`height` or `fill` with a sized container.
-- Use `priority`/`fetchpriority` only for the LCP image.
-- Use `next/font` or self-hosted fonts with `font-display`.
+- Use `preload` (Next.js 16+; `priority` is deprecated) or `loading="eager"` with `fetchPriority="high"` only for the LCP image.
+- Use `next/font` or self-hosted fonts with `font-display`; verify in rendered builds that declared web fonts actually load instead of silently falling back.
 - Subset and preload only what is needed.
 
 ### Bundle budgets
@@ -543,6 +546,8 @@ Measure at p75 on mobile, not only on a fast desktop. Use field data when availa
 - avoid memory leaks in SPA routes.
 
 ## Testing
+
+Verify with what the project has: run the repository's existing test, type-check, lint, and build commands. Never install a framework, test runner, linter, or type checker solely to check UI work; list unrunnable checks under `Known gaps`. Inspect production builds rather than dev servers whenever auditing performance, fonts, or layout.
 
 ### Unit and component
 

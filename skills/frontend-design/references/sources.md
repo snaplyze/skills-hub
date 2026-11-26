@@ -11,9 +11,9 @@ This skill is an original synthesis. It distills ideas, heuristics, and standard
 | [Alireza Rezvani — ux-researcher-designer](https://github.com/alirezarezvani/claude-skills/tree/main/product-team/skills/ux-researcher-designer) | Research-lite methods: personas, journey maps, usability tests, synthesis, severity | MIT |
 | [Alireza Rezvani — ui-design-system](https://github.com/alirezarezvani/claude-skills/tree/main/product-team/skills/ui-design-system) | Token architecture, type scales, spacing systems, component contracts, responsive tokens, handoff | MIT |
 | [Alireza Rezvani — senior-frontend](https://github.com/alirezarezvani/claude-skills/tree/main/engineering-team/skills/senior-frontend) | Performance budgets, rendering profiles, bundle discipline, accessibility and framework review | MIT |
-| [sickn33 — mobile-design](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/mobile-design) | Mobile-first constraints, touch psychology, platform conventions, mobile performance, release checklist | Upstream terms — verify before redistribution |
+| [sickn33 — mobile-design](https://github.com/sickn33/agentic-awesome-skills/tree/main/skills/mobile-design) | Mobile-first constraints, touch psychology, platform conventions, mobile performance, release checklist | Repository code MIT / original prose CC BY 4.0 (excluding imported skills; `source: community`, ideas-only — verify before redistributing text) |
 | [addyosmani — frontend-ui-engineering](https://github.com/addyosmani/agent-skills/tree/main/skills/frontend-ui-engineering) | Production UI engineering, AI-aesthetic avoidance, component architecture, state and verification | MIT |
-| [Leonxlnx — taste-skill](https://github.com/Leonxlnx/taste-skill) | Anti-generic layout and typography constraints, motion and density dials, performance guardrails | Upstream terms — verify before redistribution |
+| [Leonxlnx — taste-skill](https://github.com/Leonxlnx/taste-skill) | Anti-generic layout and typography constraints, motion and density dials, performance guardrails | MIT |
 
 ## Standards and canonical references
 
@@ -35,6 +35,7 @@ This skill is an original synthesis. It distills ideas, heuristics, and standard
 
 ## Standards notes
 
+- **Standards status:** WCAG 2.2 is published as **ISO/IEC 40500:2025**. WAI-ARIA 1.2 remains the normative W3C Recommendation while WAI-ARIA 1.3 advances through Working Draft / Candidate Recommendation.
 - **Target size:** WCAG 2.2 AA (2.5.8) requires 24×24 CSS px with exceptions; 44×44 CSS px is AAA (2.5.5) and the practical design default. Apple recommends 44×44 pt; Material recommends 48×48 dp. Do not treat one platform's unit as a web conformance rule.
 - **Contrast:** WCAG 2.2 AA requires 4.5:1 for normal text and 3:1 for large text and meaningful non-text UI. APCA is a newer perceptual model but is not a WCAG 2.2 conformance requirement; do not present it as a substitute.
 - **Focus appearance:** 2.4.13 is AAA. The AA requirements are 2.4.7 (visible focus) and 2.4.11 (focus not obscured). A strong 2–3 px indicator is good practice.
@@ -49,8 +50,8 @@ This skill is design and engineering guidance, not legal advice. Accessibility, 
 ## License compliance
 
 - The Anthropic `frontend-design` skill is licensed under Apache-2.0. This repository does not include its source text; it cites the skill and synthesizes its ideas.
-- The `ui-ux-pro-max`, Alireza Rezvani, and addyosmani skills are MIT-licensed. Their ideas are cited; no substantial text is copied.
-- The `mobile-design` and `taste-skill` sources carry their own repository terms. Consult the upstream repositories before redistributing their text or assets.
+- The `ui-ux-pro-max`, Alireza Rezvani, addyosmani, and `taste-skill` (root MIT `LICENSE`, verified at `75dc4f080018` / `d1a2bb41d927`) sources are MIT-licensed. Their ideas are cited; no substantial text is copied.
+- The `sickn33/agentic-awesome-skills` repository excludes imported skills from its root MIT/CC BY 4.0 terms (`mobile-design` lists `source: community`). Treat it as conceptual inspiration only; never copy upstream prose without verifying provenance.
 - All trademarks, product names, and brand assets belong to their respective owners.
 - If you contribute adapted text from another source, add it to this file with the license and a link.
 

@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 5 OPEN (#76, #78–#79, #81–#82), 10 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-38` #77, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 4 OPEN (#78–#79, #81–#82), 11 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -33,7 +33,7 @@
 | 06 | `06 — Native orchestration` (#6) | closed | `ORC-01` #38 |
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
-| 09 | `Аудит 2026-11-26` (#9) | open | 5 OPEN (`AUD-37` #76, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82), 10 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-38` #77, `AUD-41` #80, `AUD-44` #84) |
+| 09 | `Аудит 2026-11-26` (#9) | open | 4 OPEN (`AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82), 11 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-41` #80, `AUD-44` #84) |
 
 ## Аудит 2026-11-26
 
@@ -139,13 +139,13 @@
 
 #### AUD-37 — Fix `frontend-design` technical defects, CSS/Next.js staleness, contrast coverage, licenses, and headroom
 
-- `OPEN` · Аудит 2026-11-26 · `skill-content/accessibility/data` · **P1 (высокий ущерб):** сломанный Markdown, устаревший Next.js 16 prop, 0 light-покрытия `--color-surface-raised`, баги парсера `contrast.py`, устаревшие лицензии в `sources.md` · уверенность: высокая · [#76](https://github.com/snaplyze/skills-hub/issues/76) (веха #9) · исполнитель: не назначен · deps: `AUD-33`.
+- `DONE` · Аудит 2026-11-26 · `skill-content/accessibility/data` · **P1 (высокий ущерб):** сломанный Markdown, устаревший Next.js 16 prop, 0 light-покрытия `--color-surface-raised`, баги парсера `contrast.py`, устаревшие лицензии в `sources.md` · уверенность: высокая · [#76](https://github.com/snaplyze/skills-hub/issues/76) (веха #9) · исполнитель: агент · deps: `AUD-33`.
 - **Результат / границы:** актуальный и согласованный `frontend-design` (Baseline 2026, Next.js 16, React Compiler, WCAG 2.2 AA в обеих темах, верные лицензии, свободный запас бюджета `new-page`) и исправленный `contrast.py` (включая мелкие аллокации, перенесённые из `AUD-43` по шагу 3).
 - **Доказательство:** `implementation.md:153` (`` `:`has()` ``), `:145` (`input:invalid` вместо `:user-invalid` Baseline May 2026), `:356` (устаревший Next.js 16 `priority`), `:216-226` (`<dialog>` без `display allow-discrete`), `:172,184,347` (`text-wrap: pretty`, `accent-color`, React Compiler v1.0); `motion.md:87,102,154-160` (`overlay` Chromium-only, `animation-timeline: view()` без `@supports`); `sources.md:16,38-44,52-53` (`taste-skill` уже MIT с `75dc4f080018`, несогласованность по `sickn33`, нет WCAG 2.2 = ISO/IEC 40500:2025 и WAI-ARIA 1.3 CR); `token-contrast-pairs.json:589-591` + `validate.py:789-801` (0 light-покрытия `--color-surface-raised`); `contrast.py:68-77, 95-225, 249, 269-280, 351-377` (игнор `combinations`, `####000000`/`#-1-1-1`, `hsl(120 50 50)`, лишние аргументы, `nan`/`inf`, мелкие повторные `clamped()`/`flatten()`/`thresholds()`/`build_parser()`; замер B-02 уже 58 ms на 64 / 467 ms на 50k пар — цель perf не задана); `validate.py:523-591` (CSS-парсер без строк/`:root, ...`/`@media`); внутренний дрейф (`visual-craft.md`/`audit-report.md` пути, `design-system.md:85-109, 231-281` 7 несуществующих + 6 пропущенных токенов, `design-brief.md` без `--color-border-strong`, дубль `Forms`/TOC в `responsive-mobile.md`, `component-state` == `design-system` в `reading-sets.json`, `SKILL.md:70`, `new-page` 32 462 / 32 768 B = запас 306 B, `@layer`/`clip:`/reduced-motion в `tokens.css`, green vs orange в `worked-example.md`); ноябрьские upstream/V2 улучшения (`audit-report.md` недоверенные данные браузера, `addyosmani` existing-toolchain + fail-closed a11y, `ui-ux-pro-max` error lifecycle/DTCG/map reduced-motion, `taste-skill` prod-build/font-load/320px overlap/`.example`).
 - **Влияние:** устаревший фронтенд-код, пропуск light-регрессий, битые расчёты `contrast.py`, неверные лицензии и исчерпанный запас `new-page`.
 - **Решение:** исправить указанные файлы `frontend-design` и `sources.md`; починить парсер и мелкие аллокации в `contrast.py` + unit-тесты; требовать покрытие обеих тем `light`+`dark` в `validate.py`, починить string-aware CSS-парсер, добавить `light: text / surface-raised`; удалить дубли в `new-page` для восстановления комфортного запаса бюджета. Трудоёмкость: 3–4 ч; риски: средние (удержать все 10 reading sets ≤32 768 B и 64+ пар AA).
 - **Приёмка:** все не-исключённые токены покрыты в light и dark; все reading sets ≤32 768 B с запасом в `new-page`; новые тесты `contrast.py`/light-coverage и `make check` PASS.
-- **Текущая запись:** не начато; проверка не выполнялась; следующий шаг — взять после `AUD-33`; неудачных попыток: нет.
+- **Текущая запись:** статус `DONE`; исправлены `implementation.md`, `motion.md`, `sources.md` (`taste-skill` MIT, ISO/IEC 40500:2025, WAI-ARIA 1.3), `design-system.md`, `responsive-mobile.md`, `accessibility.md`, `ux-patterns.md`, `audit-report.md`, `design-brief.md`, `worked-example.md`, `tokens.css`, `reading-sets.json`, `SKILL.md`, `contrast.py` и `validate.py` (покрытие `light`+`dark`, `light: text / surface-raised`, string-aware CSS-парсер); запас `new-page` увеличен с 306 B до 1 357 B (`31 411 / 32 768 B`); проверка: `make check` PASS (304 теста); закрывает #76; неудачных попыток: нет.
 
 #### AUD-38 — Upgrade workflow skills from Nov 2026 upstreams and harmonize cross-skill schemas
 

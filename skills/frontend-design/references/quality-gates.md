@@ -1,6 +1,6 @@
 # Quality Gates
 
-Use this before calling UI work done. A gate is an observed verification, not a vibe check; if you cannot verify it, say so. Audit protocol: `../assets/audit-report.md`.
+Use this before calling UI work done. A gate is an observed verification, not a vibe check; if you cannot verify it, say so. Audit protocol: `assets/audit-report.md`.
 
 ## Severity
 
