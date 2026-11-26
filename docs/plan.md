@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 8 OPEN (#71, #74, #76–#79, #81–#82), 7 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-34` #73, `AUD-36` #75, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 7 OPEN (#71, #76–#79, #81–#82), 8 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -33,7 +33,7 @@
 | 06 | `06 — Native orchestration` (#6) | closed | `ORC-01` #38 |
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
-| 09 | `Аудит 2026-11-26` (#9) | open | 8 OPEN (`AUD-32` #71, `AUD-35` #74, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82), 7 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-34` #73, `AUD-36` #75, `AUD-41` #80, `AUD-44` #84) |
+| 09 | `Аудит 2026-11-26` (#9) | open | 7 OPEN (`AUD-32` #71, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82), 8 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-41` #80, `AUD-44` #84) |
 
 ## Аудит 2026-11-26
 
@@ -129,13 +129,13 @@
 
 #### AUD-35 — Harden release gate (`release.yml`, `release_checks.py`, `release_notes.py`) and attach Sigstore asset
 
-- `OPEN` · Аудит 2026-11-26 · `security/release` · **P1 (высокий ущерб):** самый привилегированный workflow; check-run shadowing, запуск скрипта из tag-checkout и Scorecard `Signed-Releases: 0/10` · уверенность: высокая · [#74](https://github.com/snaplyze/skills-hub/issues/74) (веха #9) · исполнитель: не назначен · deps: `AUD-30`.
+- `DONE` · Аудит 2026-11-26 · `security/release` · **P1 (высокий ущерб):** самый привилегированный workflow; check-run shadowing, запуск скрипта из tag-checkout и Scorecard `Signed-Releases: 0/10` · уверенность: высокая · [#74](https://github.com/snaplyze/skills-hub/issues/74) (веха #9) · исполнитель: агент · deps: `AUD-30`.
 - **Результат / границы:** защищённый релизный гейт (`release.yml`, `release_checks.py`, `release_notes.py`) с Sigstore-артефактом. Ruleset #27259237 меняет только владелец.
 - **Доказательство:** `scripts/release_checks.py:27-72` берёт `max(id)` до фильтрации по `head_sha`/`app.slug`/workflow path, не делает `continue` после ошибки, вызывает `gh api` без timeout, глотает `stderr`, не проверяет `.head_sha` и хост/репо в `details_url`, падает на `id: null`/битом JSON (в `tests/test_release_checks.py` лишь 3 теста); `.github/workflows/release.yml:65-141` запускает `scripts/release_notes.py` из tag-checkout (`:137`) вместо `gate/`, проверяет SemVer после git-операций без `--`, не сверяет `RELEASE_TAG_ALLOWED_SIGNERS` с `gate/docs/release-signing/allowed_signers`; `scripts/release_notes.py:37-40, 72-120, 173` ломается на 4-backtick fences и сносках `[^1]:`, дублирует сканер и держит неиспользуемый `--output`; Scorecard `Signed-Releases: 0/10` (run `45163327566`); `gitleaks` отсутствует в `EXPECTED_WORKFLOWS`.
 - **Влияние:** риск срыва/зависания релиза, дрейфа ключа при ротации, обрыва changelog и `0/10` по `Signed-Releases`; `gitleaks` пока рекомендательный.
 - **Решение:** фильтровать check-runs до выбора последнего (по `completed_at`/`started_at`/`id`), добавить `continue`, `timeout=30`, проверку `.head_sha`/URL, обработку ошибок JSON + полное покрытие тестами; в `release.yml` проверять SemVer до git, добавить `--`, запускать `gate/scripts/release_notes.py`, проверять равенство `ALLOWED_SIGNERS` с `gate/docs/release-signing/allowed_signers`, загружать `outputs.bundle-path` от `attest-build-provenance` как release asset; исправить fence/footnotes и дубль сканера в `release_notes.py`; добавить `gitleaks` в `EXPECTED_WORKFLOWS` (синхронно с owner-правкой ruleset #27259237). Трудоёмкость: 2–3 ч; риски: низкие.
 - **Приёмка:** расширенные `tests/test_release_*` и `make check` PASS.
-- **Текущая запись:** не начато; проверка не выполнялась; следующий шаг — взять после `AUD-30`; неудачных попыток: нет.
+- **Текущая запись:** статус `DONE`; усилен `release_checks.py` (фильтрация до выбора последнего completed/non-cancelled, `gitleaks` в `EXPECTED_WORKFLOWS`, `timeout=30`, проверка `.head_sha`/repo URL, безопасный JSONL), `release_notes.py` (единый CommonMark fence-сканер, сноски `[^1]:`, linked headings, убран `--output`), `release.yml` (SemVer до checkout, `--`, сверка `ALLOWED_SIGNERS` с `gate/`, `gate/scripts/release_notes.py`, прикладывание `dist/skills-hub-${TAG}.tar.gz.sigstore.json`) и `docs/release-process.md`; проверка: `make check` PASS; закрывает #74 (добавление `gitleaks` в ruleset #27259237 остаётся за владельцем); неудачных попыток: нет.
 
 #### AUD-37 — Fix `frontend-design` technical defects, CSS/Next.js staleness, contrast coverage, licenses, and headroom
 

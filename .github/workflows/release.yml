@@ -1,14 +1,17 @@
 name: Release
 
 # Release gate:
-#   1. the workflow is dispatched from the protected main branch with a tag;
+#   1. the workflow is dispatched from the protected main branch with a valid
+#      SemVer v* tag;
 #   2. the tag is annotated and its signature verifies against owner-provided
-#      trust material;
+#      trust material (matching gate/docs/release-signing/allowed_signers);
 #   3. the tagged commit is an ancestor of origin/main;
-#   4. the required `validate` and `Analyze (python)` check-runs succeeded;
+#   4. the required `validate`, `Analyze (python)`, and `gitleaks` check-runs
+#      succeeded from their expected workflows;
 #   5. the owner has verified immutable releases outside the workflow;
-#   6. only then are notes read from the tag, assets built and attested, and a
-#      DRAFT release created.
+#   6. only then are notes read via gate/scripts/release_notes.py, assets built
+#      and attested (with the Sigstore bundle attached), and a DRAFT release
+#      created.
 #
 # A tag-push trigger would run workflow code from the tag commit before trust
 # can be established. This workflow is intentionally dispatched from main
@@ -47,10 +50,20 @@ jobs:
       contents: write
       id-token: write
     steps:
+      - name: Validate tag format
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "::error::Invalid release tag '$TAG': expected vX.Y.Z with optional SemVer prerelease suffix." >&2
+            exit 1
+          fi
+
       - name: Checkout full history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          ref: refs/tags/${{ inputs.tag }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -80,9 +93,17 @@ jobs:
           if [[ -n "$ALLOWED_SIGNERS" ]]; then
             signers="$(mktemp)"
             printf '%s\n' "$ALLOWED_SIGNERS" > "$signers"
+            python3 - "$signers" gate/docs/release-signing/allowed_signers <<'PY'
+          import pathlib, sys
+          def norm(path: str) -> list[str]:
+              return [line.strip() for line in pathlib.Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
+          if norm(sys.argv[1]) != norm(sys.argv[2]):
+              print("::error::RELEASE_TAG_ALLOWED_SIGNERS does not match gate/docs/release-signing/allowed_signers.", file=sys.stderr)
+              raise SystemExit(1)
+          PY
             git -c gpg.format=ssh \
               -c gpg.ssh.allowedSignersFile="$signers" \
-              verify-tag "$TAG" ||
+              verify-tag -- "refs/tags/$TAG" ||
               { echo "::error::Tag $TAG SSH signature verification failed." >&2; exit 1; }
           elif [[ -n "$GPG_PUBLIC_KEY" ]]; then
             command -v gpg >/dev/null 2>&1 ||
@@ -92,7 +113,7 @@ jobs:
             chmod 700 -- "$GNUPGHOME"
             printf '%s\n' "$GPG_PUBLIC_KEY" | gpg --batch --import ||
               { echo "::error::Could not import RELEASE_TAG_GPG_PUBLIC_KEY." >&2; exit 1; }
-            git verify-tag "$TAG" ||
+            git verify-tag -- "refs/tags/$TAG" ||
               { echo "::error::Tag $TAG OpenPGP signature verification failed." >&2; exit 1; }
           else
             echo "::error::Tag signature trust is not configured. Set the RELEASE_TAG_GPG_PUBLIC_KEY or RELEASE_TAG_ALLOWED_SIGNERS repository/environment variable; see docs/release-process.md." >&2
@@ -106,7 +127,12 @@ jobs:
           set -euo pipefail
           git fetch --no-tags --prune origin \
             +refs/heads/main:refs/remotes/origin/main
-          tag_commit="$(git rev-parse --verify "${TAG}^{commit}")"
+          tag_commit="$(git rev-parse --verify "refs/tags/${TAG}^{commit}")"
+          head_commit="$(git rev-parse --verify HEAD)"
+          if [[ "$head_commit" != "$tag_commit" ]]; then
+            echo "::error::Checked-out HEAD ($head_commit) does not match verified tag commit ($tag_commit)." >&2
+            exit 1
+          fi
           if ! git merge-base --is-ancestor "$tag_commit" refs/remotes/origin/main; then
             echo "::error::Tag $TAG points to $tag_commit, which is not an ancestor of origin/main." >&2
             exit 1
@@ -134,8 +160,11 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          python3 scripts/release_notes.py \
+          changelog_file="$(mktemp)"
+          git show "${TAG_COMMIT}:CHANGELOG.md" > "$changelog_file"
+          python3 gate/scripts/release_notes.py \
             --tag "$TAG" \
+            --changelog "$changelog_file" \
             --notes-file release-notes.md \
             --github-output "$GITHUB_OUTPUT"
 
@@ -156,9 +185,23 @@ jobs:
           test -s dist/SHA256SUMS
 
       - name: Attest build provenance
+        id: attest
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: dist/*.tar.gz
+          subject-path: dist/skills-hub-${{ inputs.tag }}.tar.gz
+
+      - name: Stage Sigstore provenance bundle asset
+        env:
+          TAG: ${{ inputs.tag }}
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$BUNDLE_PATH" || ! -s "$BUNDLE_PATH" ]]; then
+            echo "::error::Provenance attestation did not produce a non-empty bundle-path." >&2
+            exit 1
+          fi
+          cp -- "$BUNDLE_PATH" "dist/skills-hub-${TAG}.tar.gz.sigstore.json"
+          test -s "dist/skills-hub-${TAG}.tar.gz.sigstore.json"
 
       - name: Create draft release with assets
         env:
@@ -177,4 +220,6 @@ jobs:
             args+=(--prerelease --latest=false)
           fi
           gh release create "$TAG" "${args[@]}" \
-            dist/*.tar.gz dist/SHA256SUMS
+            "dist/skills-hub-${TAG}.tar.gz" \
+            dist/SHA256SUMS \
+            "dist/skills-hub-${TAG}.tar.gz.sigstore.json"
