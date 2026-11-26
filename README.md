@@ -313,7 +313,7 @@ live in [AGENTS.md](AGENTS.md); audit and remediation tasks live in
 
 ## Adding a skill
 
-1. Create `skills/<skill-id>/SKILL.md` with YAML frontmatter (`name`, `description`, `license`, optional `compatibility`).
+1. Create `skills/<skill-id>/SKILL.md` with YAML frontmatter (`name`, `description`, `license`, optional `compatibility`, `metadata`, `disable-model-invocation`).
 2. Keep the description trigger-rich and scoped: what it does and when to use it.
 3. Put detailed material in `references/`, templates in `assets/`, deterministic helpers in `scripts/`.
 4. Use relative paths from the skill directory.

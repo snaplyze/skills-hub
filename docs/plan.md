@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 13 OPEN (#70–#79, #81–#82, #84), 2 DONE (`AUD-30` #69, `AUD-41` #80); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 11 OPEN (#71, #73–#79, #81–#82, #84), 4 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-41` #80); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -33,7 +33,7 @@
 | 06 | `06 — Native orchestration` (#6) | closed | `ORC-01` #38 |
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
-| 09 | `Аудит 2026-11-26` (#9) | open | 13 OPEN (`AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82, `AUD-44` #84), 2 DONE (`AUD-30` #69, `AUD-41` #80) |
+| 09 | `Аудит 2026-11-26` (#9) | open | 11 OPEN (`AUD-32` #71, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82, `AUD-44` #84), 4 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-33` #72, `AUD-41` #80) |
 
 ## Аудит 2026-11-26
 
@@ -69,13 +69,13 @@
 
 #### AUD-31 — Support OpenCode V2 frontmatter fields (`metadata`, `disable-model-invocation`) and strict YAML
 
-- `OPEN` · Аудит 2026-11-26 · `compatibility/validator` · **P1 (высокий ущерб):** валидатор отвергает официальные поля OpenCode V2 и противоречит `skill-authoring:101` · уверенность: высокая · [#70](https://github.com/snaplyze/skills-hub/issues/70) (веха #9) · исполнитель: не назначен · deps: none.
+- `DONE` · Аудит 2026-11-26 · `compatibility/validator` · **P1 (высокий ущерб):** валидатор отвергает официальные поля OpenCode V2 и противоречит `skill-authoring:101` · уверенность: высокая · [#70](https://github.com/snaplyze/skills-hub/issues/70) (веха #9) · исполнитель: агент · deps: none.
 - **Результат / границы:** типобезопасная поддержка `metadata` (`opencode/autoinvoke`), `disable-model-invocation`, `compatibility` и запрет дублей ключей в `scripts/validate.py`; синхронизация `skill-authoring`, `README.md`, `CONTRIBUTING.md`.
 - **Доказательство:** OpenCode V2 (`opencode.ai/docs/skills/#frontmatter`) задаёт `metadata.opencode/autoinvoke` и `disable-model-invocation`; `scripts/validate.py:42, 443-451` отклоняет их и не проверяет тип `compatibility` (`null`/`[]` проходят); `skills/skill-authoring/SKILL.md:101` требует версионирование в `skill metadata`; `validate.py:227-237` (`parse_frontmatter`) молча принимает дубли YAML-ключей (конфликт с `install/opencode.sh:177`) и падает на CRLF / `---` в EOF.
 - **Влияние:** нельзя версионировать навыки в `metadata` и использовать V2 manual-only opt-out; скрытые дубли ключей.
 - **Решение:** расширить `ALLOWED_FRONTMATTER_KEYS`; проверить типы `compatibility` (непустая `str`), `disable-model-invocation` (`bool`), `metadata` (`dict`, `opencode/autoinvoke` `bool`, проверка конфликта флагов); запретить дубликаты ключей в `parse_frontmatter` через строгий `SafeLoader` и поддержать EOF `---`; обновить `skills/skill-authoring/SKILL.md:30-38`, `README.md:316`, `CONTRIBUTING.md:73`. Трудоёмкость: 1–1.5 ч; риски: низкие.
 - **Приёмка:** позитивные и негативные тесты в `tests/test_validation.py` PASS; `make check` PASS.
-- **Текущая запись:** не начато; проверка не выполнялась; следующий шаг — стартовать в волне 1; неудачных попыток: нет.
+- **Текущая запись:** статус `DONE`; расширен `ALLOWED_FRONTMATTER_KEYS`, добавлен `UniqueKeySafeLoader` и проверка типов `compatibility`/`metadata`/`disable-model-invocation`, обновлены `skills/skill-authoring/SKILL.md`, `README.md`, `CONTRIBUTING.md`; проверка: `make check` PASS; закрывает #70; неудачных попыток: нет.
 
 #### AUD-32 — Align orchestration, planning, execution, delivery skills and `docs/opencode-orchestration.md` with OpenCode V2
 
@@ -89,13 +89,13 @@
 
 #### AUD-33 — Harden `scripts/validate.py` path containment, link/GFM parsing, `docs/**` recursion, and generic reading-sets
 
-- `OPEN` · Аудит 2026-11-26 · `security/validator/architecture` · **P1 (высокий ущерб):** пробелы изоляции путей, пропуск битых ссылок в бейджах и `docs/**`, блок на добавление `references/` во 2-й навык · уверенность: высокая · [#72](https://github.com/snaplyze/skills-hub/issues/72) (веха #9) · исполнитель: не назначен · deps: `AUD-31`.
+- `DONE` · Аудит 2026-11-26 · `security/validator/architecture` · **P1 (высокий ущерб):** пробелы изоляции путей, пропуск битых ссылок в бейджах и `docs/**`, блок на добавление `references/` во 2-й навык · уверенность: высокая · [#72](https://github.com/snaplyze/skills-hub/issues/72) (веха #9) · исполнитель: агент · deps: `AUD-31`.
 - **Результат / границы:** строгий containment ссылок/путей в `scripts/validate.py`, вложенные image-links, рекурсивный `docs/**/*.md`, общий контракт `reading-sets.json` и корректный CommonMark/GFM-парсер (без оптимизации рантайма — она в `AUD-44`).
 - **Доказательство:** `validate.py:201-210` не проверяет `is_relative_to(ROOT)` на относительных ссылках и пропускает ссылки из `skills/<id>/` наружу (`/README.md`, `../other-skill/`); `:350-356, 395-398` пропускает абсолютные и `..` пути в `reading-sets.json`; `:414-415` требует `new-page` для любого навыка с `references/` и игнорирует `limit_bytes`, а `:240-288` держит 49-строчный неиспользуемый адаптер; `:56-62, 173-180` отбрасывает `[![...](img)](target)` (`README.md:3-8`); `:867-868` не рекурсивен (`docs.glob`); не запрещены симлинки в `skills/`; `LOCAL_REF_RE` сканирует только `SKILL.md`; роутинг допускает bare basename; неиспользуемые `[dead]: missing.md` не проверяются; `mask_html_comments` идёт до `mask_inline_code`; расхождения fence/GFM `slug()` (`_`, `--`, коллизия `foo-1`).
 - **Влияние:** битые ссылки в бейджах и вложенных `docs/`, непереносимые ссылки и обход путей проходят CI; нельзя добавить `references/` в 10 workflow-навыков.
 - **Решение:** `is_relative_to(ROOT)` для всех ссылок и `is_relative_to(skill_dir)` внутри `skills/` и `reading-sets.json` (убрать fallback `ROOT / relative`); запретить симлинки в `skills/`; ограничить `new-page` навыком `frontend-design`, проверять `SKILL.md` и `1 <= limit_bytes <= 32768`, упростить `reading_set_entries()`, добавить контроль суммарных байт frontmatter-описаний (сейчас 3 685 B) и описать `reading-sets.json` в `skill-authoring`; поддержать `[![...](...)](...)`, `docs.rglob("*.md")`, все `definitions`, `LOCAL_REF_RE` по всем `.md` навыка, точный `routing_path`, единый CommonMark/GFM парсер. Трудоёмкость: 2.5–3.5 ч; риски: низкие (обновить `test_validation.py:114`).
 - **Приёмка:** негативные тесты на каждый дефект и 2-й навык с `references/` без `new-page` PASS; `make check` PASS.
-- **Текущая запись:** не начато; проверка не выполнялась; следующий шаг — взять после `AUD-31`; неудачных попыток: нет.
+- **Текущая запись:** статус `DONE`; реализован containment путей (`ROOT` и `skill_dir`), запрет симлинков в `skills/`, вложенный сканер image-links, `docs.rglob("*.md")`, общий контракт `reading-sets.json` (`new-page` только для `frontend-design`, `limit_bytes`, `SKILL.md` обязателен), агрегатный лимит описаний и CommonMark/GFM парсер; проверка: `make check` PASS; закрывает #72; неудачных попыток: нет.
 
 #### AUD-44 — Deduplicate `scripts/validate.py` runtime passes and in-process `contrast` checks
 
