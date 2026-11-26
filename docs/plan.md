@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 4 OPEN (#78–#79, #81–#82), 11 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-26T04:04:38Z; этапы 01–09; веха #9 «Аудит 2026-11-26»: 2 OPEN (#81–#82), 13 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-44` #84); закрыта документальная задача этапа 09: #68; закрытые этапы 01–08: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -33,7 +33,7 @@
 | 06 | `06 — Native orchestration` (#6) | closed | `ORC-01` #38 |
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
-| 09 | `Аудит 2026-11-26` (#9) | open | 4 OPEN (`AUD-39` #78, `AUD-40` #79, `AUD-42` #81, `AUD-43` #82), 11 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-41` #80, `AUD-44` #84) |
+| 09 | `Аудит 2026-11-26` (#9) | open | 2 OPEN (`AUD-42` #81, `AUD-43` #82), 13 DONE (`AUD-30` #69, `AUD-31` #70, `AUD-32` #71, `AUD-33` #72, `AUD-34` #73, `AUD-35` #74, `AUD-36` #75, `AUD-37` #76, `AUD-38` #77, `AUD-39` #78, `AUD-40` #79, `AUD-41` #80, `AUD-44` #84) |
 
 ## Аудит 2026-11-26
 
@@ -161,17 +161,17 @@
 
 #### AUD-39 — Speed up and harden `scripts/check_external_links.py`
 
-- `OPEN` · Аудит 2026-11-26 · `performance/security/correctness` · **P2 (обычное):** риск превышения 15-минутного timeout CI и отсутствие code-block/SSRF-фильтров · уверенность: высокая · [#78](https://github.com/snaplyze/skills-hub/issues/78) (веха #9) · исполнитель: не назначен · deps: `AUD-33`.
+- `DONE` · Аудит 2026-11-26 · `performance/security/correctness` · **P2 (обычное):** риск превышения 15-минутного timeout CI и отсутствие code-block/SSRF-фильтров · уверенность: высокая · [#78](https://github.com/snaplyze/skills-hub/issues/78) (веха #9) · исполнитель: агент · deps: `AUD-33`.
 - **Границы / результат:** pruned `os.walk` (`relative_to(root).parts`), `ThreadPoolExecutor` с per-host семафором (max 2/host) и общим timeout на URL, пропуск fenced/inline code + сбалансированные скобки (`Foo_(bar)`), `HEAD→GET` fallback, redirect/SSRF-фильтр (`http`/`https`, только `is_global` IP + `--allow-local`), вывод `file:line`, расширенные тесты `tests/test_external_links.py`.
-- **Доказательство и производительность (шаг 4):** путь и нагрузка — `scripts/check_external_links.py` (40 `.md`, 53 URL, 27 на `github.com`, `node_modules/` 1 990 файлов); инварианты — детерминированный вывод, `403`/`429`→`unverified`, per-host cap, SSRF-защита; базовый замер (`5f0a620`, B-06/B-07) — `rglob` 7.09 ms vs `os.walk` 0.50 ms (14.2×), mock 53 URL @ 100 ms 6.19 s serial vs 0.83 s @ 8 воркеров (7.5×), живой прогон 32.6 s (CI 42 s, худший случай 26.5 мин); целевой предел — `link-audit.yml:19` `<15 мин` (более жёсткий порог — цель не задана: нужно решение владельца); сравнение — B-06/B-07 и `make links` до/после; удаляется — непрофильтрованный `rglob`, серийный цикл, сканирование code blocks, неиспользуемый `status` (`:98`). Трудоёмкость: 1.5–2 ч; риски: низкие.
-- **Приёмка:** B-06/B-07 до/после показывают ускорение; unit-тесты на code blocks, `HEAD→GET`, `429`/`500`, блокировку loopback/ftp без `--allow-local` и `make check` PASS. **Текущая запись:** не начато; deps `AUD-33`; неудачных попыток: нет.
+- **Доказательство и производительность (шаг 4):** путь и нагрузка — `scripts/check_external_links.py` (39 `.md`, 67 URL, 42 на `github.com`, `node_modules/` 1 990 файлов); инварианты — детерминированный вывод, `403`/`429`→`unverified`, per-host cap, SSRF-защита + socket IP-pinning; замер до/после — B-06 `markdown_files` `14.21 → 0.91 ms` (15.6×), B-07 mock 53 URL @ 100 ms (27+26 хостов) `5.365 → 1.574 s` (3.4×), живой прогон `42.85 → 14.87 s` (2.88×); целевой предел — `link-audit.yml:19` `<15 мин` (уверенно выполняется); удалены непрофильтрованный `rglob`, серийный цикл, сканирование code blocks и неиспользуемый `status`.
+- **Приёмка:** B-06/B-07 до/после показывают ускорение; unit-тесты на code blocks, `HEAD→GET`, `429`/`500`, блокировку loopback/ftp/DNS-rebinding без `--allow-local` и `make check` PASS. **Текущая запись:** статус `DONE`; реализовано и проверено независимым security-ревью (устранены все P1/P2: bounded redirect без `fp.read()`, закрытие FD/ответов без `ResourceWarning`, защита от `HTTPException`/`fec0::/10`/userinfo/port 0, end-to-end тесты редиректов и DNS rebinding); проверка: `make check` PASS (326 тестов); закрывает #78; неудачных попыток: нет.
 
 #### AUD-40 — Remove test fragility, raw-YAML false greens, and `.git` dependency in `tests/`
 
-- `OPEN` · Аудит 2026-11-26 · `tests/correctness` · **P2 (обычное):** падения/пропуски в `git archive` и ложнозелёные строковые проверки YAML/прозы · уверенность: высокая · [#79](https://github.com/snaplyze/skills-hub/issues/79) (веха #9) · исполнитель: не назначен · deps: `AUD-36`.
+- `DONE` · Аудит 2026-11-26 · `tests/correctness` · **P2 (обычное):** падения/пропуски в `git archive` и ложнозелёные строковые проверки YAML/прозы · уверенность: высокая · [#79](https://github.com/snaplyze/skills-hub/issues/79) (веха #9) · исполнитель: агент · deps: `AUD-36`.
 - **Границы / результат:** структурный YAML-разбор в `test_secrets.py` и `test_release_workflow.py`, детерминированный `tmp_path` SSH-tag fixture в `test_release_signature.py`, архивобезопасный `test_release_assets.py`, очищенный `test_skill_suite.py` (динамический список включая `frontend-design`, единый regex заголовков без мёртвого `delivery`, проверка `progress.md` на уровне документа, кросс-навыковая изоляция триггеров).
-- **Доказательство:** воспроизведено в `git archive` (`test_release_assets.py:127-157` падает `rc=1`, `test_release_signature.py:96-126` skip); raw-text checks (`test_secrets.py:119-125`, `test_release_workflow.py:27-45`); line-wrap/prose coupling и тавтологии (`test_skill_suite.py:135, 161-198, 242-312`). Трудоёмкость: 2–3 ч; риски: низкие.
-- **Приёмка:** `pytest` PASS без пропуска core-тестов подписи в git-checkout и `git archive`; мутации комментариями валят workflow-тесты; `make check` PASS. **Текущая запись:** не начато; deps `AUD-36`; неудачных попыток: нет.
+- **Доказательство:** воспроизведено в `git archive` (`test_release_assets.py:127-157` падает `rc=1`, `test_release_signature.py:96-126` skip); raw-text checks (`test_secrets.py:119-125`, `test_release_workflow.py:27-45`); line-wrap/prose coupling и тавтологии (`test_skill_suite.py:135, 161-198, 242-312`).
+- **Приёмка:** `pytest` PASS без пропуска core-тестов подписи в git-checkout и `git archive`; мутации комментариями валят workflow-тесты; `make check` PASS. **Текущая запись:** статус `DONE`; структурный YAML/TOML/shell-токен разбор с inline-comment мутациями в `test_secrets.py`/`test_release_workflow.py`, изолированные от `~/.gitconfig` фикстуры SSH-подписи и архивов (`--show-toplevel`), динамические 11 навыков + adversarial cross-skill trigger isolation в `test_skill_suite.py`; проверка: 326 passed / 0 skipped и в git-checkout, и во вложенном `.git`-free снимке, `make check` PASS; закрывает #79; неудачных попыток: нет.
 
 #### AUD-42 — Cut next signed release (`v1.3.0`) after audit fixes (owner-gated)
 
