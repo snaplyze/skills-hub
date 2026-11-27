@@ -21,6 +21,7 @@ Policy enforced for every file in ``.github/workflows/``:
   (``attestations``, ``contents``, ``security-events``, ``id-token``,
   ``pull-requests``), and untrusted-input workflows (``pull_request``,
   ``pull_request_review``, ``pull_request_review_comment``, ``issue_comment``,
+  ``issues``, ``discussion``, ``discussion_comment``, ``fork``, ``watch``,
   ``workflow_run``) cannot grant ``contents: write``, ``id-token: write``, or
   ``attestations: write``.
 
@@ -95,6 +96,11 @@ UNTRUSTED_WRITE_RESTRICTED_EVENTS = frozenset(
         "pull_request_review",
         "pull_request_review_comment",
         "issue_comment",
+        "issues",
+        "discussion",
+        "discussion_comment",
+        "fork",
+        "watch",
         "workflow_run",
     }
 )
@@ -147,14 +153,11 @@ def mapping_items(node: object) -> list[tuple[yaml.ScalarNode, yaml.Node]]:
     return [(key, value) for key, value in node.value if isinstance(key, yaml.ScalarNode)]
 
 
-def find(
-    node: object, key: str, *, case_insensitive: bool = False
-) -> tuple[yaml.ScalarNode, yaml.Node] | None:
-    """Return the mapping entry named *key*."""
-    target = key.lower() if case_insensitive else key
+def find(node: object, key: str) -> tuple[yaml.ScalarNode, yaml.Node] | None:
+    """Return the mapping entry named *key* (case-insensitive for fail-closed checks)."""
+    target = key.lower()
     for key_node, value_node in mapping_items(node):
-        candidate = key_node.value.lower() if case_insensitive else key_node.value
-        if candidate == target:
+        if key_node.value.lower() == target:
             return key_node, value_node
     return None
 
@@ -259,9 +262,7 @@ def check_checkout_credentials(errors: list[Error], relative: str, step: yaml.Ma
     if with_entry is not None and not isinstance(with_entry[1], yaml.MappingNode):
         add(errors, relative, with_entry[1], "actions/checkout 'with' must be a mapping")
         return
-    persist = (
-        find(with_entry[1], "persist-credentials", case_insensitive=True) if with_entry else None
-    )
+    persist = find(with_entry[1], "persist-credentials") if with_entry else None
     if persist is None:
         add(
             errors,
@@ -457,10 +458,15 @@ def check_steps(errors: list[Error], relative: str, job: yaml.MappingNode) -> No
             add(errors, relative, step, "step must be a mapping")
             continue
         uses = find(step, "uses")
+        run_entry = find(step, "run")
+        if uses is None and run_entry is None:
+            add(errors, relative, step, "step must define either 'uses' or 'run'")
+            continue
+        if uses is not None and run_entry is not None:
+            add(errors, relative, step, "step cannot define both 'uses' and 'run'")
         if uses is not None:
             check_action_ref(errors, relative, uses[1])
             check_checkout_credentials(errors, relative, step)
-        run_entry = find(step, "run")
         if run_entry is not None:
             script = scalar_value(run_entry[1])
             if script is None or is_null_node(run_entry[1]):
@@ -515,8 +521,23 @@ def check_jobs(
             check_steps(errors, relative, job)
 
 
+def _has_symlink_component(path: Path, root: Path) -> bool:
+    try:
+        rel = path.relative_to(root)
+    except ValueError:
+        return path.is_symlink()
+    current = root
+    for part in rel.parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
+
+
 def check_workflow(path: Path, root: Path) -> list[Error]:
     relative = path.relative_to(root).as_posix()
+    if _has_symlink_component(path, root) or not path.resolve().is_relative_to(root.resolve()):
+        return [(relative, 1, "symlinked workflow file is not allowed")]
     try:
         workflow = yaml.compose(path.read_text(encoding="utf-8"), Loader=yaml.SafeLoader)
     except yaml.YAMLError as error:
@@ -548,11 +569,16 @@ def check_workflow(path: Path, root: Path) -> list[Error]:
 
 
 def workflow_paths(root: Path) -> list[Path]:
+    github_dir = root / ".github"
     directory = root / WORKFLOW_DIR
-    if not directory.is_dir():
+    if github_dir.is_symlink() or directory.is_symlink() or not directory.is_dir():
         return []
     return sorted(
-        [p for p in (*directory.glob("*.yml"), *directory.glob("*.yaml")) if p.is_file()],
+        [
+            p
+            for p in directory.iterdir()
+            if p.suffix.lower() in (".yml", ".yaml") and (p.is_symlink() or p.is_file())
+        ],
         key=lambda path: path.name,
     )
 
@@ -573,14 +599,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = args.root.resolve()
 
+    errors: list[Error] = []
+    if (root / ".github").is_symlink():
+        errors.append((".github", 1, "symlinked .github directory is not allowed"))
+    elif (root / WORKFLOW_DIR).is_symlink():
+        errors.append((WORKFLOW_DIR.as_posix(), 1, "symlinked workflows directory is not allowed"))
+
+    if errors:
+        print(f"Workflow policy failed with {len(errors)} error(s):\n", file=sys.stderr)
+        for relative, line, message in sorted(errors):
+            print(f"  {relative}:{line}: {message}", file=sys.stderr)
+        return 1
+
     paths = workflow_paths(root)
     if not paths:
         print(f"error: no workflows found under {root / WORKFLOW_DIR}", file=sys.stderr)
         return 1
 
-    errors: list[Error] = []
     if args.strict:
-        present = {path.name for path in paths}
+        present = {path.name for path in paths if not path.is_symlink()}
         for name in sorted(REQUIRED_WORKFLOWS - present):
             errors.append((str(WORKFLOW_DIR / name), 1, "required workflow file is missing"))
     for path in paths:
