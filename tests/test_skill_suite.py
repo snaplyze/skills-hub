@@ -226,21 +226,25 @@ def test_suite_is_portable_markdown() -> None:
         "sessionid",
         "session.move",
         "worktree_remove",
+        "<background-result>",
+        "`explore`",
+        "`general`",
         "plugin install",
         "bootstrap",
         "session-start",
-        "opencode.json",
         "hooks/",
         "~/.claude",
         ".superpowers",
         "docs/superpowers",
     )
     for skill_id in ALL_SKILLS:
-        text = skill_text(skill_id)
-        lowered = text.casefold()
-        for phrase in forbidden:
-            assert phrase not in lowered, f"{skill_id} contains forbidden phrase {phrase!r}"
-        assert "Not for" in frontmatter(text)["description"], skill_id
+        skill_root = SKILLS / skill_id
+        assert "Not for" in frontmatter(skill_text(skill_id))["description"], skill_id
+        for md_file in sorted(skill_root.rglob("*.md")):
+            lowered = md_file.read_text(encoding="utf-8").casefold()
+            rel = md_file.relative_to(ROOT)
+            for phrase in forbidden:
+                assert phrase not in lowered, f"{rel} contains forbidden phrase {phrase!r}"
 
 
 def test_antigravity_orchestration_contract() -> None:

@@ -920,17 +920,20 @@ def check_skill(
         if not isinstance(metadata, dict):
             errors.append(f"{rel}: frontmatter 'metadata' must be a mapping")
         else:
-            for meta_key in metadata:
+            for meta_key, meta_val in metadata.items():
                 if not isinstance(meta_key, str) or not meta_key.strip():
                     errors.append(f"{rel}: frontmatter 'metadata' keys must be non-empty strings")
-            if "opencode/autoinvoke" in metadata:
-                raw_auto = metadata["opencode/autoinvoke"]
-                if not isinstance(raw_auto, bool):
+                elif meta_key == "opencode/autoinvoke":
+                    if not isinstance(meta_val, bool):
+                        errors.append(
+                            f"{rel}: frontmatter 'metadata.opencode/autoinvoke' must be a boolean"
+                        )
+                    else:
+                        autoinvoke = meta_val
+                elif not isinstance(meta_val, str):
                     errors.append(
-                        f"{rel}: frontmatter 'metadata.opencode/autoinvoke' must be a boolean"
+                        f"{rel}: frontmatter 'metadata.{meta_key}' must be a string"
                     )
-                else:
-                    autoinvoke = raw_auto
 
     if isinstance(disable_model, bool) and autoinvoke is not None and disable_model == autoinvoke:
         errors.append(

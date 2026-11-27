@@ -243,6 +243,10 @@ def test_empty_skill_body_fails(tmp_path: Path) -> None:
             "must match directory name",
         ),
         (
+            lambda text: text.replace("name: frontend-design", f"name: {'a' * 65}", 1),
+            "must be lowercase kebab-case (1-64 chars)",
+        ),
+        (
             lambda text: text.replace("\n---\n", "\n", 1),
             "invalid frontmatter",
         ),
@@ -654,6 +658,19 @@ def test_v2_frontmatter_metadata_and_autoinvoke_pass(tmp_path: Path) -> None:
         "# V2 Meta Skill\r\n\r\nWorkflow body.\r\n",
         encoding="utf-8",
     )
+    # Exact 500-char compatibility boundary must pass.
+    boundary = repo / "skills" / "compat-boundary"
+    boundary.mkdir()
+    (boundary / "SKILL.md").write_text(
+        "---\n"
+        "name: compat-boundary\n"
+        "description: Use when testing exact 500-character compatibility boundary passes validation.\n"
+        "license: MIT\n"
+        f"compatibility: {'a' * 500}\n"
+        "---\n\n"
+        "# Boundary\n",
+        encoding="utf-8",
+    )
     assert_validation_passes(repo)
 
 
@@ -661,14 +678,21 @@ def test_v2_frontmatter_metadata_and_autoinvoke_pass(tmp_path: Path) -> None:
     ("extra", "needle"),
     [
         ("compatibility: null\n", "'compatibility' must be a non-empty string"),
+        ("compatibility: '   '\n", "'compatibility' must be a non-empty string"),
         (
             f"compatibility: {'a' * 501}\n",
             "'compatibility' exceeds 500 characters",
         ),
         ("allowed-tools: ''\n", "'allowed-tools' must be a non-empty string"),
+        ("allowed-tools: '   '\n", "'allowed-tools' must be a non-empty string"),
         ("allowed-tools: []\n", "'allowed-tools' must be a non-empty string"),
         ("disable-model-invocation: 'yes'\n", "'disable-model-invocation' must be a boolean"),
         ("metadata: []\n", "'metadata' must be a mapping"),
+        ("metadata:\n  1: bad\n", "'metadata' keys must be non-empty strings"),
+        ("metadata:\n  '   ': bad\n", "'metadata' keys must be non-empty strings"),
+        ("metadata:\n  version: null\n", "'metadata.version' must be a string"),
+        ("metadata:\n  version: 1.0\n", "'metadata.version' must be a string"),
+        ("metadata:\n  tags: [a]\n", "'metadata.tags' must be a string"),
         (
             "metadata:\n  opencode/autoinvoke: 'false'\n",
             "'metadata.opencode/autoinvoke' must be a boolean",

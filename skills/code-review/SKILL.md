@@ -25,13 +25,13 @@ Known risks / not tested:
 Specific questions:
 ```
 
-If the harness has subagents, dispatch a fresh read-only reviewer (new child subagent via `invoke_subagent` using `define_subagent` with `EnableWriteTools: false`, `research`, or a dedicated read-only reviewer agent) with this brief and the exact diff range; do not let it edit or take over the branch. If no separate reviewer is available, do a structured self-review using the same checklist and state that it is not independent. After fixes, send the fix delta (or the new diff) for a scoped re-review (continuing the reviewer via `send_message` or starting a fresh reviewer) before merge. Where available, users can also inspect diffs inline with the Review pane or `/diff`.
+If the harness has subagents, dispatch a fresh read-only reviewer (new child subagent via `invoke_subagent` using `define_subagent` with `EnableWriteTools: false`, `research`, or a dedicated read-only reviewer agent) with this brief, the exact diff range, and explicit changed file paths (or diff excerpt when the reviewer has no shell tools); do not let it edit or take over the branch. If no separate reviewer is available, do a structured self-review using the same checklist and state that it is not independent. After fixes, send the fix delta (or the new diff) for a scoped re-review (continuing the reviewer via `send_message` or starting a fresh reviewer) before merge. Where available, users can also inspect diffs inline with the Review pane or `/diff`.
 
 ## Review order
 
 1. **Tests first.** Read the test diff before the implementation: names, assertions, edge cases, and whether the tests would fail on the old behavior.
 2. **Then the implementation.** Walk the five axes below with the spec and diff in front of you.
-3. **Then the evidence.** Before running probes or tests, verify the tree is clean (`git status --short` empty) and `HEAD` matches the reviewed commit, citing that SHA in the review. Re-run the narrow test and the affected suite; do not trust a pasted result.
+3. **Then the evidence.** When shell tools are available, verify the tree is clean (`git status --short` empty) and `HEAD` matches the reviewed commit before running probes or tests, citing that SHA in the review, and re-run the narrow test and affected suite instead of trusting a pasted result. When running in a no-shell read-only reviewer (`EnableWriteTools: false`), inspect the changed files and test assertions statically, mark command execution as `NOT_TESTED`, and have the parent (or a separate isolated test runner) execute clean-tree and test verification.
 4. **Then scope.** Check for unrelated refactors, generated files, secrets, and behavior changes not in the spec.
 
 ## Five axes
@@ -59,7 +59,7 @@ Use these as detailed prompts under the five axes; they are not a second verdict
 
 ## Mutation check
 
-For a changed condition, invert or remove it in a scratch copy and run the test that should protect it. If the test stays green, the test does not prove the behavior: report the missing case. Restore the file immediately. Do not run mutation experiments on the working tree without a restore path.
+For a changed condition, invert or remove it in a scratch copy and run the test that should protect it. If the test stays green, the test does not prove the behavior: report the missing case. Restore the file immediately. Do not run mutation experiments on the working tree without a restore path. When running in a no-shell read-only reviewer (`EnableWriteTools: false`), perform mental/static mutation analysis against the test assertions and flag suspected gaps for the parent to verify in a scratch run.
 
 ## Findings
 

@@ -28,11 +28,11 @@ When a plan is already approved and the user asked to execute it, hand off to `a
 | Unknown area, broad search, or "where is this?" | One `research` subagent (`workspace: "inherit"`) with a mapping brief. |
 | Two or more independent read-only questions | Parallel `research` calls, at most three, each with a disjoint question. |
 | Live UI, layout, console, or interaction verification | `browser` subagent (or recommend `/browser` if user setup is needed). |
-| Two or more unrelated failures or independent fixes | One `self` owner per failure domain with disjoint files (`workspace: "share"` or `"branch"` if builds/edits overlap); integrate and run the full suite. |
-| Independent implementation in disjoint files | One `self` writer per ownership boundary (`workspace: "share"` for concurrent edits/builds); serialize shared files. |
+| Two or more unrelated failures or independent fixes | One `self` owner per failure domain with disjoint files (`workspace: "branch"` or `"share"` if builds/edits overlap); integrate and run the full suite. |
+| Independent implementation in disjoint files | One `self` writer per ownership boundary (`workspace: "branch"` or `"share"` for concurrent edits/builds); serialize shared files. |
 | Many uniform items (per-file audits, staged pipelines, structured JSON aggregation) | Dynamic workflow via `run_workflow` (`parallel()` / `pipeline()` with explicit JSON `schema`). |
-| Verification of a risky change | Main session plus a fresh read-only tester/reviewer subagent (`define_subagent` with `EnableWriteTools: false`). |
-| Material change before merge | Fresh read-only reviewer subagent with spec, diff, tests, and open questions. |
+| Verification of a risky change | Main session (or an isolated `self` runner) executes tests, paired with a fresh read-only reviewer (`define_subagent` with `EnableWriteTools: false`) for static inspection. |
+| Material change before merge | Fresh read-only reviewer subagent (`define_subagent` with `EnableWriteTools: false` or `research`) with spec, changed files/diff, test outputs, and open questions. |
 | Broad multi-worker coordination with peer chat, hard deep-reasoning bugs, or multi-day campaigns | Recommend Antigravity's built-in user-invoked orchestrators: `/swarm` (broad parallel work + `@verifier`, all plans), `/boost` (hard bugs/races/algorithms, paid plans), or `/teamwork` (multi-milestone teams, paid plans). Never invoke `/swarm` unprompted. |
 | Delivery, merge, release | Main session only. Never delegate publication or Git authority. |
 
@@ -59,12 +59,12 @@ A subagent starts with a clean context and does not inherit the parent's convers
 
 ## Rules
 
-- **One writer per file.** Parallel writers must have disjoint ownership bounded to the repository/worktree root. Use `workspace: "share"` (shared-repo working copy) or `"branch"` (isolated clone) when parallel writers edit or run builds/tests simultaneously. Shared files and shared refactors are sequential.
+- **One writer per file.** Parallel writers must have disjoint ownership bounded to the repository/worktree root. Use `workspace: "branch"` (isolated branched/cloned workspace) or `"share"` (new working copy sharing underlying repository storage, like `git worktree`) when parallel writers edit or run builds/tests simultaneously. Shared files and shared refactors are sequential.
 - **Land work before killing isolated workspaces.** Killing a subagent via `manage_subagents` permanently deletes its `share`/`branch` workspace. Integrate or merge its changes into the target branch before terminating it.
 - **One brief, not the whole plan.** A subagent gets the task block and cross-task decisions it needs; do not paste the entire plan or session history.
 - **Async background lifecycle and reactive wakeup.** `invoke_subagent` and `run_workflow` run asynchronously and return a `conversationId` or task immediately. Continue only disjoint safe work or end the turn and wait for reactive wakeup notifications. Never poll in a loop, never use shell `sleep`, and never touch a running writer's files.
 - **Continuation vs fresh context.** Continue an idle subagent's retained context with `send_message(Recipient=conversationId, ...)` for follow-ups on the same brief or delta; launch a fresh `invoke_subagent` when independent context is required (such as initial or whole-branch review).
-- **Read-only means read-only.** Use built-in `research`, `define_subagent` with `EnableWriteTools: false`, or a read-only custom agent; state read-only explicitly in the brief and forbid mutating commands.
+- **Read-only means read-only.** Use built-in `research`, `define_subagent` with `EnableWriteTools: false`, or a read-only custom agent; state read-only explicitly in the brief and forbid mutating commands. Note that `EnableWriteTools: false` disables terminal execution along with file writes, so supply changed file paths or diff context in the brief and run shell/test verification in the main session or a separate isolated runner.
 - **No direct user prompts from subagents.** Children return stop-condition blockers and questions to the parent conversation; only the main session coordinates scope decisions with the user (tool approval prompts bubble cleanly to the UI).
 - **Bound by brief, not turn caps.** Size each brief for one delegate, encourage parallel independent reads per turn, and instruct the child to return a clean partial report (`done + remaining`) if work outgrows the brief.
 - **Direct visual inspection.** Read screenshots and visual artifacts directly when your active model supports vision; delegate live page interaction, screenshots, and console/network checks to `browser`.
@@ -80,7 +80,7 @@ A subagent starts with a clean context and does not inherit the parent's convers
 1. Restate the outcome and the acceptance checks.
 2. Draw the dependency graph: what must be known, what can run in parallel, what one writer owns.
 3. Choose direct work, focused subagent(s), `run_workflow`, or a recommendation for `/swarm` / `/boost` / `/teamwork`.
-4. Dispatch with the brief template (and `workspace: "share"`/`"branch"` for concurrent writers).
+4. Dispatch with the brief template (and `workspace: "branch"`/`"share"` for concurrent writers).
 5. Continue only safe independent work or end the turn for reactive wakeup; never poll, shell-sleep, or touch a running writer's files.
 6. Integrate results (before terminating isolated workspaces), resolve conflicts, and run full checks.
 7. Send the material diff to a fresh read-only reviewer subagent; fix and recheck.
@@ -94,7 +94,7 @@ This skill intentionally does not hardcode provider models, reasoning effort, or
 
 ## Independent failure dispatch
 
-When several failures are genuinely independent — different test files, subsystems, or root causes — dispatch one owner per domain (`self` with disjoint write ownership, using `workspace: "share"` if builds/tests contend). Give each a focused scope, the exact failing evidence, explicit ownership, and a no-refactor constraint. Do not parallelize related failures, a shared design decision, or two writers in one file. Integrate the results, then run the full suite; never trust a child's success report without inspecting the diff.
+When several failures are genuinely independent — different test files, subsystems, or root causes — dispatch one owner per domain (`self` with disjoint write ownership, using `workspace: "branch"` or `"share"` if builds/tests contend). Give each a focused scope, the exact failing evidence, explicit ownership, and a no-refactor constraint. Do not parallelize related failures, a shared design decision, or two writers in one file. Integrate the results, then run the full suite; never trust a child's success report without inspecting the diff.
 
 ## Stop conditions
 

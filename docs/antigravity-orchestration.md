@@ -59,22 +59,24 @@ Prompt: Map the authentication entry points, session storage, and callback paths
 Read-only. Return file paths, line ranges, and a short flow summary.
 ```
 
-**Two independent writers (`self` with `workspace: "share"`)**
+**Two independent writers (`self` with `workspace: "branch"` or `"share"`)**
 
 ```text
-Writer A (workspace: share): owns src/parser/ and its tests.
-Writer B (workspace: share): owns src/renderer/ and its tests.
+Writer A (workspace: branch): owns src/parser/ and its tests.
+Writer B (workspace: branch): owns src/renderer/ and its tests.
+(Use workspace: share when you want shared repository storage without duplicating history.)
 Do not touch shared types; report any needed interface change instead.
-Integrate both working copies on the integration branch before killing subagents.
+Integrate both workspaces on the integration branch before killing subagents.
 ```
 
 **Fresh read-only review (`define_subagent` with `EnableWriteTools: false`)**
 
 ```text
 Define transient read-only reviewer (EnableWriteTools: false).
-Invoke fresh subagent on spec + diff from BASE to HEAD.
-Report P0/P1/P2 findings with file:line, evidence, impact, and a concrete fix.
-Do not edit files or approve on my behalf.
+Invoke fresh subagent with spec, BASE..HEAD commit SHAs, explicit changed file paths
+(or diff excerpt, since EnableWriteTools: false also disables shell tools), and parent test outputs.
+Report P0/P1/P2 findings with file:line, evidence, impact, and a concrete fix; mark shell checks NOT_TESTED.
+Run actual test/mutation verification in the main session or a separate isolated runner.
 ```
 
 **Fan-out audit across many files (`run_workflow`)**
