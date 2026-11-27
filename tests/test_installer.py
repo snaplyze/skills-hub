@@ -1027,7 +1027,7 @@ def test_antigravity_installer_default_target_reload_verify_and_lib_guard(
     assert "/skills reload" in copied.stdout
     expected_dir = workspace.home / ".gemini" / "config" / "skills" / "frontend-design"
     assert (expected_dir / "SKILL.md").is_file()
-    assert not (xdg / "gemini").exists()
+    assert not xdg.exists()
 
     # --link mode and idempotent re-run work cleanly.
     linked = run_installer(
@@ -1068,6 +1068,27 @@ def test_antigravity_installer_default_target_reload_verify_and_lib_guard(
     )
     assert listed.returncode == 0, listed.stderr
     assert "frontend-design" in listed.stdout
+
+    # --help works with HOME unset and renders each wrapper's usage path and literal target.
+    for installer, harness, usage_cmd, literal_target in (
+        (
+            workspace.antigravity_installer,
+            "Antigravity",
+            "./install/antigravity.sh",
+            "$HOME/.gemini/config/skills",
+        ),
+        (
+            workspace.opencode_installer,
+            "OpenCode",
+            "./install/opencode.sh",
+            "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills",
+        ),
+    ):
+        help_res = run_installer(workspace, "--help", env=no_home, installer=installer)
+        assert help_res.returncode == 0, help_res.stderr
+        assert harness in help_res.stdout
+        assert usage_cmd in help_res.stdout
+        assert literal_target in help_res.stdout
 
     # --verify --ref works with install/antigravity.sh on a clean tagged git checkout.
     make_git_checkout(workspace, tag="v1.3.0")

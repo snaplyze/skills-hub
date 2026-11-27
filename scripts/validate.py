@@ -1001,6 +1001,9 @@ def check_skill(
 def check_installer(errors: list[str], *, root: Path | None = None) -> None:
     base_root = ROOT if root is None else root
     install_dir = base_root / "install"
+    if install_dir.is_symlink():
+        errors.append("install: symlinked installer directory is not allowed")
+        return
     scripts = (
         ("install/antigravity.sh", True),
         ("install/opencode.sh", True),
