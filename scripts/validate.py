@@ -13,6 +13,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import heapq
 import importlib.util
 import io
 import json
@@ -57,29 +58,35 @@ ALLOWED_FRONTMATTER_KEYS = frozenset(
 COMPATIBILITY_MAX_LEN = 500
 AGGREGATE_DESCRIPTION_LIMIT = 16384
 READING_SET_HARD_LIMIT = 32768
+MARKDOWN_SUFFIXES = frozenset({".md", ".markdown"})
+ALLOWED_READING_SET_OBJECT_KEYS = frozenset({"files", "limit_bytes"})
+OPTED_OUT_CONTRAST_TOKENS = frozenset(
+    {
+        "--color-border",
+        "--color-accent-subtle",
+        "--color-overlay",
+    }
+)
 
 OPEN_BACKTICK_FENCE_RE = re.compile(r"^ {0,3}(`{3,})[^`]*$")
 OPEN_TILDE_FENCE_RE = re.compile(r"^ {0,3}(~{3,}).*$")
 ATX_HEADING_RE = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 CLOSING_HASHES_RE = re.compile(r"[ \t]+#+[ \t]*$")
 SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(=+|-+)[ \t]*$")
-HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 MASK_TOKEN_RE = re.compile(r"<!--|`+")
 HTML_ID_RE = re.compile(
     r"<(?:a|h[1-6])\b[^>]*\s(?:id|name)\s*=\s*(?:\"([^\"]+)\"|'([^']+)')",
     re.IGNORECASE,
 )
 REF_DEF_RE = re.compile(
-    r"^ {0,3}\[([^\]\n]+)\]:[ \t]*(<[^>\n]*>|[^\s]+)"
+    r"^ {0,3}\[(?!\^)([^\]\n]+)\]:[ \t]*(<[^>\n]*>|[^\s]+)"
     r"(?:[ \t]+(?:\"[^\"\n]*\"|'[^'\n]*'|\([^)\n]*\)))?[ \t]*$"
 )
-REF_LINK_RE = re.compile(r"!?\[([^\]\n]*)\](?:\[([^\]\n]*)\])?")
-CSS_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 VAR_RE = re.compile(r"var\(\s*(--[a-z0-9-]+)\s*(?:,\s*(.*))?\)", re.DOTALL)
 
 
 class UniqueKeySafeLoader(yaml.SafeLoader):
-    """YAML SafeLoader that rejects duplicate mapping keys, merge keys, and unhashable keys."""
+    """YAML 1.2 SafeLoader rejecting duplicate mapping keys, merge keys, and unhashable keys."""
 
 
 def _construct_unique_mapping(
@@ -116,6 +123,17 @@ def _construct_unique_mapping(
 UniqueKeySafeLoader.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
     _construct_unique_mapping,
+)
+# Restrict implicit boolean resolution to YAML 1.2 Core Schema (true/false only),
+# without mutating yaml.SafeLoader's global resolver table.
+UniqueKeySafeLoader.yaml_implicit_resolvers = {
+    key: [(tag, regexp) for tag, regexp in resolvers if tag != "tag:yaml.org,2002:bool"]
+    for key, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+UniqueKeySafeLoader.add_implicit_resolver(
+    "tag:yaml.org,2002:bool",
+    re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$"),
+    list("tTfF"),
 )
 
 
@@ -250,65 +268,10 @@ def mask_code_and_comments(text: str) -> str:
     return "".join(out)
 
 
-def mask_inline_code(text: str) -> str:
-    """Mask CommonMark inline code spans without crossing paragraph boundaries."""
-    out: list[str] = []
-    pos = 0
-    n = len(text)
-    while pos < n:
-        idx = text.find("`", pos)
-        if idx == -1:
-            out.append(text[pos:])
-            break
-        if idx > pos:
-            out.append(text[pos:idx])
-        run_end = idx
-        while run_end < n and text[run_end] == "`":
-            run_end += 1
-        if _is_escaped(text, idx):
-            out.append(text[idx:run_end])
-            pos = run_end
-            continue
-        tick_len = run_end - idx
-        para_end = text.find("\n\n", run_end)
-        limit = n if para_end == -1 else para_end
-        search_pos = run_end
-        found = -1
-        while search_pos < limit:
-            next_tick = text.find("`", search_pos, limit)
-            if next_tick == -1:
-                break
-            close_end = next_tick
-            while close_end < limit and text[close_end] == "`":
-                close_end += 1
-            if close_end - next_tick == tick_len:
-                found = close_end
-                break
-            search_pos = close_end
-        if found != -1:
-            out.append(_blank_preserving_newlines(text[idx:found]))
-            pos = found
-        else:
-            out.append(text[idx:run_end])
-            pos = run_end
-    return "".join(out)
-
-
-def mask_html_comments(text: str) -> str:
-    return HTML_COMMENT_RE.sub(
-        lambda match: _blank_preserving_newlines(match.group(0)),
-        text,
-    )
-
-
 def preprocess_markdown(text: str) -> tuple[str, str]:
     """Strip frontmatter and fenced code, then mask inline code and HTML comments once."""
     stripped = strip_fenced_code(strip_frontmatter(text))
     return stripped, mask_code_and_comments(stripped)
-
-
-def normalize_reference_label(text: str) -> str:
-    return re.sub(r"\s+", " ", text.strip()).casefold()
 
 
 def _markdown_headings_from_preprocessed(stripped: str, masked: str) -> set[str]:
@@ -364,15 +327,27 @@ def markdown_headings(text: str) -> set[str]:
     return _markdown_headings_from_preprocessed(stripped, masked)
 
 
+def _skip_inline_space(text: str, i: int, n: int) -> int:
+    """Skip horizontal whitespace and at most one newline (never a blank line)."""
+    while i < n and text[i] in " \t":
+        i += 1
+    if i < n and text[i] == "\n":
+        j = i + 1
+        while j < n and text[j] in " \t":
+            j += 1
+        if j < n and text[j] == "\n":
+            return -1
+        return j
+    return i
+
+
 def _parse_inline_dest(text: str, pos: int) -> tuple[str, int] | None:
     """Parse ``(dest [title])`` starting at ``pos`` (pointing at '(')."""
     n = len(text)
     if pos >= n or text[pos] != "(":
         return None
-    i = pos + 1
-    while i < n and text[i] in " \t":
-        i += 1
-    if i >= n:
+    i = _skip_inline_space(text, pos + 1, n)
+    if i < 0 or i >= n:
         return None
 
     if text[i] == "<":
@@ -402,39 +377,52 @@ def _parse_inline_dest(text: str, pos: int) -> tuple[str, int] | None:
             return None
         dest = text[start:i]
 
-    while i < n and text[i] in " \t":
-        i += 1
+    i = _skip_inline_space(text, i, n)
+    if i < 0:
+        return None
     if i < n and text[i] in "\"'(":
         closer = ")" if text[i] == "(" else text[i]
         i += 1
         while i < n and text[i] != closer:
             if text[i] == "\n":
-                return None
+                j = i + 1
+                while j < n and text[j] in " \t":
+                    j += 1
+                if j < n and text[j] == "\n":
+                    return None
+                i += 1
+                continue
             if text[i] == "\\" and i + 1 < n and text[i + 1] != "\n":
                 i += 2
                 continue
             i += 1
         if i >= n or text[i] != closer:
             return None
-        i += 1
-        while i < n and text[i] in " \t":
-            i += 1
+        i = _skip_inline_space(text, i + 1, n)
+        if i < 0:
+            return None
     if i >= n or text[i] != ")":
         return None
     return dest, i + 1
 
 
-def _scan_inline_links(text: str) -> tuple[list[str], str]:
+def _scan_inline_links(text: str) -> list[str]:
     """Extract inline Markdown link/image destinations in O(n) without recursion."""
     n = len(text)
-    match_bracket: dict[int, int] = {}
+    bracket_pairs: list[tuple[int, int]] = []
     stack: list[int] = []
     i = 0
     while i < n:
         ch = text[i]
         if ch == "\n":
-            stack.clear()
-            i += 1
+            j = i + 1
+            while j < n and text[j] in " \t":
+                j += 1
+            if j < n and text[j] == "\n":
+                stack.clear()
+                i = j
+            else:
+                i += 1
             continue
         if ch == "\\" and i + 1 < n and text[i + 1] != "\n":
             i += 2
@@ -442,51 +430,52 @@ def _scan_inline_links(text: str) -> tuple[list[str], str]:
         if ch == "[":
             stack.append(i)
         elif ch == "]" and stack:
-            match_bracket[stack.pop()] = i
+            open_pos = stack.pop()
+            if i + 1 < n and text[i + 1] == "(":
+                bracket_pairs.append((open_pos, i))
         i += 1
 
+    if not bracket_pairs:
+        return []
+
+    bracket_pairs.sort()
     targets: list[str] = []
-    masked = list(text)
-    for open_pos, close_pos in sorted(match_bracket.items()):
-        if close_pos + 1 < n and text[close_pos + 1] == "(":
-            parsed = _parse_inline_dest(text, close_pos + 1)
-            if parsed is not None:
-                dest, end_pos = parsed
-                targets.append(dest)
-                start_mask = (
-                    open_pos - 1 if open_pos > 0 and text[open_pos - 1] == "!" else open_pos
-                )
-                for k in range(start_mask, end_pos):
-                    if masked[k] != "\n":
-                        masked[k] = " "
-    return targets, "".join(masked)
+    # Sweep-line min-heap of (dest_start, dest_end) for links whose destination/title
+    # contains '[' (strictly O(K log K) since open_pos is monotonically non-decreasing).
+    pending_blocked: list[tuple[int, int]] = []
+    blocked_until = -1
+
+    for open_pos, close_pos in bracket_pairs:
+        while pending_blocked and pending_blocked[0][0] <= open_pos:
+            _, end = heapq.heappop(pending_blocked)
+            if end > blocked_until:
+                blocked_until = end
+        if open_pos < blocked_until:
+            continue
+        parsed = _parse_inline_dest(text, close_pos + 1)
+        if parsed is None:
+            continue
+        dest, end_pos = parsed
+        targets.append(dest)
+        if text.find("[", close_pos + 1, end_pos) != -1:
+            heapq.heappush(pending_blocked, (close_pos + 1, end_pos))
+    return targets
 
 
 def _extract_markdown_links_from_masked(scan: str) -> list[str]:
-    definitions: dict[str, str] = {}
     all_definition_targets: list[str] = []
     lines: list[str] = []
     for line in scan.splitlines():
         definition = REF_DEF_RE.match(line)
         if definition:
-            label = normalize_reference_label(definition.group(1))
-            dest = definition.group(2)
-            definitions.setdefault(label, dest)
-            all_definition_targets.append(dest)
+            all_definition_targets.append(definition.group(2))
             lines.append("")
         else:
             lines.append(line)
     body = "\n".join(lines)
 
-    targets, without_inline = _scan_inline_links(body)
+    targets = _scan_inline_links(body)
     seen_ref_targets: set[str] = set()
-    for match in REF_LINK_RE.finditer(without_inline):
-        text_label, reference_label = match.group(1), match.group(2)
-        label = normalize_reference_label(reference_label if reference_label else text_label)
-        target = definitions.get(label)
-        if target is not None:
-            seen_ref_targets.add(target)
-            targets.append(target)
     for target in all_definition_targets:
         if target not in seen_ref_targets:
             seen_ref_targets.add(target)
@@ -506,11 +495,15 @@ def check_markdown_links(
     root: Path | None = None,
     skill_dir: Path | None = None,
     text: str | None = None,
+    preprocessed: tuple[str, str] | None = None,
     heading_cache: dict[Path, set[str]] | None = None,
 ) -> None:
     base_root = ROOT if root is None else root
-    raw_text = path.read_text(encoding="utf-8") if text is None else text
-    stripped, masked = preprocess_markdown(raw_text)
+    if preprocessed is not None:
+        stripped, masked = preprocessed
+    else:
+        raw_text = path.read_text(encoding="utf-8") if text is None else text
+        stripped, masked = preprocess_markdown(raw_text)
     resolved_path = path.resolve()
     if heading_cache is not None and resolved_path in heading_cache:
         headings = heading_cache[resolved_path]
@@ -565,7 +558,7 @@ def check_markdown_links(
             continue
         if not anchor or candidate.is_dir():
             continue
-        if candidate.suffix.lower() not in (".md", ".markdown"):
+        if candidate.suffix.lower() not in MARKDOWN_SUFFIXES:
             continue
 
         if candidate == resolved_path:
@@ -587,16 +580,12 @@ def parse_frontmatter_text(raw_text: str) -> tuple[dict, str]:
     match = re.search(r"\n---(?:\n|$)", text[3:])
     if match is None:
         raise ValueError("frontmatter is not closed with ---")
-    raw_yaml = text[4 : 3 + match.start()] if match.start() > 0 else ""
+    raw_yaml = text[4 : 3 + match.start() + 1] if match.start() > 0 else ""
     body = text[3 + match.end() :]
     data = yaml.load(raw_yaml, Loader=UniqueKeySafeLoader)
     if not isinstance(data, dict):
         raise ValueError("frontmatter must be a mapping")
     return data, body
-
-
-def parse_frontmatter(path: Path) -> tuple[dict, str]:
-    return parse_frontmatter_text(path.read_text(encoding="utf-8"))
 
 
 def _parse_byte_limit(raw: object, field: str) -> int:
@@ -625,6 +614,13 @@ def reading_set_entries(data: object) -> tuple[list[tuple[str, list[str], int | 
         if isinstance(value, list):
             files = value
         elif isinstance(value, dict):
+            unknown_set_keys = sorted(
+                str(key)
+                for key in value
+                if not isinstance(key, str) or key not in ALLOWED_READING_SET_OBJECT_KEYS
+            )
+            if unknown_set_keys:
+                raise ValueError(f"set {name!r} has unknown key(s): {', '.join(unknown_set_keys)}")
             files = value.get("files")
             if not isinstance(files, list):
                 raise ValueError(f"set {name!r} needs a 'files' list")
@@ -658,11 +654,10 @@ def check_reading_sets(
     if md_files is None:
         referenced = [
             p
-            for p in (
-                *((skill_dir / "references").rglob("*.md")),
-                *((skill_dir / "assets").rglob("*.md")),
-            )
-            if not p.is_symlink() and p.is_file()
+            for sub in ("references", "assets")
+            if (skill_dir / sub).is_dir()
+            for p in (skill_dir / sub).rglob("*")
+            if not p.is_symlink() and p.is_file() and p.suffix.lower() in MARKDOWN_SUFFIXES
         ]
     else:
         referenced = [
@@ -696,6 +691,16 @@ def check_reading_sets(
     if not entries:
         errors.append(f"{manifest_rel}: no reading sets defined")
         return True
+
+    if isinstance(data, dict) and "base" in data:
+        raw_base = data["base"]
+        if (
+            not isinstance(raw_base, str)
+            or not raw_base.strip()
+            or Path(raw_base).is_absolute()
+            or (base_root / raw_base).resolve() != skill_resolved
+        ):
+            errors.append(f"{manifest_rel}: 'base' ({raw_base!r}) does not match skill directory")
 
     excluded = data.get("excluded", {}) if isinstance(data, dict) else {}
     if not isinstance(excluded, dict):
@@ -744,7 +749,7 @@ def check_reading_sets(
                 continue
             total += candidate.stat().st_size
 
-            if candidate.suffix.lower() not in (".md", ".markdown"):
+            if candidate.suffix.lower() not in MARKDOWN_SUFFIXES:
                 continue
             routing_path = candidate.relative_to(skill_resolved).as_posix()
             if candidate == skill_md_resolved:
@@ -789,6 +794,14 @@ def check_reading_sets(
             continue
         excluded_paths.add(candidate)
 
+    overlap = sorted(
+        path.relative_to(skill_resolved).as_posix() for path in covered & excluded_paths
+    )
+    if overlap:
+        errors.append(
+            f"{manifest_rel}: path(s) cannot be in both sets and excluded: " + ", ".join(overlap)
+        )
+
     all_markdown = {skill_md_resolved}
     for path in referenced:
         resolved = path.resolve()
@@ -810,11 +823,11 @@ def check_reading_sets(
 
 
 def _check_local_refs(
-    md_path: Path, text: str, skill_dir: Path, errors: list[str], *, root: Path
+    md_path: Path, stripped_text: str, skill_dir: Path, errors: list[str], *, root: Path
 ) -> None:
     skill_resolved = skill_dir.resolve()
     rel = md_path.relative_to(root)
-    for target in LOCAL_REF_RE.findall(strip_fenced_code(text)):
+    for target in LOCAL_REF_RE.findall(stripped_text):
         candidate = (skill_dir / target).resolve()
         if not candidate.is_relative_to(skill_resolved):
             errors.append(f"{rel}: local reference escapes skill directory -> {target}")
@@ -909,6 +922,10 @@ def check_skill(
         allowed_tools = frontmatter["allowed-tools"]
         if not isinstance(allowed_tools, str) or not allowed_tools.strip():
             errors.append(f"{rel}: frontmatter 'allowed-tools' must be a non-empty string")
+        elif "," in allowed_tools or any(ord(ch) < 32 or ord(ch) == 127 for ch in allowed_tools):
+            errors.append(
+                f"{rel}: frontmatter 'allowed-tools' must be space-delimited without commas or control characters"
+            )
 
     disable_model = frontmatter.get("disable-model-invocation")
     if "disable-model-invocation" in frontmatter and not isinstance(disable_model, bool):
@@ -931,9 +948,7 @@ def check_skill(
                     else:
                         autoinvoke = meta_val
                 elif not isinstance(meta_val, str):
-                    errors.append(
-                        f"{rel}: frontmatter 'metadata.{meta_key}' must be a string"
-                    )
+                    errors.append(f"{rel}: frontmatter 'metadata.{meta_key}' must be a string")
 
     if isinstance(disable_model, bool) and autoinvoke is not None and disable_model == autoinvoke:
         errors.append(
@@ -953,7 +968,7 @@ def check_skill(
     if not body.strip():
         errors.append(f"{rel}: SKILL.md body is empty")
 
-    md_files = [p for p in all_entries if p.is_file() and p.suffix == ".md"]
+    md_files = [p for p in all_entries if p.is_file() and p.suffix.lower() in MARKDOWN_SUFFIXES]
     has_manifest = check_reading_sets(skill_dir, body, errors, root=base_root, md_files=md_files)
 
     if not has_manifest:
@@ -964,13 +979,14 @@ def check_skill(
                 if routing_path not in body:
                     errors.append(f"{rel}: reference not mentioned in routing -> {routing_path}")
 
-    _check_local_refs(skill_file, body, skill_dir, errors, root=base_root)
+    skill_stripped, skill_masked = preprocess_markdown(skill_text)
+    _check_local_refs(skill_file, skill_stripped, skill_dir, errors, root=base_root)
     check_markdown_links(
         skill_file,
         errors,
         root=base_root,
         skill_dir=skill_dir,
-        text=skill_text,
+        preprocessed=(skill_stripped, skill_masked),
         heading_cache=heading_cache,
     )
     _check_placeholders(skill_file, skill_text, errors, root=base_root)
@@ -978,21 +994,22 @@ def check_skill(
     for path in all_entries:
         if not path.is_file() or path == skill_file:
             continue
-        if path.suffix == ".md":
+        if path.suffix.lower() in MARKDOWN_SUFFIXES:
             content = path.read_text(encoding="utf-8")
             if not content:
                 errors.append(f"{path.relative_to(base_root)}: empty markdown file")
-            _check_local_refs(path, content, skill_dir, errors, root=base_root)
+            doc_stripped, doc_masked = preprocess_markdown(content)
+            _check_local_refs(path, doc_stripped, skill_dir, errors, root=base_root)
             check_markdown_links(
                 path,
                 errors,
                 root=base_root,
                 skill_dir=skill_dir,
-                text=content,
+                preprocessed=(doc_stripped, doc_masked),
                 heading_cache=heading_cache,
             )
             _check_placeholders(path, content, errors, root=base_root)
-        elif path.suffix in (".css", ".json", ".py", ".sh"):
+        elif path.suffix.lower() in (".css", ".json", ".py", ".sh"):
             _check_placeholders(path, path.read_text(encoding="utf-8"), errors, root=base_root)
 
     return description_bytes
@@ -1129,59 +1146,129 @@ def semantic_tokens_from_declarations(
     return tokens
 
 
-def semantic_tokens(tokens_css: str) -> set[str]:
-    return semantic_tokens_from_declarations(css_declarations(tokens_css))
-
-
-def resolve_theme_tokens_from_declarations(
+def _theme_property_maps(
     declarations: Sequence[tuple[tuple[str, ...], str, str]],
 ) -> dict[str, dict[str, str]]:
     root_properties: dict[str, str] = {}
     dark_properties: dict[str, str] = {}
     for context, name, value in declarations:
-        inside_media = any(block.startswith(("@media", "@supports")) for block in context)
-        if inside_media:
+        if any(block.startswith(("@media", "@supports")) for block in context):
             continue
         if any(_selector_matches(block, "dark") for block in context):
             dark_properties[name] = value
         elif any(_selector_matches(block, ":root") for block in context):
             root_properties[name] = value
+    return {
+        "light": root_properties,
+        "dark": {**root_properties, **dark_properties},
+    }
 
-    def resolve(name: str, properties: dict[str, str], seen: set[str]) -> str | None:
-        if name in seen or name not in properties:
+
+def _match_single_var(value: str) -> tuple[str, str | None] | None:
+    stripped = value.strip()
+    if not (stripped.startswith("var(") and stripped.endswith(")")):
+        return None
+    depth = 0
+    for idx in range(3, len(stripped) - 1):
+        ch = stripped[idx]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return None
+    if depth != 1:
+        return None
+    match = VAR_RE.fullmatch(stripped)
+    if not match:
+        return None
+    return match.group(1), match.group(2)
+
+
+_CSS_CYCLE = object()
+
+
+def resolve_theme_tokens_from_declarations(
+    declarations: Sequence[tuple[tuple[str, ...], str, str]],
+) -> dict[str, dict[str, str]]:
+    theme_maps = _theme_property_maps(declarations)
+
+    def resolve_value(
+        value: str, properties: dict[str, str], seen: set[str]
+    ) -> str | object | None:
+        stripped = value.strip()
+        parsed = _match_single_var(stripped)
+        if parsed is None:
+            return stripped or None
+        target, fallback = parsed
+        resolved = resolve(target, properties, seen)
+        if resolved is _CSS_CYCLE:
+            # Per CSS Custom Properties Level 1 §3, dependency cycles invalidate
+            # the property without applying fallback values.
+            return _CSS_CYCLE
+        if resolved is not None:
+            return resolved
+        if fallback is None or not fallback.strip():
             return None
-        value = properties[name]
-        match = VAR_RE.fullmatch(value)
-        if match:
-            resolved = resolve(match.group(1), properties, seen | {name})
-            if resolved is not None:
-                return resolved
-            fallback = match.group(2)
-            return fallback.strip() if fallback and fallback.strip() else None
-        return value
+        return resolve_value(fallback, properties, seen)
+
+    def resolve(name: str, properties: dict[str, str], seen: set[str]) -> str | object | None:
+        if name in seen:
+            return _CSS_CYCLE
+        if name not in properties:
+            return None
+        return resolve_value(properties[name], properties, seen | {name})
 
     themes: dict[str, dict[str, str]] = {}
-    for theme, properties in (
-        ("light", root_properties),
-        ("dark", {**root_properties, **dark_properties}),
-    ):
+    for theme, properties in theme_maps.items():
         resolved: dict[str, str] = {}
         for name in properties:
             if name.startswith("--color-"):
                 value = resolve(name, properties, set())
-                if value is not None:
+                if isinstance(value, str):
                     resolved[name] = value
         themes[theme] = resolved
     return themes
 
 
-def resolve_theme_tokens(tokens_css: str) -> dict[str, dict[str, str]]:
-    return resolve_theme_tokens_from_declarations(css_declarations(tokens_css))
+def _has_symlink_component(path: Path, stop_at: Path) -> Path | None:
+    """Return the first symlink along ``path`` relative to ``stop_at`` (inclusive)."""
+    try:
+        rel = path.relative_to(stop_at)
+    except ValueError:
+        return path if path.is_symlink() else None
+    current = stop_at
+    for part in rel.parts:
+        current = current / part
+        if current.is_symlink():
+            return current
+    return None
+
+
+def _display_path(path: Path, base_root: Path) -> Path:
+    try:
+        return path.relative_to(base_root)
+    except ValueError:
+        return path
+
+
+def _check_no_symlink_and_contained(
+    path: Path, base_root: Path, errors: list[str], label: str
+) -> bool:
+    symlink_part = _has_symlink_component(path, base_root)
+    if symlink_part is not None:
+        errors.append(f"{_display_path(path, base_root)}: symlinked {label} is not allowed")
+        return False
+    root_resolved = base_root.resolve()
+    if not path.resolve().is_relative_to(root_resolved):
+        errors.append(f"{_display_path(path, base_root)}: {label} escapes repository root")
+        return False
+    return True
 
 
 def check_contrast_fixture(
     fixture: Path,
-    tokens_css: Path,
+    tokens_css: Path | None,
     contrast,
     errors: list[str],
     *,
@@ -1215,14 +1302,32 @@ def check_contrast_fixture(
         errors.append(f"{fixture_rel}: fixture needs a 'combinations' list")
         combinations = []
 
-    has_tokens_css = tokens_css.is_file()
+    tokens_is_symlink = (
+        tokens_css is not None and _has_symlink_component(tokens_css, base_root) is not None
+    )
+    has_tokens_css = tokens_css is not None and not tokens_is_symlink and tokens_css.is_file()
     if has_tokens_css:
+        assert tokens_css is not None
+        tokens_rel = _display_path(tokens_css, base_root)
         decls = css_declarations(tokens_css.read_text(encoding="utf-8"))
         defined_tokens = semantic_tokens_from_declarations(decls)
+        theme_property_maps = _theme_property_maps(decls)
         resolved_tokens = resolve_theme_tokens_from_declarations(decls)
     else:
-        errors.append(f"{tokens_css.relative_to(base_root)}: missing token source")
+        if tokens_css is not None:
+            tokens_rel = _display_path(tokens_css, base_root)
+            if tokens_is_symlink:
+                symlink_msg = f"{tokens_rel}: symlinked token source is not allowed"
+                if symlink_msg not in errors:
+                    errors.append(symlink_msg)
+            else:
+                missing_msg = f"{tokens_rel}: missing token source"
+                if missing_msg not in errors:
+                    errors.append(missing_msg)
+        else:
+            tokens_rel = Path("tokens.css")
         defined_tokens = set()
+        theme_property_maps = {}
         resolved_tokens = {}
 
     labels: set[str] = set()
@@ -1230,6 +1335,7 @@ def check_contrast_fixture(
     label_tokens: dict[str, set[str]] = {}
     label_themes: dict[str, str] = {}
     parsed_token_colors: dict[tuple[str, str], object] = {}
+    invalid_tokens: set[tuple[str, str]] = set()
 
     def get_token_color(theme: str, token: str):
         cache_key = (theme, token)
@@ -1241,6 +1347,28 @@ def check_contrast_fixture(
         color = contrast.parse_color(raw)
         parsed_token_colors[cache_key] = color
         return color
+
+    # Fail closed on every semantic --color-* token in both themes, including
+    # pair-only tokens and opted-out tokens (--color-border, --color-accent-subtle, --color-overlay).
+    if has_tokens_css:
+        for theme in ("light", "dark"):
+            declared = sorted(
+                name for name in theme_property_maps.get(theme, {}) if name.startswith("--color-")
+            )
+            for token in declared:
+                if token not in resolved_tokens.get(theme, {}):
+                    errors.append(f"{tokens_rel}: {theme} token {token!r} failed to resolve")
+                    invalid_tokens.add((theme, token))
+                    continue
+                try:
+                    get_token_color(theme, token)
+                except (TypeError, ValueError):
+                    raw_val = resolved_tokens[theme][token]
+                    errors.append(
+                        f"{tokens_rel}: {theme} token {token!r} does not resolve to a valid color "
+                        f"({raw_val!r})"
+                    )
+                    invalid_tokens.add((theme, token))
 
     for index, item in enumerate(pairs):
         where = f"{fixture_rel}: pair {index}"
@@ -1308,6 +1436,8 @@ def check_contrast_fixture(
             errors.append(f"{fixture_rel}: pair {label!r} has unknown theme {theme!r}")
             continue
         for field, token in (("fg", fg_token), ("bg", bg_token)):
+            if (theme, token) in invalid_tokens:
+                continue
             value = resolved_tokens[theme].get(token)
             if value is None:
                 errors.append(f"{fixture_rel}: pair {label!r} has unknown {field} token")
@@ -1318,6 +1448,10 @@ def check_contrast_fixture(
             try:
                 expected_color = get_token_color(theme, token)
             except (TypeError, ValueError):
+                errors.append(
+                    f"{fixture_rel}: pair {label!r} {field} token {token!r} "
+                    f"does not resolve to a valid color"
+                )
                 continue
             if expected_color is None:
                 continue
@@ -1373,6 +1507,8 @@ def check_contrast_fixture(
         for field, token in (("fg", fg_token), ("bg", bg_token)):
             if not isinstance(token, str) or not token.startswith("--color-"):
                 errors.append(f"{where} {field} must be a semantic --color-* token")
+                continue
+            if (theme, token) in invalid_tokens:
                 continue
             if token not in resolved_tokens[theme]:
                 errors.append(f"{where} references unknown token {token!r}")
@@ -1433,11 +1569,7 @@ def check_contrast_fixture(
         elif isinstance(entry, str):
             if not entry.strip():
                 errors.append(f"{where} needs a non-empty reason")
-            elif token not in {
-                "--color-border",
-                "--color-accent-subtle",
-                "--color-overlay",
-            }:
+            elif token not in OPTED_OUT_CONTRAST_TOKENS:
                 errors.append(f"{where} cannot opt out; cover {token} with a pair or combination")
         else:
             errors.append(f"{where} must be a list of labels or a reason string")
@@ -1450,12 +1582,18 @@ def check_contrast(errors: list[str], *, root: Path | None = None) -> None:
     fixture = skills_dir / "frontend-design" / "assets" / "token-contrast-pairs.json"
     tokens_css = skills_dir / "frontend-design" / "assets" / "tokens.css"
 
+    if not _check_no_symlink_and_contained(script, base_root, errors, "contrast checker"):
+        return
     if not script.is_file():
         errors.append(f"{script.relative_to(base_root)}: missing contrast checker")
         return
-    if not fixture.is_file():
+
+    fixture_safe = _check_no_symlink_and_contained(fixture, base_root, errors, "contrast fixture")
+    tokens_safe = _check_no_symlink_and_contained(tokens_css, base_root, errors, "token source")
+
+    if fixture_safe and not fixture.is_file():
         errors.append(f"{fixture.relative_to(base_root)}: missing contrast fixture")
-    if not tokens_css.is_file():
+    if tokens_safe and not tokens_css.is_file() and (not fixture_safe or not fixture.is_file()):
         errors.append(f"{tokens_css.relative_to(base_root)}: missing token source")
 
     try:
@@ -1464,8 +1602,10 @@ def check_contrast(errors: list[str], *, root: Path | None = None) -> None:
         errors.append(f"{script.relative_to(base_root)}: cannot import: {error}")
         return
 
-    if fixture.is_file():
-        check_contrast_fixture(fixture, tokens_css, contrast, errors, root=base_root)
+    if fixture_safe and fixture.is_file():
+        check_contrast_fixture(
+            fixture, tokens_css if tokens_safe else None, contrast, errors, root=base_root
+        )
 
     buf = io.StringIO()
     with redirect_stdout(buf):
@@ -1492,14 +1632,22 @@ def check_root_docs(
         "THIRD_PARTY_NOTICES.md",
     ):
         path = base_root / name
+        if not _check_no_symlink_and_contained(path, base_root, errors, "documentation file"):
+            continue
         if not path.is_file():
             errors.append(f"{name}: missing")
             continue
         check_markdown_links(path, errors, root=base_root, heading_cache=heading_cache)
     docs_dir = base_root / "docs"
+    if docs_dir.is_symlink():
+        errors.append("docs: symlinked docs directory is not allowed")
+        return
     if docs_dir.is_dir():
-        for path in sorted(docs_dir.rglob("*.md")):
-            if not path.is_file():
+        for path in sorted(docs_dir.rglob("*")):
+            if path.is_symlink():
+                errors.append(f"{path.relative_to(base_root)}: symlink inside docs/ is not allowed")
+                continue
+            if not path.is_file() or path.suffix.lower() not in MARKDOWN_SUFFIXES:
                 continue
             check_markdown_links(path, errors, root=base_root, heading_cache=heading_cache)
 
@@ -1512,10 +1660,19 @@ def check_github_docs(
 ) -> None:
     base_root = ROOT if root is None else root
     github_dir = base_root / ".github"
+    if github_dir.is_symlink():
+        errors.append(".github: symlinked .github directory is not allowed")
+        return
     if not github_dir.is_dir():
         return
-    for path in sorted(github_dir.rglob("*.md")):
-        if not path.is_file():
+    for path in sorted(github_dir.rglob("*")):
+        if path.is_symlink():
+            if path.suffix.lower() not in (".yml", ".yaml"):
+                msg = f"{path.relative_to(base_root)}: symlink inside .github/ is not allowed"
+                if msg not in errors:
+                    errors.append(msg)
+            continue
+        if not path.is_file() or path.suffix.lower() not in MARKDOWN_SUFFIXES:
             continue
         content = path.read_text(encoding="utf-8")
         if not content:
@@ -1528,17 +1685,32 @@ def check_github_docs(
 def check_yaml(errors: list[str], *, root: Path | None = None) -> None:
     base_root = ROOT if root is None else root
     github_dir = base_root / ".github"
+    if github_dir.is_symlink():
+        msg = ".github: symlinked .github directory is not allowed"
+        if msg not in errors:
+            errors.append(msg)
+        return
     if not github_dir.is_dir():
         return
-    workflows_dir = (github_dir / "workflows").resolve()
-    paths = sorted(github_dir.rglob("*.yml"))
-    paths.extend(sorted(github_dir.rglob("*.yaml")))
-    for path in paths:
+    workflows_dir = github_dir / "workflows"
+    for path in sorted(github_dir.rglob("*")):
         # Workflows are validated structurally and for policy by scripts/check_workflows.py.
-        if path.parent.resolve() == workflows_dir:
+        if path.parent == workflows_dir:
+            continue
+        if path.is_symlink():
+            if path.suffix.lower() in (".yml", ".yaml"):
+                errors.append(f"{path.relative_to(base_root)}: symlinked YAML file is not allowed")
+            elif path != workflows_dir:
+                msg = f"{path.relative_to(base_root)}: symlink inside .github/ is not allowed"
+                if msg not in errors:
+                    errors.append(msg)
+            continue
+        if not path.is_file() or path.suffix.lower() not in (".yml", ".yaml"):
+            continue
+        if not _check_no_symlink_and_contained(path, base_root, errors, "YAML file"):
             continue
         try:
-            yaml.safe_load(path.read_text(encoding="utf-8"))
+            yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueKeySafeLoader)
         except yaml.YAMLError as error:
             errors.append(f"{path.relative_to(base_root)}: invalid YAML: {error}")
 
@@ -1557,6 +1729,12 @@ def validate_repo(
     )
     errors: list[str] = []
     heading_cache: dict[Path, set[str]] = {}
+
+    if _has_symlink_component(target_skills, base_root) is not None:
+        errors.append(
+            f"{_display_path(target_skills, base_root)}: symlinked skills directory is not allowed"
+        )
+        return [], errors
 
     if not target_skills.is_dir():
         raise FileNotFoundError("skills/ directory not found")
