@@ -396,3 +396,65 @@ def test_cli_default_stdout_and_live_changelog(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="duplicate"):
         release_notes.extract_section(dup_after, "1.2.3")
+
+
+def test_aud49_html_comments_indented_h2_and_isolated_python_mode(tmp_path: Path) -> None:
+    changelog = make_changelog(
+        tmp_path,
+        """# Changelog
+
+<!--
+## [1.2.3] - commented duplicate must be ignored
+-->
+
+  ## [1.2.3] - 2026-11-27
+
+- Leading item.
+
+<!--
+## [9.9.9] - commented heading must not truncate 1.2.3
+-->
+
+    ## [8.8.8] - 4-space indented code block is not an H2
+
+- Trailing item.
+
+   ## [1.2.2] - 2026-11-26
+
+- Older item.
+""",
+    )
+    notes = release_notes.extract_section(changelog, "1.2.3")
+    assert "- Leading item." in notes
+    assert "- Trailing item." in notes
+    assert "Older item." not in notes
+
+    # Section ending with a fenced code block at EOF + 3-char inline code before "##"
+    # must neither drop the closing fence nor falsely truncate.
+    eof_changelog = tmp_path / "eof.md"
+    eof_changelog.write_text(
+        "# Changelog\n\n## [1.2.4]\n\n`a`## [9.9.9] not a heading\n\n```text\nhello\n```\n",
+        encoding="utf-8",
+    )
+    eof_notes = release_notes.extract_section(eof_changelog, "1.2.4")
+    assert "`a`## [9.9.9] not a heading" in eof_notes
+    assert eof_notes.endswith("```")
+
+    # Running under `python3 -I` (isolated mode) must load sibling _markdown.py cleanly.
+    isolated = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(SCRIPT),
+            "--tag",
+            "v1.2.3",
+            "--changelog",
+            str(changelog),
+            "--check",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert isolated.returncode == 0, isolated.stderr

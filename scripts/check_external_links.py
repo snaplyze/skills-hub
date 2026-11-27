@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import http.client
+import importlib.util
 import ipaddress
 import math
 import os
@@ -37,22 +38,46 @@ SKIP_DIRS = frozenset(
     {
         ".git",
         ".venv",
+        "venv",
         "node_modules",
         "__pycache__",
         ".ruff_cache",
         ".pytest_cache",
+        ".mypy_cache",
         ".playwright-cli",
+        "secrets",
+        ".gemini",
+        ".opencode",
+        ".claude",
+        ".agents",
     }
 )
+MARKDOWN_SUFFIXES = frozenset({".md", ".markdown"})
 USER_AGENT = "skills-hub-link-check/1.0 (+https://github.com/snaplyze/skills-hub)"
 DEFAULT_WORKERS = 8
 DEFAULT_MAX_PER_HOST = 2
 MAX_REDIRECTS = 10
 
-_FENCE_OPEN_RE = re.compile(r"^((?:[ \t]*>)*)[ \t]*(`{3,}|~{3,})")
 _HTTP_URL_START_RE = re.compile(r"https?://", re.IGNORECASE)
 _SSL_CONTEXT_LOCK = threading.Lock()
 _SSL_CONTEXT: ssl.SSLContext | None = None
+
+
+def _load_markdown_module():
+    if __package__ == "scripts":
+        from . import _markdown
+
+        return _markdown
+    sibling = Path(__file__).resolve().with_name("_markdown.py")
+    spec = importlib.util.spec_from_file_location("_skills_hub_markdown", sibling)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {sibling}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_markdown = _load_markdown_module()
 
 
 class SSRFBlockedError(ValueError):
@@ -75,7 +100,7 @@ def markdown_files(root: Path) -> list[Path]:
         dirnames[:] = sorted(name for name in dirnames if name not in SKIP_DIRS)
         current = Path(dirpath)
         for filename in sorted(filenames):
-            if not filename.endswith(".md"):
+            if Path(filename).suffix.lower() not in MARKDOWN_SUFFIXES:
                 continue
             candidate = current / filename
             if candidate.is_symlink():
@@ -85,47 +110,8 @@ def markdown_files(root: Path) -> list[Path]:
     return files
 
 
-def _strip_inline_code(line: str) -> str:
-    """Replace CommonMark inline code spans with spaces."""
-    if "`" not in line:
-        return line
-    out: list[str] = []
-    i = 0
-    length = len(line)
-    while i < length:
-        if line[i] != "`":
-            out.append(line[i])
-            i += 1
-            continue
-        run_end = i
-        while run_end < length and line[run_end] == "`":
-            run_end += 1
-        tick_len = run_end - i
-        j = run_end
-        closed = -1
-        while j < length:
-            if line[j] == "`":
-                close_end = j
-                while close_end < length and line[close_end] == "`":
-                    close_end += 1
-                if close_end - j == tick_len:
-                    closed = close_end
-                    break
-                j = close_end
-            else:
-                j += 1
-        if closed != -1:
-            out.append(" " * (closed - i))
-            i = closed
-        else:
-            out.append(line[i:run_end])
-            i = run_end
-    return "".join(out)
-
-
-def _extract_urls_from_line(line: str) -> list[str]:
-    """Extract HTTP(S) URLs from a single non-fenced Markdown line."""
-    cleaned = _strip_inline_code(line)
+def _extract_urls_from_line(cleaned: str) -> list[str]:
+    """Extract HTTP(S) URLs from a single preprocessed (masked) Markdown line."""
     found: list[str] = []
     pos = 0
     length = len(cleaned)
@@ -173,22 +159,10 @@ def external_url_locations(root: Path) -> dict[str, list[tuple[str, int]]]:
     locations: dict[str, list[tuple[str, int]]] = defaultdict(list)
     for path in markdown_files(resolved_root):
         rel = path.relative_to(resolved_root).as_posix()
-        fence: tuple[str, str, int] | None = None
-        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            if fence is None:
-                open_match = _FENCE_OPEN_RE.match(line)
-                if open_match:
-                    quote_prefix, marker = open_match.group(1), open_match.group(2)
-                    if marker[0] == "~" or "`" not in line[open_match.end() :]:
-                        fence = (quote_prefix, marker[0], len(marker))
-                        continue
-            else:
-                q_prefix, fence_char, fence_len = fence
-                body = line[len(q_prefix) :] if q_prefix and line.startswith(q_prefix) else line
-                close_pattern = rf"^[ \t]*{re.escape(fence_char)}{{{fence_len},}}[ \t]*$"
-                if re.match(close_pattern, body):
-                    fence = None
-                continue
+        _, masked = _markdown.preprocess_markdown(
+            path.read_text(encoding="utf-8"), preserve_line_numbers=True
+        )
+        for line_no, line in enumerate(masked.splitlines(), 1):
             for url in _extract_urls_from_line(line):
                 entry = (rel, line_no)
                 if entry not in locations[url]:

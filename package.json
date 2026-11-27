@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.venv\" \"#.playwright-cli\"",
+    "lint:markdown": "markdownlint-cli2 \"**/*.md\"",
     "check:css": "csstree-validator skills/frontend-design/assets/tokens.css"
   },
   "devDependencies": {

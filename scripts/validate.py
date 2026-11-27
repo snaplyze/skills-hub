@@ -68,12 +68,31 @@ OPTED_OUT_CONTRAST_TOKENS = frozenset(
     }
 )
 
-OPEN_BACKTICK_FENCE_RE = re.compile(r"^ {0,3}(`{3,})[^`]*$")
-OPEN_TILDE_FENCE_RE = re.compile(r"^ {0,3}(~{3,}).*$")
+
+def _load_markdown_module():
+    if __package__ == "scripts":
+        from . import _markdown
+
+        return _markdown
+    sibling = Path(__file__).resolve().with_name("_markdown.py")
+    spec = importlib.util.spec_from_file_location("_skills_hub_markdown", sibling)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {sibling}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_markdown = _load_markdown_module()
+normalize_newlines = _markdown.normalize_newlines
+strip_frontmatter = _markdown.strip_frontmatter
+strip_fenced_code = _markdown.strip_fenced_code
+mask_code_and_comments = _markdown.mask_code_and_comments
+preprocess_markdown = _markdown.preprocess_markdown
+
 ATX_HEADING_RE = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 CLOSING_HASHES_RE = re.compile(r"[ \t]+#+[ \t]*$")
 SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(=+|-+)[ \t]*$")
-MASK_TOKEN_RE = re.compile(r"<!--|`+")
 HTML_ID_RE = re.compile(
     r"<(?:a|h[1-6])\b[^>]*\s(?:id|name)\s*=\s*(?:\"([^\"]+)\"|'([^']+)')",
     re.IGNORECASE,
@@ -137,10 +156,6 @@ UniqueKeySafeLoader.add_implicit_resolver(
 )
 
 
-def normalize_newlines(text: str) -> str:
-    return text.replace("\r\n", "\n").replace("\r", "\n")
-
-
 def slug(text: str) -> str:
     """Match GitHub's GFM heading anchor slugging."""
     text = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", text)
@@ -161,117 +176,6 @@ def slug(text: str) -> str:
     text = re.sub(r"[^\w\s-]", "", text, flags=re.UNICODE)
     text = text.replace("\t", " ")
     return text.replace(" ", "-")
-
-
-def strip_frontmatter(text: str) -> str:
-    text = normalize_newlines(text)
-    if text.startswith("---\n"):
-        match = re.search(r"\n---(?:\n|$)", text[3:])
-        if match is not None:
-            return text[3 + match.end() :]
-    return text
-
-
-def strip_fenced_code(text: str) -> str:
-    """Blank CommonMark fenced code blocks while keeping line numbers stable."""
-    lines: list[str] = []
-    fence_char = ""
-    fence_length = 0
-    close_re: re.Pattern[str] | None = None
-    for line in normalize_newlines(text).splitlines():
-        if fence_char:
-            assert close_re is not None
-            if close_re.match(line):
-                fence_char = ""
-                fence_length = 0
-                close_re = None
-            lines.append("")
-            continue
-
-        match = OPEN_BACKTICK_FENCE_RE.match(line) or OPEN_TILDE_FENCE_RE.match(line)
-        if match:
-            fence = match.group(1)
-            fence_char = fence[0]
-            fence_length = len(fence)
-            close_re = re.compile(rf"^ {{0,3}}{re.escape(fence_char)}{{{fence_length},}}[ \t]*$")
-            lines.append("")
-        else:
-            lines.append(line)
-    return "\n".join(lines)
-
-
-def _is_escaped(text: str, pos: int) -> bool:
-    backslashes = 0
-    i = pos - 1
-    while i >= 0 and text[i] == "\\":
-        backslashes += 1
-        i -= 1
-    return (backslashes % 2) == 1
-
-
-def _blank_preserving_newlines(segment: str) -> str:
-    if "\n" not in segment:
-        return " " * len(segment)
-    return "\n".join(" " * len(part) for part in segment.split("\n"))
-
-
-def mask_code_and_comments(text: str) -> str:
-    """Mask CommonMark inline code spans and HTML comments in a single token-jumping pass."""
-    out: list[str] = []
-    pos = 0
-    n = len(text)
-    while pos < n:
-        match = MASK_TOKEN_RE.search(text, pos)
-        if match is None:
-            out.append(text[pos:])
-            break
-        start, end = match.span()
-        if start > pos:
-            out.append(text[pos:start])
-        token = match.group(0)
-        if _is_escaped(text, start):
-            out.append(token)
-            pos = end
-            continue
-        if token == "<!--":
-            close = text.find("-->", end)
-            if close != -1:
-                out.append(_blank_preserving_newlines(text[start : close + 3]))
-                pos = close + 3
-                continue
-            out.append(token)
-            pos = end
-            continue
-        # Backtick opener of length tick_len: find matching exact-length closer before blank line.
-        tick_len = end - start
-        para_end = text.find("\n\n", end)
-        limit = n if para_end == -1 else para_end
-        search_pos = end
-        found = -1
-        while search_pos < limit:
-            next_tick = text.find("`", search_pos, limit)
-            if next_tick == -1:
-                break
-            run_end = next_tick
-            while run_end < limit and text[run_end] == "`":
-                run_end += 1
-            if run_end - next_tick == tick_len:
-                found = run_end
-                break
-            search_pos = run_end
-        if found != -1:
-            out.append(_blank_preserving_newlines(text[start:found]))
-            pos = found
-        else:
-            out.append(token)
-            pos = end
-    return "".join(out)
-
-
-def preprocess_markdown(text: str) -> tuple[str, str]:
-    """Strip frontmatter and fenced code, then mask inline code and HTML comments once."""
-    stripped = strip_fenced_code(strip_frontmatter(text))
-    return stripped, mask_code_and_comments(stripped)
 
 
 def _markdown_headings_from_preprocessed(stripped: str, masked: str) -> set[str]:
