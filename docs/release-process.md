@@ -202,9 +202,13 @@ an ancestor of `origin/main` fails even if the tag itself is valid.
 
 1. The dispatched tag input must match the SemVer `vX.Y.Z` (optional prerelease)
    pattern before git operations run.
-2. The tag object must be annotated, the signature must verify against the
-   configured trust source, and `RELEASE_TAG_ALLOWED_SIGNERS` (when used) must
-   match `gate/docs/release-signing/allowed_signers` on `main`.
+2. The tag object must be annotated, directly target a `commit`, carry an
+   embedded `tag` header matching the dispatched tag name (blocking tag-object
+   replay under another ref), and verify cryptographically against the
+   configured trust source. When `RELEASE_TAG_ALLOWED_SIGNERS` is used, it must
+   match `gate/docs/release-signing/allowed_signers` checked out from the exact
+   dispatched `main` commit (`${{ github.sha }}`). Every Python gate step runs
+   in isolated mode (`python3 -I`).
 3. The tag commit must be an ancestor of a freshly fetched `origin/main`.
 4. `gate/scripts/release_checks.py` (from `main`) verifies that the latest
    completed `validate`, `Analyze (python)`, `Analyze (actions)`, and `gitleaks`

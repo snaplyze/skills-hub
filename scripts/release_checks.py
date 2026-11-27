@@ -25,23 +25,25 @@ GH_API_TIMEOUT_SECONDS = 30
 WorkflowLookup = Callable[[str], str | tuple[str | None, str | None] | None]
 
 
-def _safe_int(value: object) -> int:
+def _positive_int(value: object) -> int | None:
     if isinstance(value, bool):
-        return 0
+        return None
     if isinstance(value, int):
-        return value
+        return value if value > 0 else None
     if isinstance(value, str):
         try:
-            return int(value)
+            parsed = int(value)
         except ValueError:
-            return 0
-    return 0
+            return None
+        return parsed if parsed > 0 else None
+    return None
 
 
 def _extract_run_id(details_url: str, repo: str | None) -> str | None:
     if repo:
         pattern = re.compile(
-            rf"^https://github\.com/{re.escape(repo)}/actions/runs/(\d+)(?:/|\?|#|\Z)"
+            rf"^https://github\.com/{re.escape(repo)}/actions/runs/(\d+)(?:/|\?|#|\Z)",
+            re.IGNORECASE,
         )
     else:
         pattern = GENERIC_RUN_URL_RE
@@ -49,11 +51,15 @@ def _extract_run_id(details_url: str, repo: str | None) -> str | None:
     return match.group(1) if match else None
 
 
-def _run_sort_key(run: dict[str, Any]) -> tuple[int, str, str]:
+def _run_sort_key(run: dict[str, Any]) -> tuple[int, int, str, str]:
     completed = run.get("completed_at")
     started = run.get("started_at")
+    run_id = _positive_int(run.get("id"))
+    # Sort missing/invalid IDs first so malformed candidates from the expected
+    # workflow fail closed instead of hiding behind an older passing run.
     return (
-        _safe_int(run.get("id")),
+        1 if run_id is None else 0,
+        run_id or 0,
         completed if isinstance(completed, str) else "",
         started if isinstance(started, str) else "",
     )
@@ -133,9 +139,17 @@ def check_run_errors(
             if path != expected:
                 diagnostics.append(f"{name} came from {path}, expected {expected}")
                 continue
+            if has_sha and wf_sha is None:
+                lookup_failed = (
+                    f"{name} workflow run targeted None (run {run_id}), expected {commit}"
+                )
+                break
             if has_sha and wf_sha != commit:
                 diagnostics.append(f"{name} workflow run targeted {wf_sha}, not {commit}")
                 continue
+            if _positive_int(run.get("id")) is None:
+                lookup_failed = f"{name} has invalid check-run id {run.get('id')!r} (run {run_id})"
+                break
             if run.get("status") == "completed" and run.get("conclusion") == "cancelled":
                 if fallback_cancelled is None:
                     fallback_cancelled = run
@@ -197,10 +211,6 @@ def gh_workflow_info(repo: str, run_id: str) -> tuple[str | None, str | None]:
     path = raw_path.strip() if isinstance(raw_path, str) and raw_path.strip() else None
     head_sha = raw_sha.strip() if isinstance(raw_sha, str) and raw_sha.strip() else None
     return path, head_sha
-
-
-def gh_workflow_path(repo: str, run_id: str) -> str | None:
-    return gh_workflow_info(repo, run_id)[0]
 
 
 def main(argv: list[str] | None = None) -> int:

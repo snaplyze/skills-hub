@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-27T19:20:43Z; активная веха #11 «Аудит 2026-11-27» (9 OPEN: `AUD-45` #110–`AUD-51` #116, `AUD-53` #118–`AUD-54` #119; 1 DONE: `AUD-52` #117; закрыт issue аудита #109); закрытые этапы 01–10: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63, #68–#82, #84, #99–#103 (вехи #1–#10 закрыты; `v1.4.0` опубликован на `f3465d0`, run `45992777582`). Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-27T19:20:43Z; активная веха #11 «Аудит 2026-11-27» (8 OPEN: `AUD-46` #111–`AUD-51` #116, `AUD-53` #118–`AUD-54` #119; 2 DONE: `AUD-45` #110, `AUD-52` #117; закрыт issue аудита #109); закрытые этапы 01–10: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63, #68–#82, #84, #99–#103 (вехи #1–#10 закрыты; `v1.4.0` опубликован на `f3465d0`, run `45992777582`). Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -38,7 +38,7 @@
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
 | 09 | `Аудит 2026-11-26` (#9) | closed | 0 OPEN, 15 DONE (`AUD-30` #69–`AUD-43` #82, `AUD-44` #84) |
 | 10 | `10 — Antigravity support` (#10) | closed | 0 OPEN, 5 DONE (`AGY-01` #99–`AGY-05` #103) |
-| 11 | `Аудит 2026-11-27` (#11) | open | 9 OPEN, 1 DONE (`AUD-45` #110–`AUD-51` #116, `AUD-53` #118–`AUD-54` #119; `AUD-52` #117 DONE) |
+| 11 | `Аудит 2026-11-27` (#11) | open | 8 OPEN, 2 DONE (`AUD-46` #111–`AUD-51` #116, `AUD-53` #118–`AUD-54` #119; `AUD-45` #110, `AUD-52` #117 DONE) |
 
 ## Аудит 2026-11-27
 
@@ -61,16 +61,6 @@
 | Документация | проверено | Все корневые доки, `docs/**`, `.github/*_TEMPLATE*`, `AGENTS.md` (0 расхождений), 11 `SKILL.md` и 10 `references/*.md` сверены с кодом и `wc -l -c`; без живого рендера PR template в GitHub UI и живого OpenCode/Antigravity UI. |
 
 ### Ближайшие задачи (P1 — детально)
-
-#### AUD-45 — Harden `release.yml` Python isolation, tag-object binding, `gate/` commit pin, and `release_checks.py` edge cases
-
-- `OPEN` · Аудит 2026-11-27 · `security/release/ci` · **P1 (высокий ущерб):** усиление границ доверия самого привилегированного workflow (`contents: write`, `attestations: write`, `id-token: write`, окружение `release`) и закрытие fail-open краевых случаев в `release_checks.py` · уверенность: высокая · [#110](https://github.com/snaplyze/skills-hub/issues/110) (веха #11) · исполнитель: не назначен · deps: none.
-- **Результат / границы:** изолированные вызовы `python3 -I` в `.github/workflows/release.yml`, проверка встроенного имени тега и типа цели `commit`, фиксация `gate/` на `${{ github.sha }}`, согласование `+build` SemVer с именами активов GitHub Releases, fail-closed обработка `id: null`/`wf_sha is None`/регистра `repo` в `scripts/release_checks.py`, удаление мёртвого `gh_workflow_path` и усиление `tests/test_release_workflow.py`. Настройки аккаунта/rulesets и `skills/` не меняются.
-- **Доказательство:** (1) `.github/workflows/release.yml:96, 152, 165` вызывают `python3` без `-I` (`:96` выполняется до проверки подписи и предка `origin/main` в контексте рабочей директории тега); (2) `:85-107` не проверяет совпадение встроенного заголовка `%(tag)` с `$TAG` и прямой тип цели `commit` (воспроизведено в `/tmp`: повтор объекта другого подписанного тега под новым ref проходит `git verify-tag`); (3) `:73` выгружает `gate/` по движущейся ветке `ref: main` вместо `ref: ${{ github.sha }}`; (4) `:58, 177-182` и `scripts/release_notes.py:31-36` допускают `+build`, тогда как GitHub Releases заменяет `+` на `.` в именах файлов, ломая `SHA256SUMS`; (5) `scripts/release_checks.py:41-49` регистрозависим к `owner/repo`, `:28-38, 52-59` сортирует `id: None` как `0` позади `id: 1`, `:128-138` делает `continue` при `path == expected and has_sha and wf_sha is None`, а `:202-203` (`gh_workflow_path`) имеет 0 потребителей; (6) `tests/test_release_workflow.py:84-171` не проверяет активные shell-токены `merge-base --is-ancestor`, `git archive`, `dist/SHA256SUMS`, `--prerelease`/`--latest=false` и `-I`.
-- **Влияние:** ослабление границы доверия до верификации подписи, возможность повтора подписанного объекта тега под другим именем, потенциальный рассинхрон `gate/` при сдвиге `main` во время одобрения, поломка `SHA256SUMS` на `+build`-тегах и ослабленный контракт `test_release_workflow.py`.
-- **Решение:** добавить `-I` ко всем вызовам `python3` в `release.yml:96, 152, 165`; проверять `%(tag) == "$TAG"` и `type commit` в `Verify signed tag`; закрепить `gate` на `ref: ${{ github.sha }}`; отклонять `+build` в `release.yml:58` (или санитизировать имя до `sha256sum`/аттестации); в `release_checks.py` добавить `re.IGNORECASE` для URL-префикса `repo`, fail-closed для `id: None` и `(expected_path, None)`, удалить `gh_workflow_path`; усилить проверки активных команд в `test_release_workflow.py` и добавить тест повтора тега в `test_release_signature.py`. Трудоёмкость: 1.5–2 ч; риски: низкие (скрипты используют только stdlib).
-- **Приёмка:** негативные тесты ловят отсутствие `-I`, повтор объекта тега под чужим ref, `id: null` и `(expected_path, None)` поверх старого pass, смешанный регистр `repo`, удаление `merge-base --is-ancestor`/`SHA256SUMS`; `make check` PASS.
-- **Текущая запись:** статус `OPEN`; решение: не принято; проверка: дефекты воспроизведены на `c187538`; следующий шаг: реализовать правки `release.yml`, `release_checks.py` и тестов с независимым ревью; неудачных попыток: нет.
 
 #### AUD-46 — Fix validator false-greens, symlink containment (`contrast.py`), and quadratic `_scan_inline_links` in `scripts/validate.py`
 
@@ -247,6 +237,7 @@
 | `AGY-04` | 10 · #102 | `AGY-02`, `AGY-03` | Обновление `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `THIRD_PARTY_NOTICES.md`, `docs/release-process.md`, `CHANGELOG.md` и шаблонов под Antigravity + OpenCode (PR #106 `bc8156d`). |
 | `AGY-05` | 10 · #103 | `AGY-01`–`04` | Сквозная проверка `make check` (343 теста), `agy plugin validate` (11/11), hosted `Link Audit` (`45991442364` 75/75, `45992629239` 76/76), закрытие вехи #10 (PR #106 `bc8156d`) + оформление репозитория и signed immutable release [`v1.4.0`](https://github.com/snaplyze/skills-hub/releases/tag/v1.4.0) (PR #107 `f3465d0`, run `45992777582`, PR #108 `c187538`). |
 | `AUD-52` | 11 · #117 | none | Упорядочивание плана (база `48529b6`): свёрнуты закрытые этапы 09–10, объединены гипотезы, удалены закрытая/опровергнутая гипотезы, разделена оптимизация тестов `test_installer.py` (`AUD-48` → `AUD-47`), дополнены поля шага 4 и проставлены нативные `blocked_by` в вехе #11. |
+| `AUD-45` | 11 · #110 | none | Усилен релизный гейт (`.github/workflows/release.yml`, `scripts/release_checks.py`, `docs/release-process.md`): `python3 -I` на всех 3 вызовах, проверка `%(tag) == $TAG` и заголовка `type commit`, пин `gate/` на `${{ github.sha }}`, отклонение `+build` SemVer до сборки активов, fail-closed для `id: null`/`(expected_path, None)` и `re.IGNORECASE` для `repo`, удалён мёртвый `gh_workflow_path`, усилены `test_release_{workflow,checks,signature}.py`. |
 
 ### Карта слияния и переноса ID
 

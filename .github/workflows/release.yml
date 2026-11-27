@@ -55,7 +55,8 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+          # Reject +build metadata because GitHub Releases rewrites '+' to '.' in uploaded asset names, breaking SHA256SUMS.
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$ ]]; then
             echo "::error::Invalid release tag '$TAG': expected vX.Y.Z with optional SemVer prerelease suffix." >&2
             exit 1
           fi
@@ -70,7 +71,7 @@ jobs:
       - name: Checkout release gate from main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           path: gate
           fetch-depth: 1
           persist-credentials: false
@@ -86,6 +87,16 @@ jobs:
             echo "::error::Tag $TAG is not an annotated, signed tag." >&2
             exit 1
           fi
+          signed_tag="$(git for-each-ref --format='%(tag)' "refs/tags/$TAG")"
+          if [[ "$signed_tag" != "$TAG" ]]; then
+            echo "::error::Signed tag object name '$signed_tag' does not match ref '$TAG'." >&2
+            exit 1
+          fi
+          target_type="$(git cat-file tag "refs/tags/$TAG" | awk 'BEGIN{h=1} h && $0==""{h=0} h && /^type /{print substr($0, 6)}')"
+          if [[ "$target_type" != "commit" ]]; then
+            echo "::error::Tag $TAG targets '$target_type', expected 'commit'." >&2
+            exit 1
+          fi
           if [[ -n "$GPG_PUBLIC_KEY" && -n "$ALLOWED_SIGNERS" ]]; then
             echo "::error::Configure only one of RELEASE_TAG_GPG_PUBLIC_KEY or RELEASE_TAG_ALLOWED_SIGNERS." >&2
             exit 1
@@ -93,7 +104,7 @@ jobs:
           if [[ -n "$ALLOWED_SIGNERS" ]]; then
             signers="$(mktemp)"
             printf '%s\n' "$ALLOWED_SIGNERS" > "$signers"
-            python3 - "$signers" gate/docs/release-signing/allowed_signers <<'PY'
+            python3 -I - "$signers" gate/docs/release-signing/allowed_signers <<'PY'
           import pathlib, sys
           def norm(path: str) -> list[str]:
               return [line.strip() for line in pathlib.Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -149,7 +160,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "repos/${GITHUB_REPOSITORY}/commits/${TAG_COMMIT}/check-runs?per_page=100&filter=all" \
             --jq '.check_runs[] | @json' > "$runs_file"
-          python3 gate/scripts/release_checks.py \
+          python3 -I gate/scripts/release_checks.py \
             --runs-file "$runs_file" \
             --commit "$TAG_COMMIT" \
             --repo "$GITHUB_REPOSITORY"
@@ -162,7 +173,7 @@ jobs:
           set -euo pipefail
           changelog_file="$(mktemp)"
           git show "${TAG_COMMIT}:CHANGELOG.md" > "$changelog_file"
-          python3 gate/scripts/release_notes.py \
+          python3 -I gate/scripts/release_notes.py \
             --tag "$TAG" \
             --changelog "$changelog_file" \
             --notes-file release-notes.md \
