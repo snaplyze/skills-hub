@@ -67,6 +67,37 @@ OPTED_OUT_CONTRAST_TOKENS = frozenset(
         "--color-overlay",
     }
 )
+RESERVED_SKILL_IDS = frozenset(
+    {
+        "plan",
+        "grill-me",
+        "goal",
+        "boost",
+        "swarm",
+        "teamwork",
+        "run-workflow",
+        "browser",
+        "schedule",
+        "compact",
+        "diff",
+        "agents",
+        "skills",
+        "plugin",
+        "hooks",
+        "mcp",
+        "permissions",
+        "config",
+        "help",
+        "status",
+        "review",
+        "init",
+        "resume",
+        "rewind",
+        "clear",
+        "exit",
+        "learn",
+    }
+)
 
 
 def _load_markdown_module():
@@ -781,6 +812,10 @@ def check_skill(
         errors.append(f"{rel}: directory name must be lowercase kebab-case")
     if len(skill_dir.name) > 64:
         errors.append(f"{rel}: directory name must be 64 characters or fewer")
+    if skill_dir.name in RESERVED_SKILL_IDS:
+        errors.append(
+            f"{rel}: skill name {skill_dir.name!r} collides with a reserved built-in slash command"
+        )
 
     skill_text = skill_file.read_text(encoding="utf-8")
     try:
@@ -812,6 +847,10 @@ def check_skill(
             errors.append(
                 f"{rel}: frontmatter 'name' ({name!r}) must match directory name ({skill_dir.name!r})"
             )
+            if name in RESERVED_SKILL_IDS:
+                errors.append(
+                    f"{rel}: skill name {name!r} collides with a reserved built-in slash command"
+                )
 
     if "compatibility" in frontmatter:
         compat = frontmatter["compatibility"]
@@ -1404,6 +1443,8 @@ def check_contrast_fixture(
         if theme not in resolved_tokens:
             errors.append(f"{where} has unknown theme {theme!r}")
             continue
+        if not label.startswith(f"{theme}:"):
+            errors.append(f"{where} label {label!r} must start with {theme + ':'!r}")
         if size not in CONTRAST_SIZES:
             errors.append(f"{where} has invalid size {size!r}")
             continue

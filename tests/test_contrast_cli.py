@@ -184,9 +184,21 @@ def test_cli_subprocess_smoke() -> None:
         "#-1-1-1",
         "rgb(0, 0, 0, 1, 999)",
         "rgb(0, 0, 0 / 0.5)",
+        "rgb(0 0 0 0.5)",
+        "hsl(0 0% 0% 0.5)",
+        "rgb(255, 50%, 0)",
+        "rgb(1_00 0 0)",
+        "rgb(100 % 0% 0%)",
+        "rgb(100 %, 0%, 0%)",
+        "rgb(12. 0 0)",
+        "rgb(0 0 0 / 50 %)",
+        "rgb(\u0662\u0665\u0665 0 0)",
         "rgb(nan 0 0)",
         "rgb(inf 0 0)",
         "hsl(1deg20 50% 50%)",
+        "hsl(12.deg 50% 50%)",
+        "hsl(0 50 % 50%)",
+        "hsl(0, 50 %, 50%)",
         "hsl(0 50% 50% / 0.5 / 0.5)",
     ],
 )
@@ -204,6 +216,12 @@ def test_malformed_hex_rgb_hsl_and_non_finite_colors_exit_two(bad_color: str) ->
         ("hsl(0.5turn 100 50)", "#000000", "16.75"),
         ("hsl(200grad 100% 50%)", "#000000", "16.75"),
         ("hsl(3.14159265rad 100% 50%)", "#000000", "16.75"),
+        ("rgb(10%, 10%, 10%)", "white", "17.49"),
+        ("rgb(+0e0 0 0 / .5)", "white", "3.98"),
+        ("rgb(0 0 0 / 80%)", "white", "12.63"),
+        ("hsl(0 0% 0% / 50%)", "white", "3.98"),
+        ("#000000", "rgba(0, 0, 0, 0.5)", "5.28"),
+        ("rgba(255, 255, 255, 0.9)", "rgba(0, 0, 0, 0.8)", "10.56"),
     ],
 )
 def test_css_color4_hsl_angles_unitless_and_rgba_hex(fg: str, bg: str, expected: str) -> None:
@@ -211,3 +229,25 @@ def test_css_color4_hsl_angles_unitless_and_rgba_hex(fg: str, bg: str, expected:
     assert result.returncode == 0, result.stderr
     assert "color4 probe" in result.stdout
     assert f"contrast: {expected}:1" in result.stdout
+
+
+def test_color_hex_rounding_and_flatten_clamping() -> None:
+    color_cls = _CONTRAST_MODULE.Color
+    assert color_cls(0.0, 0.0, 0.0, 0.999).hex() == "#000000"
+    assert color_cls(0.0, 0.0, 0.0, 0.5).hex() == "#00000080"
+
+    # Directly constructed out-of-range Color instances must clamp safely in flatten().
+    clamped_opaque = _CONTRAST_MODULE.flatten(color_cls(300.0, -50.0, 128.0, 1.5))
+    assert clamped_opaque == color_cls(255.0, 0.0, 128.0, 1.0)
+
+    clamped_blend = _CONTRAST_MODULE.flatten(
+        color_cls(300.0, -20.0, 0.0, 0.5),
+        color_cls(-10.0, 400.0, 0.0, 1.0),
+    )
+    assert clamped_blend == color_cls(127.5, 127.5, 0.0, 1.0)
+
+    clamped_neg_alpha = _CONTRAST_MODULE.flatten(
+        color_cls(100.0, 100.0, 100.0, -0.5),
+        color_cls(0.0, 255.0, 0.0, 1.0),
+    )
+    assert clamped_neg_alpha == color_cls(0.0, 255.0, 0.0, 1.0)
