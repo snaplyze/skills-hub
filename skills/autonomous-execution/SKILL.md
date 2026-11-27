@@ -15,7 +15,7 @@ Execution is coordination, not typing. Keep the plan, the current task, the evid
 
 1. Read the plan and the relevant spec. If acceptance or dependencies are missing, return to planning instead of guessing.
 2. Check the workspace using the Isolation section below; establish the baseline before editing.
-3. Create or resume the ledger at `docs/plans/<plan-basename>.progress.md` (or a `## Ledger` section in the plan for a short task). Record the plan path, task ID, BASE commit, status, files owned, commands, expected vs actual output, evidence, rulings, and next step. Update it after every task.
+3. Create or resume the ledger at `docs/plans/<plan-basename>.progress.md` (or a `## Ledger` section in the plan for a short task). Record the plan path, task ID, owner/session, BASE commit, status, files owned, commands, expected vs actual output, evidence, rulings, deferred items, and next step. Update it after every task.
 4. Establish a green baseline or record the pre-existing failure. Never attribute an old failure to the new work.
 5. If resuming after compaction or a restart, read the plan, ledger, and `git diff --stat`; trust those over recollection. A ledger whose plan path differs from the current plan is not yours to reuse.
 
@@ -54,7 +54,7 @@ use the separate `progress.md` file. Never hide it in a tool-owned directory.
 
 ## Task briefs
 
-A subagent gets one self-contained task brief, not the whole plan: role, goal, plan task, relevant files/interfaces, explicit write ownership bounded to the repository/worktree root (or `read-only`), acceptance, constraints, expected output, verification command, stop condition, and any prior `Ruling:` that affects this task. Put it in the dispatch prompt or a temporary file; it is not repository state. The main session owns the plan, cross-task interfaces, user interaction, Git, publication, and final acceptance.
+A subagent gets one self-contained task brief, not the whole plan: role, goal, plan task, relevant files/interfaces, explicit write ownership bounded to the repository/worktree root (or `read-only`), workspace mode (`inherit` | `share` | `branch`), acceptance, constraints, expected output, verification command, stop condition, and any prior `Ruling:` that affects this task. Put it in the dispatch prompt or a temporary file; it is not repository state. The main session owns the plan, cross-task interfaces, user interaction, Git, publication, and final acceptance.
 
 ## Rulings and recovery
 
@@ -71,7 +71,7 @@ After every two broad reads or searches, write the useful findings to the ledger
 
 ## Isolation
 
-Check whether the workspace is already isolated before creating anything. Use the current checkout by default; create an isolated workspace or worktree only when the task needs a clean branch alongside other work and the project/user permits it. Prefer Antigravity's native workspace isolation (`workspace: "branch"` for an isolated branched/cloned workspace or `"share"` for a new working copy sharing underlying repository storage on `invoke_subagent` or `run_workflow`). Always land or merge changes from a `branch`/`share` workspace before terminating the subagent (`manage_subagents` permanently deletes isolated workspaces when killing a subagent). If using manual `git worktree`, verify the branch/base, do not copy ignored directories such as `node_modules` or caches, check ignore rules before adding files, `cd` to the main repository root before removing, and remove only your own clean worktree at the end without forcing removal of uncommitted work.
+Check whether the workspace is already isolated before creating anything. Use the current checkout by default; create an isolated workspace or worktree only when the task needs a clean branch alongside other work and the project/user permits it. Prefer Antigravity's native workspace isolation (`workspace: "branch"` for an isolated branched/cloned workspace or `"share"` for a new working copy sharing underlying repository storage on `invoke_subagent` or `run_workflow`)—or the active harness's native equivalents. Always land or merge changes from a `branch`/`share` workspace before terminating the subagent (`manage_subagents` permanently deletes isolated workspaces when killing a subagent). If using manual `git worktree`, verify the branch/base, do not copy ignored directories such as `node_modules` or caches, check ignore rules before adding files, `cd` to the main repository root before removing, and remove only your own clean worktree at the end without forcing removal of uncommitted work.
 
 ## Review gate
 
@@ -87,7 +87,7 @@ Before delivery, send the whole BASE..HEAD diff, plan acceptance map, deferred m
 
 ## Subagents and parallelism
 
-Use the Task briefs schema above for every subagent dispatch. Subagents (`invoke_subagent`) and dynamic workflows (`run_workflow`) run asynchronously in the background and return immediately: continue only disjoint safe work or end the turn and wait for reactive wakeup notifications — never poll in a loop, shell-sleep, or touch a running child's files. Subagents cannot negotiate scope directly with the user; instruct them to stop and return blockers to the main session. Continue an idle child's retained context with `send_message(Recipient=conversationId, ...)` for follow-ups on the same brief or delta; launch a fresh `invoke_subagent` when independent context is needed. For large uniform fan-outs or staged pipelines with structured JSON outputs, prefer `run_workflow`. Subagents do not own the goal, Git/publication, or the ledger. Do not let two agents write the same file. When results return, inspect the diff and rerun the relevant checks rather than trusting the report.
+Use the Task briefs schema above for every subagent dispatch. Subagents (`invoke_subagent`) and dynamic workflows (`run_workflow`)—or the active harness's native equivalents—run asynchronously in the background and return immediately: continue only disjoint safe work or end the turn and wait for reactive wakeup notifications — never poll in a loop, shell-sleep, or touch a running child's files. Subagents cannot negotiate scope directly with the user; instruct them to stop and return blockers to the main session. Continue an idle child's retained context with `send_message(Recipient=conversationId, ...)` for follow-ups on the same brief or delta; launch a fresh `invoke_subagent` when independent context is needed. For large uniform fan-outs or staged pipelines with structured JSON outputs, prefer `run_workflow`. Subagents do not own the goal, Git/publication, or the ledger. Do not let two agents write the same file. When results return, inspect the diff and rerun the relevant checks rather than trusting the report.
 
 Use parallelism only for independent work: separate files, separate investigations, separate test failures. Do not parallelize a design decision, a shared refactor, or a sequence with a hidden dependency. Between long milestones, suggest `/compact` if context pressure grows — recover cleanly from the plan file and ledger.
 

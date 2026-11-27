@@ -15,6 +15,7 @@ Mobile is not a smaller desktop. The constraints are different: one thumb, inter
 - [Mobile performance](#mobile-performance)
 - [Testing matrix](#testing-matrix)
 - [Common responsive bugs](#common-responsive-bugs)
+- [Mobile checklist](#mobile-checklist)
 
 ## Mobile-first principles
 

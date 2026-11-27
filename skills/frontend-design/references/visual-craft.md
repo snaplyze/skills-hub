@@ -16,9 +16,9 @@ Use type as structure only when it encodes real information: a folio number for 
 
 ## Color
 
-A palette is a set of jobs, not swatches: **canvas**, **surface**, **ink**, **muted**, **line**, **accent**, **accent ink**, **focus**, and semantic **success/warning/danger/info**, mapped in `../assets/tokens.css`. Four to six core values suffice.
+A palette is a set of jobs, not swatches: **canvas**, **surface**, **ink**, **muted**, **line**, **accent**, **accent ink**, **focus**, and semantic **success/warning/danger/info**, mapped in `assets/tokens.css`. Four to six core values suffice.
 
-Choose a seed from the subject's materials: safety orange, oxide red, chlorophyll green, blueprint blue. Build a scale around it. OKLCH is optional; the starter sheet uses hex primitives. Keep hue roughly stable and vary lightness and chroma. Define primitives once and map semantic roles in `../assets/tokens.css`; do not maintain a second mapping in prose.
+Choose a seed from the subject's materials: safety orange, oxide red, chlorophyll green, blueprint blue. Build a scale around it. OKLCH is optional; the starter sheet uses hex primitives. Keep hue roughly stable and vary lightness and chroma. Define primitives once and map semantic roles in `assets/tokens.css`; do not maintain a second mapping in prose.
 
 Tint a neutral toward the brand hue at very low chroma: warm for editorial, cool for technical, green-gray for natural, brown-gray for craft. Do not mix warm and cool neutrals without a reason. Use one accent for action and emphasis; a second is a system decision. If everything is accent-colored, nothing is. The 60-30-10 heuristic is a sanity check, not a law.
 
