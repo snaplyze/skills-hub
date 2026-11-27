@@ -1127,3 +1127,363 @@ def test_check_installer_validates_both_harnesses_and_lib(tmp_path: Path) -> Non
     shutil.rmtree(repo / "install")
     (repo / "install").symlink_to(real_install)
     assert_validation_fails(repo, "install: symlinked installer directory")
+
+
+def test_aud46_css_tokens_fail_closed_nested_var_and_no_duplicate_missing_error(
+    tmp_path: Path,
+) -> None:
+    contrast = validate.load_contrast_module(
+        REPO_ROOT / "skills" / "frontend-design" / "scripts" / "contrast.py"
+    )
+    fixture_src = REPO_ROOT / "skills" / "frontend-design" / "assets" / "token-contrast-pairs.json"
+    tokens_src = REPO_ROOT / "skills" / "frontend-design" / "assets" / "tokens.css"
+
+    fixture = tmp_path / "pairs.json"
+    fixture.write_text(fixture_src.read_text(encoding="utf-8"), encoding="utf-8")
+    base_css = tokens_src.read_text(encoding="utf-8")
+
+    # 1. Pair-only token mutated to invalid color or oklch() must fail closed (never silently skipped).
+    for old, bad_val, needle in (
+        (
+            "--color-canvas: var(--neutral-50);",
+            "--color-canvas: oklch(0.95 0.01 90);",
+            "does not resolve to a valid color",
+        ),
+        (
+            "--color-focus: var(--brand-500);",
+            "--color-focus: not-a-color;",
+            "does not resolve to a valid color",
+        ),
+        (
+            "--color-accent-hover: var(--brand-700);",
+            "--color-accent-hover: var(--missing-var);",
+            "failed to resolve",
+        ),
+    ):
+        assert old in base_css
+        tokens = tmp_path / "tokens.css"
+        tokens.write_text(base_css.replace(old, bad_val, 1), encoding="utf-8")
+        errs: list[str] = []
+        validate.check_contrast_fixture(fixture, tokens, contrast, errs, root=tmp_path)
+        assert any(needle in e for e in errs), (bad_val, errs)
+
+    # 2. Opted-out tokens (--color-border, --color-accent-subtle, --color-overlay) must fail closed
+    #    on unresolved var() or unparseable colors.
+    for old, bad_val, needle in (
+        (
+            "--color-border: var(--neutral-200);",
+            "--color-border: var(--nonexistent);",
+            "failed to resolve",
+        ),
+        (
+            "--color-accent-subtle: var(--brand-50);",
+            "--color-accent-subtle: oklch(0.9 0.05 180);",
+            "does not resolve to a valid color",
+        ),
+        (
+            "--color-overlay: var(--overlay-light);",
+            "--color-overlay: not-a-color;",
+            "does not resolve to a valid color",
+        ),
+    ):
+        assert old in base_css
+        tokens = tmp_path / "tokens.css"
+        tokens.write_text(base_css.replace(old, bad_val, 1), encoding="utf-8")
+        errs = []
+        validate.check_contrast_fixture(fixture, tokens, contrast, errs, root=tmp_path)
+        assert any(needle in e for e in errs), errs
+
+    # 3. Nested var(--a, var(--b, #123456)) resolves recursively; cycles (even with fallback!)
+    #    and malformed multi-var fail closed.
+    nested_css = (
+        ":root {\n"
+        "  --real: #123456;\n"
+        "  --color-nested: var(--missing-a, var(--real));\n"
+        "  --color-deep: var(--missing-a, var(--missing-b, #654321));\n"
+        "  --color-self-cycle: var(--color-self-cycle, #444444);\n"
+        "  --color-cycle-a: var(--color-cycle-b, #444444);\n"
+        "  --color-cycle-b: var(--color-cycle-a);\n"
+        "  --color-junk: var(--real, #fff) var(--real);\n"
+        "}\n"
+    )
+    resolved = validate.resolve_theme_tokens_from_declarations(
+        validate.css_declarations(nested_css)
+    )
+    assert resolved["light"]["--color-nested"] == "#123456"
+    assert resolved["light"]["--color-deep"] == "#654321"
+    assert "--color-self-cycle" not in resolved["light"]
+    assert "--color-cycle-a" not in resolved["light"]
+    assert "--color-cycle-b" not in resolved["light"]
+    assert resolved["light"]["--color-junk"] == "var(--real, #fff) var(--real)"
+
+    # 4. Missing tokens.css produces exactly one "missing token source" error via check_contrast.
+    mini = tmp_path / "missing-tokens-root"
+    (mini / "skills" / "frontend-design" / "scripts").mkdir(parents=True)
+    (mini / "skills" / "frontend-design" / "assets").mkdir(parents=True)
+    shutil.copy2(
+        REPO_ROOT / "skills" / "frontend-design" / "scripts" / "contrast.py",
+        mini / "skills" / "frontend-design" / "scripts" / "contrast.py",
+    )
+    shutil.copy2(
+        fixture_src,
+        mini / "skills" / "frontend-design" / "assets" / "token-contrast-pairs.json",
+    )
+    errs = []
+    validate.check_contrast(errs, root=mini)
+    missing_msgs = [e for e in errs if "missing token source" in e]
+    assert len(missing_msgs) == 1, errs
+
+
+def test_aud46_symlink_containment_blocks_contrast_exec_and_repo_entries(tmp_path: Path) -> None:
+    # 1. Symlinked contrast.py and symlinked parent dir must NEVER execute exec_module.
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    marker = outside / "executed.marker"
+    evil_script = outside / "contrast.py"
+    evil_script.write_text(
+        f"from pathlib import Path\nPath({str(marker)!r}).write_text('pwned', encoding='utf-8')\n"
+        "def self_test(): return 0\n",
+        encoding="utf-8",
+    )
+
+    repo_a = tmp_path / "repo_a"
+    (repo_a / "skills" / "frontend-design" / "scripts").mkdir(parents=True)
+    (repo_a / "skills" / "frontend-design" / "assets").mkdir(parents=True)
+    (repo_a / "skills" / "frontend-design" / "scripts" / "contrast.py").symlink_to(evil_script)
+    errs: list[str] = []
+    validate.check_contrast(errs, root=repo_a)
+    assert any("symlinked contrast checker" in e for e in errs), errs
+    assert not marker.exists()
+
+    repo_b = tmp_path / "repo_b"
+    (repo_b / "skills" / "frontend-design" / "assets").mkdir(parents=True)
+    (repo_b / "skills" / "frontend-design" / "scripts").symlink_to(outside)
+    errs = []
+    validate.check_contrast(errs, root=repo_b)
+    assert any("symlinked contrast checker" in e for e in errs), errs
+    assert not marker.exists()
+
+    # 2. Symlinked skills/ directory fails cleanly in validate_repo.
+    repo_c = tmp_path / "repo_c"
+    repo_c.mkdir()
+    real_skills = tmp_path / "real_skills"
+    real_skills.mkdir()
+    (repo_c / "skills").symlink_to(real_skills)
+    names, errs = validate.validate_repo(repo_c)
+    assert names == []
+    assert any("symlinked skills directory" in e for e in errs), errs
+
+    # Symlinked fixture and tokens.css also fail closed in check_contrast.
+    repo_assets = tmp_path / "repo_assets"
+    (repo_assets / "skills" / "frontend-design" / "scripts").mkdir(parents=True)
+    (repo_assets / "skills" / "frontend-design" / "assets").mkdir(parents=True)
+    shutil.copy2(
+        REPO_ROOT / "skills" / "frontend-design" / "scripts" / "contrast.py",
+        repo_assets / "skills" / "frontend-design" / "scripts" / "contrast.py",
+    )
+    (
+        repo_assets / "skills" / "frontend-design" / "assets" / "token-contrast-pairs.json"
+    ).symlink_to(REPO_ROOT / "skills" / "frontend-design" / "assets" / "token-contrast-pairs.json")
+    (repo_assets / "skills" / "frontend-design" / "assets" / "tokens.css").symlink_to(
+        REPO_ROOT / "skills" / "frontend-design" / "assets" / "tokens.css"
+    )
+    asset_errs: list[str] = []
+    validate.check_contrast(asset_errs, root=repo_assets)
+    assert any("symlinked contrast fixture" in e for e in asset_errs), asset_errs
+    assert any("symlinked token source" in e for e in asset_errs), asset_errs
+
+    # 3. Symlinked root doc, docs/ dir, docs/ file, .github/ dir, .github/ doc/dangling/YAML fail.
+    repo_d = tmp_path / "repo_d"
+    (repo_d / "docs").mkdir(parents=True)
+    (repo_d / ".github").mkdir(parents=True)
+    ext_md = outside / "ext.md"
+    ext_md.write_text("# Ext\n", encoding="utf-8")
+    ext_yml = outside / "ext.yml"
+    ext_yml.write_text("version: 2\n", encoding="utf-8")
+    for name in (
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "CODE_OF_CONDUCT.md",
+        "SECURITY.md",
+        "CHANGELOG.md",
+        "GOVERNANCE.md",
+        "THIRD_PARTY_NOTICES.md",
+    ):
+        (repo_d / name).write_text("# Doc\n", encoding="utf-8")
+    (repo_d / "README.md").symlink_to(ext_md)
+    (repo_d / "docs" / "linked.md").symlink_to(ext_md)
+    (repo_d / ".github" / "linked.md").symlink_to(ext_md)
+    (repo_d / ".github" / "CODEOWNERS").symlink_to(outside / "missing-codeowners")
+    (repo_d / ".github" / "linked.yml").symlink_to(ext_yml)
+    (repo_d / ".github" / "linked-dir").symlink_to(outside)
+
+    root_errs: list[str] = []
+    validate.check_root_docs(root_errs, root=repo_d)
+    assert any("README.md: symlinked documentation file" in e for e in root_errs), root_errs
+    assert any("docs/linked.md: symlink inside docs/" in e for e in root_errs), root_errs
+
+    gh_errs: list[str] = []
+    validate.check_github_docs(gh_errs, root=repo_d)
+    assert any(".github/linked.md: symlink inside .github/" in e for e in gh_errs), gh_errs
+    assert any(".github/CODEOWNERS: symlink inside .github/" in e for e in gh_errs), gh_errs
+
+    yml_errs: list[str] = []
+    validate.check_yaml(yml_errs, root=repo_d)
+    assert any(".github/linked.yml: symlinked YAML file" in e for e in yml_errs), yml_errs
+    assert any(".github/linked-dir: symlink inside .github/" in e for e in yml_errs), yml_errs
+
+    # Symlinked docs/ and .github/ directories themselves fail closed.
+    repo_e = tmp_path / "repo_e"
+    repo_e.mkdir()
+    for name in (
+        "AGENTS.md",
+        "README.md",
+        "CONTRIBUTING.md",
+        "CODE_OF_CONDUCT.md",
+        "SECURITY.md",
+        "CHANGELOG.md",
+        "GOVERNANCE.md",
+        "THIRD_PARTY_NOTICES.md",
+    ):
+        (repo_e / name).write_text("# Doc\n", encoding="utf-8")
+    (repo_e / "docs").symlink_to(outside)
+    (repo_e / ".github").symlink_to(outside)
+    dir_errs: list[str] = []
+    validate.check_root_docs(dir_errs, root=repo_e)
+    validate.check_github_docs(dir_errs, root=repo_e)
+    validate.check_yaml(dir_errs, root=repo_e)
+    assert any("docs: symlinked docs directory" in e for e in dir_errs), dir_errs
+    assert any(".github: symlinked .github directory" in e for e in dir_errs), dir_errs
+
+
+def test_aud46_markdown_links_footnotes_multiline_and_yaml12_rules(tmp_path: Path) -> None:
+    import yaml
+
+    # 1. Single-newline wrapping in links is extracted; blank line breaks it; footnotes excluded;
+    #    brackets inside link titles are ignored.
+    sample = (
+        "[multi\nline](references/missing.md)\n\n"
+        "[wrapped-dest](\nreferences/wrapped.md\n)\n\n"
+        "[not a link\n\nstill not](references/blank-line.md)\n\n"
+        "[^1]: not-a-file.md\n"
+        "[real-ref]: references/real-ref.md\n\n"
+        '[titled](references/ok.md "[fake](references/fake.md)")\n'
+    )
+    links = validate.extract_markdown_links(sample)
+    assert "references/missing.md" in links
+    assert "references/wrapped.md" in links
+    assert "references/real-ref.md" in links
+    assert "references/ok.md" in links
+    assert "references/blank-line.md" not in links
+    assert "not-a-file.md" not in links
+    assert "references/fake.md" not in links
+
+    # 2. parse_frontmatter_text preserves trailing newline for literal block scalars.
+    fm, body = validate.parse_frontmatter_text("---\nname: x\ndescription: |\n  line1\n---\nBody\n")
+    assert fm["description"] == "line1\n"
+    assert body == "Body\n"
+
+    # 3. YAML 1.2 booleans: yes/no/on/off are strings (not booleans) without mutating yaml.SafeLoader.
+    assert yaml.safe_load("yes") is True
+    for raw_bool in ("yes", "no", "on", "off"):
+        parsed, _ = validate.parse_frontmatter_text(f"---\nflag: {raw_bool}\n---\nBody\n")
+        assert parsed["flag"] == raw_bool and isinstance(parsed["flag"], str)
+    for raw_bool, expected in (("true", True), ("false", False), ("True", True), ("FALSE", False)):
+        parsed, _ = validate.parse_frontmatter_text(f"---\nflag: {raw_bool}\n---\nBody\n")
+        assert parsed["flag"] is expected
+
+    # 4. allowed-tools rejects commas, newlines, and control chars; .markdown files are validated;
+    #    reading-sets rejects sets ∩ excluded overlap, unknown set keys, and wrong base.
+    skill = tmp_path / "skills" / "strict-skill"
+    (skill / "references").mkdir(parents=True)
+    (skill / "assets").mkdir(parents=True)
+    (skill / "references" / "extra.markdown").write_text(
+        "# Extra\n\n[broken](does-not-exist.md)\n", encoding="utf-8"
+    )
+    (skill / "SKILL.md").write_text(
+        "---\n"
+        "name: strict-skill\n"
+        "description: A sufficiently long description for strict AUD-46 validation checks.\n"
+        "license: MIT\n"
+        "disable-model-invocation: yes\n"
+        'allowed-tools: "read_file, grep_search"\n'
+        "metadata:\n"
+        "  country: NO\n"
+        "---\n\n"
+        "# Strict\n\nSee `references/extra.markdown`.\n",
+        encoding="utf-8",
+    )
+    (skill / "assets" / "reading-sets.json").write_text(
+        json.dumps(
+            {
+                "base": "skills/wrong-skill",
+                "sets": {
+                    "core": {
+                        "files": ["SKILL.md", "references/extra.markdown"],
+                        "limit_bytes": 16384,
+                    }
+                },
+                "excluded": {"references/extra.markdown": "overlap"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    errs: list[str] = []
+    validate.check_skill(skill, errs, root=tmp_path)
+    joined = "\n".join(errs)
+    assert "'disable-model-invocation' must be a boolean" in joined
+    assert "'allowed-tools' must be space-delimited without commas or control characters" in joined
+    assert "'metadata.country'" not in joined  # NO parsed as string, not bool
+    assert "'base' ('skills/wrong-skill') does not match skill directory" in joined
+    assert "cannot be in both sets and excluded: references/extra.markdown" in joined
+    assert "references/extra.markdown: broken link -> does-not-exist.md" in joined
+
+    # Newlines and control characters in allowed-tools are also rejected.
+    for bad_tools in ('"read_file\\ngrep_search"', '"read_file\\tgrep_search"'):
+        ctrl_skill = tmp_path / "skills" / "ctrl-skill"
+        ctrl_skill.mkdir(parents=True, exist_ok=True)
+        (ctrl_skill / "SKILL.md").write_text(
+            "---\n"
+            "name: ctrl-skill\n"
+            "description: A sufficiently long description for allowed-tools control char check.\n"
+            "license: MIT\n"
+            f"allowed-tools: {bad_tools}\n"
+            "---\n\n# Ctrl\n",
+            encoding="utf-8",
+        )
+        ctrl_errs: list[str] = []
+        validate.check_skill(ctrl_skill, ctrl_errs, root=tmp_path)
+        assert any(
+            "'allowed-tools' must be space-delimited without commas or control characters" in e
+            for e in ctrl_errs
+        ), (bad_tools, ctrl_errs)
+
+    # Unknown key in reading-sets set object fails.
+    with pytest.raises(ValueError, match="unknown key"):
+        validate.reading_set_entries(
+            {"sets": {"core": {"files": ["SKILL.md"], "unexpected": True}}}
+        )
+
+    # check_yaml rejects duplicate keys in .github/*.yml via UniqueKeySafeLoader.
+    gh_root = tmp_path / "yaml_dup"
+    (gh_root / ".github").mkdir(parents=True)
+    (gh_root / ".github" / "dependabot.yml").write_text(
+        "version: 2\nversion: 3\n", encoding="utf-8"
+    )
+    yml_errs: list[str] = []
+    validate.check_yaml(yml_errs, root=gh_root)
+    assert any("duplicate key 'version'" in e for e in yml_errs), yml_errs
+
+    # Dead symbols are removed.
+    for dead in (
+        "HTML_COMMENT_RE",
+        "REF_LINK_RE",
+        "CSS_COMMENT_RE",
+        "mask_inline_code",
+        "mask_html_comments",
+        "normalize_reference_label",
+        "parse_frontmatter",
+        "semantic_tokens",
+        "resolve_theme_tokens",
+    ):
+        assert not hasattr(validate, dead), f"dead symbol {dead} still exists"
