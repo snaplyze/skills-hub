@@ -564,6 +564,11 @@ def test_reusable_workflow_job_rules(tmp_path: Path) -> None:
         "pull_request_review",
         "pull_request_review_comment",
         "issue_comment",
+        "issues",
+        "discussion",
+        "discussion_comment",
+        "fork",
+        "watch",
         "workflow_run",
     ],
 )
@@ -596,3 +601,133 @@ def test_ci_workflow_has_no_unhashed_pip_upgrade() -> None:
     ci_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "pip install --upgrade" not in ci_text
     assert "--require-hashes -r requirements-dev.txt" in ci_text
+
+
+def test_aud50_case_insensitive_keys_step_xor_and_symlinks_fail(tmp_path: Path) -> None:
+    # 1. Mixed-case keys Permissions:/Uses:/Run: (top-level & job-level) must fail closed.
+    bad_perms = VALID_WORKFLOW.replace("permissions:\n  contents: read", "Permissions: write-all")
+    assert any("write-all" in msg for _, _, msg in check_in_process(tmp_path, bad_perms))
+
+    bad_job_perms = VALID_WORKFLOW.replace(
+        "    timeout-minutes: 5\n", "    timeout-minutes: 5\n    Permissions: write-all\n"
+    )
+    assert any("write-all" in msg for _, _, msg in check_in_process(tmp_path, bad_job_perms))
+
+    bad_uses = VALID_WORKFLOW.replace(
+        f"uses: actions/checkout@{CHECKOUT_SHA}", "Uses: actions/checkout@v7"
+    )
+    assert any(
+        "40-character commit SHA" in msg for _, _, msg in check_in_process(tmp_path, bad_uses)
+    )
+
+    bad_run = VALID_WORKFLOW.replace("run: echo ok", "Run: echo ${{ github.head_ref }}")
+    assert any("${{ ... }}" in msg for _, _, msg in check_in_process(tmp_path, bad_run))
+
+    # 2. Empty step (neither uses nor run) and dual step (both uses and run) must fail.
+    empty_step = VALID_WORKFLOW.replace(
+        "      - name: Run\n        run: echo ok\n", "      - name: Noop\n"
+    )
+    assert any(
+        "must define either 'uses' or 'run'" in msg
+        for _, _, msg in check_in_process(tmp_path, empty_step)
+    )
+
+    both_step = VALID_WORKFLOW.replace(
+        "      - name: Run\n        run: echo ok\n",
+        f"      - name: Both\n        uses: actions/checkout@{CHECKOUT_SHA}\n"
+        "        with:\n          persist-credentials: false\n        run: echo ok\n",
+    )
+    assert any(
+        "cannot define both 'uses' and 'run'" in msg
+        for _, _, msg in check_in_process(tmp_path, both_step)
+    )
+
+    # 3. Symlinked .github/, .github/workflows/, and workflow files (outside, in-repo, dangling,
+    #    and --strict required file) fail closed.
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    outside_wf = outside / "ci.yml"
+    outside_wf.write_text(VALID_WORKFLOW, encoding="utf-8")
+
+    root_gh = tmp_path / "sym_gh"
+    root_gh.mkdir()
+    (root_gh / ".github").symlink_to(outside)
+    res_gh = run_checker(root_gh)
+    assert res_gh.returncode == 1
+    assert "symlinked .github directory" in res_gh.stderr
+
+    root_wfdir = tmp_path / "sym_wfdir"
+    (root_wfdir / ".github").mkdir(parents=True)
+    (root_wfdir / ".github" / "workflows").symlink_to(outside)
+    res_wfdir = run_checker(root_wfdir)
+    assert res_wfdir.returncode == 1
+    assert "symlinked workflows directory" in res_wfdir.stderr
+
+    # Direct check_workflow() call also rejects an in-repo symlinked parent directory.
+    root_inrepo_parent = tmp_path / "sym_inrepo_parent"
+    (root_inrepo_parent / "alt").mkdir(parents=True)
+    (root_inrepo_parent / "alt" / "ci.yml").write_text(VALID_WORKFLOW, encoding="utf-8")
+    (root_inrepo_parent / ".github").mkdir()
+    (root_inrepo_parent / ".github" / "workflows").symlink_to(root_inrepo_parent / "alt")
+    direct_errs = check_workflows.check_workflow(
+        root_inrepo_parent / ".github" / "workflows" / "ci.yml", root_inrepo_parent
+    )
+    assert any("symlinked workflow file" in msg for _, _, msg in direct_errs)
+
+    root_file = tmp_path / "sym_file"
+    (root_file / ".github" / "workflows").mkdir(parents=True)
+    real_wf = root_file / ".github" / "workflows" / "real.yml"
+    real_wf.write_text(VALID_WORKFLOW, encoding="utf-8")
+    (root_file / ".github" / "workflows" / "ci.yml").symlink_to(outside_wf)
+    (root_file / ".github" / "workflows" / "alias.yml").symlink_to(real_wf)
+    (root_file / ".github" / "workflows" / "dangling.yaml").symlink_to(outside / "missing.yaml")
+    res_file = run_checker(root_file)
+    assert res_file.returncode == 1
+    assert "ci.yml:1: symlinked workflow file" in res_file.stderr
+    assert "alias.yml:1: symlinked workflow file" in res_file.stderr
+    assert "dangling.yaml:1: symlinked workflow file" in res_file.stderr
+
+    # Under --strict, a symlinked required workflow counts as missing AND reports the symlink.
+    root_strict = tmp_path / "sym_strict"
+    wf_strict = root_strict / ".github" / "workflows"
+    shutil.copytree(ROOT / ".github" / "workflows", wf_strict)
+    (wf_strict / "ci.yml").unlink()
+    (wf_strict / "ci.yml").symlink_to(wf_strict / "codeql.yml")
+    res_strict = run_checker(root_strict, strict=True)
+    assert res_strict.returncode == 1
+    assert "required workflow file is missing" in res_strict.stderr
+    assert "ci.yml:1: symlinked workflow file" in res_strict.stderr
+
+
+def test_aud50_workflow_concurrency_and_secret_scan_retries() -> None:
+    import yaml
+
+    wf_dir = ROOT / ".github" / "workflows"
+    for name in ("ci.yml", "codeql.yml", "secret-scan.yml"):
+        data = yaml.safe_load((wf_dir / name).read_text(encoding="utf-8"))
+        assert (
+            data["concurrency"]["cancel-in-progress"]
+            == "${{ github.event_name == 'pull_request' }}"
+        ), name
+
+    dep = yaml.safe_load((wf_dir / "dependency-review.yml").read_text(encoding="utf-8"))
+    assert (
+        dep["concurrency"]["group"] == "dependency-review-${{ github.workflow }}-${{ github.ref }}"
+    )
+    assert dep["concurrency"]["cancel-in-progress"] is True
+
+    secret_scan = yaml.safe_load((wf_dir / "secret-scan.yml").read_text(encoding="utf-8"))
+    assert "GITLEAKS_TARBALL" not in secret_scan.get("env", {})
+    install_step = next(
+        s for s in secret_scan["jobs"]["gitleaks"]["steps"] if s.get("name") == "Install gitleaks"
+    )
+    active_lines = [
+        line.split("#", 1)[0].strip()
+        for line in install_step["run"].splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    active_script = " ".join(active_lines)
+    assert 'tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"' in active_script
+    assert "--retry 3" in active_script
+    assert "--retry-delay 2" in active_script
+    assert "--max-time 60" in active_script
