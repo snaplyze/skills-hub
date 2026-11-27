@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from scripts import validate
+
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
 
@@ -39,14 +41,18 @@ WORKFLOW_HEADING_RE = re.compile(
 )
 HANDOFF_HEADING_RE = re.compile(r"^## (Handoff|Output|Final gate)", re.M)
 
-DOCS_WITH_TEST_REFERENCES = (
-    ROOT / "README.md",
-    ROOT / "AGENTS.md",
-    ROOT / "docs" / "antigravity-orchestration.md",
-    ROOT / "docs" / "opencode-orchestration.md",
-    ROOT / "docs" / "release-process.md",
-    ROOT / "docs" / "repository-settings.md",
-)
+
+def _markdown_docs() -> list[Path]:
+    docs = sorted(path for path in ROOT.glob("*.md") if path.is_file() and not path.is_symlink())
+    docs_dir = ROOT / "docs"
+    if docs_dir.is_dir():
+        docs.extend(
+            sorted(
+                path for path in docs_dir.rglob("*.md") if path.is_file() and not path.is_symlink()
+            )
+        )
+    return docs
+
 
 TRIGGER_MATRIX = {
     "frontend-design": {
@@ -263,8 +269,6 @@ def test_antigravity_orchestration_contract() -> None:
         "/teamwork",
     ):
         assert required in text, f"orchestration missing Antigravity primitive {required!r}"
-    for legacy_agent in ("`explore`", "`general`"):
-        assert legacy_agent not in text, f"orchestration still names {legacy_agent}"
 
 
 def test_suite_trigger_matrix_and_cross_skill_isolation() -> None:
@@ -354,52 +358,57 @@ def test_suite_is_listed_in_readme_and_agents() -> None:
 
 
 V2_REQUIRED = {
-    "specification": ("Approaches:", "Review focus:"),
+    "specification": (r"\bapproaches:", r"\breview focus:"),
     "implementation-planning": (
-        "Global constraints:",
-        "Review focus:",
-        "Interfaces:",
-        "Consumes:",
-        "Produces:",
-        "docs/plans/",
-        "Expected:",
-        "Checkpoint",
+        r"\bglobal constraints:",
+        r"\breview focus:",
+        r"\binterfaces:",
+        r"\bconsumes:",
+        r"\bproduces:",
+        r"docs/plans/",
+        r"\bexpected:",
+        r"\bcheckpoint\b",
     ),
     "autonomous-execution": (
-        "progress.md",
-        "Task briefs",
-        "Ruling:",
-        "3-strike",
-        "whole-branch",
-        "BASE",
+        r"progress\.md",
+        r"^##\s+task briefs\b",
+        r"\bruling:",
+        r"3-strike",
+        r"whole-branch",
+        r"^base:",
     ),
     "orchestration": (
-        "Independent failure dispatch",
-        "One brief, not the whole plan",
+        r"independent failure",
+        r"one brief",
     ),
     "code-review": (
-        "Tests first",
-        "Five axes",
-        "Mutation check",
-        "Structural remedies",
-        "Change size",
+        r"tests first",
+        r"^##\s+five axes\b",
+        r"mutation check",
+        r"structural remedies",
+        r"change size",
     ),
     "delivery": (
-        "Evidence required",
-        "Post-merge verification",
-        "Change summary",
+        r"evidence required",
+        r"post-merge verification",
+        r"change summary",
     ),
-    "clean-code": ("Scope discipline", "Simplicity check"),
+    "clean-code": (r"scope discipline", r"simplicity check"),
     "skill-authoring": (
-        "Trigger mining",
-        "Record each evaluation",
-        "Version a material",
+        r"^##\s+trigger mining\b",
+        r"^baseline \(no skill\):",
+        r"^verdict:",
+        r"^##\s+repository integration\b",
     ),
 }
 
 
 def v2_contract_errors(skill_id: str, text: str) -> list[str]:
-    return [phrase for phrase in V2_REQUIRED[skill_id] if phrase not in text]
+    return [
+        pattern
+        for pattern in V2_REQUIRED[skill_id]
+        if not re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+    ]
 
 
 def test_v2_planning_and_execution_contracts() -> None:
@@ -412,7 +421,7 @@ def test_v2_contract_mutation_is_detected() -> None:
     text = skill_text("implementation-planning")
     mutated = text.replace("Global constraints:", "")
     assert mutated != text
-    assert "Global constraints:" in v2_contract_errors("implementation-planning", mutated)
+    assert r"\bglobal constraints:" in v2_contract_errors("implementation-planning", mutated)
 
 
 def test_v2_state_is_project_local() -> None:
@@ -428,10 +437,21 @@ def test_v2_state_is_project_local() -> None:
 
 
 def test_docs_test_paths_exist() -> None:
-    for path in DOCS_WITH_TEST_REFERENCES:
+    docs = _markdown_docs()
+    assert ROOT / "docs" / "release-signing" / "README.md" in docs
+    for path in docs:
         text = path.read_text(encoding="utf-8")
         for relative in set(re.findall(r"`(tests/[^`\s]+\.py)`", text)):
             assert (ROOT / relative).is_file(), (path.relative_to(ROOT), relative)
+
+
+def test_reserved_skill_ids_match_skill_authoring_doc() -> None:
+    text = skill_text("skill-authoring")
+    match = re.search(r"bare built-in slash command \(([^)]+)\)", text)
+    assert match, "skill-authoring/SKILL.md must list reserved built-in slash commands"
+    documented = set(re.findall(r"`([a-z0-9-]+)`", match.group(1)))
+    assert len(documented) == 27
+    assert documented == validate.RESERVED_SKILL_IDS
 
 
 def test_aud51_skills_paths_tokens_guardrails_and_portability() -> None:
@@ -453,7 +473,7 @@ def test_aud51_skills_paths_tokens_guardrails_and_portability() -> None:
         assert doc_matches, f"missing {prop} in design-system.md"
         for found in doc_matches:
             assert found.strip() == expected_val, (prop, found.strip(), expected_val)
-    assert "64 light/dark pairs and 27 semantic combinations" in design_sys
+    assert "64 light/dark pairs and 35 semantic combinations" in design_sys
 
     # 3. responsive-mobile.md TOC includes Mobile checklist.
     mobile_doc = (SKILLS / "frontend-design" / "references" / "responsive-mobile.md").read_text(

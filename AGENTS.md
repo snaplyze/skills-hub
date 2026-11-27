@@ -5,7 +5,7 @@
 ## Команды
 
 - Быстрый узкий сигнал: `python3 scripts/validate.py` (или `make validate`) — frontmatter (Agent Skills / Antigravity / OpenCode V2: `name` равен имени каталога, `compatibility`, `allowed-tools`, `disable-model-invocation`, `metadata`), ссылки и якоря в SKILL/references/docs, reading-set бюджет, установщики (`install/antigravity.sh`, `install/opencode.sh`, `install/lib.sh`), токены и контрастный fixture.
-- Тесты поведения: `make test` — pytest: validator/CLI/installers/release/CI-политика/external-links; 64 пары + 27 комбинаций WCAG 2.2 AA (обе темы `light` и `dark`) проверяются в `make validate`.
+- Тесты поведения: `make test` — pytest: validator/CLI/installers/release/CI-политика/external-links; 64 пары + 35 комбинаций WCAG 2.2 AA (обе темы `light` и `dark`) проверяются в `make validate`.
 - Полные локальные проверки: `make check` — validate, Ruff, Markdownlint, pytest, ShellCheck (`-x` для обоих установщиков и `install/lib.sh`), dry-run обоих установщиков, разбор CSS и workflow-политика. `make links` — внешние ссылки по сети отдельно.
 - CI-обязательные проверки: `validate`, `Analyze (python)`, `Analyze (actions)`, `dependency-review`, `gitleaks`; CodeQL также обязателен через code-scanning gate; OpenSSF Scorecard — дополнительная.
 
@@ -14,7 +14,7 @@
 - Навык — это `skills/<id>/SKILL.md`; `id` и frontmatter `name` должны совпадать и быть в lowercase kebab-case (1–64 символа; в Antigravity навык открывается как `/<name>`). `description` во frontmatter — основной триггер; в теле и frontmatter `skills/` не держать OpenCode-специфичные runtime-описания (`compatibility: agentskills`).
 - `SKILL.md` держит рабочий процесс, детали лежат в `references/` и читаются по необходимости. Пути внутри навыка — относительные от каталога навыка.
 - Контент навыков и остальные документы репозитория — на английском; этот AGENTS.md и `docs/plan.md` — на русском. Чужие тексты не копировать; канонический реестр источников `frontend-design` — `skills/frontend-design/references/sources.md`, сводный реестр репозитория — `THIRD_PARTY_NOTICES.md`.
-- Доступность — WCAG 2.2 AA: 24×24 CSS px минимум, 44×44 px практический таргет, контраст 4.5:1 для текста и 3:1 для крупного текста/UI. Эталон — 64 пары и 27 комбинаций в обеих темах (`skills/frontend-design/assets/token-contrast-pairs.json`).
+- Доступность — WCAG 2.2 AA: 24×24 CSS px минимум, 44×44 px практический таргет, контраст 4.5:1 для текста и 3:1 для крупного текста/UI. Эталон — 64 пары и 35 комбинаций в обеих темах (`skills/frontend-design/assets/token-contrast-pairs.json`).
 - `main` защищён: только PR, обязательные проверки, линейная история, запрещены force push и удаление. Защиты и обязательные проверки не обходить.
 - Глобальные установщики пишут в `~/.gemini/config/skills` (`install/antigravity.sh`, общий каталог Antigravity App/CLI/IDE) или `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` (`install/opencode.sh`); в CI выполняется только dry-run обоих. Не устанавливать навыки в проект и не коммитить результат установки.
 - Релизы, теги, production, деплой и расходы — только по отдельному поручению владельца. Теги `v*` защищены.

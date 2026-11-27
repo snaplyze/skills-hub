@@ -875,6 +875,62 @@
       "fg": "--color-text",
       "bg": "--color-selection",
       "size": "normal"
+    },
+    {
+      "label": "light: accent-hover / canvas",
+      "theme": "light",
+      "fg": "--color-accent-hover",
+      "bg": "--color-canvas",
+      "size": "normal"
+    },
+    {
+      "label": "dark: accent-hover / canvas",
+      "theme": "dark",
+      "fg": "--color-accent-hover",
+      "bg": "--color-canvas",
+      "size": "normal"
+    },
+    {
+      "label": "light: text / accent-subtle",
+      "theme": "light",
+      "fg": "--color-text",
+      "bg": "--color-accent-subtle",
+      "size": "normal"
+    },
+    {
+      "label": "dark: text / accent-subtle",
+      "theme": "dark",
+      "fg": "--color-text",
+      "bg": "--color-accent-subtle",
+      "size": "normal"
+    },
+    {
+      "label": "light: accent / accent-subtle",
+      "theme": "light",
+      "fg": "--color-accent",
+      "bg": "--color-accent-subtle",
+      "size": "normal"
+    },
+    {
+      "label": "dark: accent / accent-subtle",
+      "theme": "dark",
+      "fg": "--color-accent",
+      "bg": "--color-accent-subtle",
+      "size": "normal"
+    },
+    {
+      "label": "light: accent / surface-sunken",
+      "theme": "light",
+      "fg": "--color-accent",
+      "bg": "--color-surface-sunken",
+      "size": "normal"
+    },
+    {
+      "label": "dark: border-strong / surface-raised (ui)",
+      "theme": "dark",
+      "fg": "--color-border-strong",
+      "bg": "--color-surface-raised",
+      "size": "ui"
     }
   ]
 }

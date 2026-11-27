@@ -72,7 +72,7 @@ All 11 skills are written in unified English Markdown following the [Agent Skill
 
 ### `frontend-design`
 
-A complete design and frontend-quality skill for building, redesigning, and reviewing web interfaces. It combines aesthetic direction with design systems, UX states, WCAG 2.2 AA accessibility (64 audited light/dark contrast pairs + 27 semantic combinations), responsive behavior, motion, modern CSS/React/Next.js implementation guidance, and a pre-delivery audit.
+A complete design and frontend-quality skill for building, redesigning, and reviewing web interfaces. It combines aesthetic direction with design systems, UX states, WCAG 2.2 AA accessibility (64 audited light/dark contrast pairs + 35 semantic combinations), responsive behavior, motion, modern CSS/React/Next.js implementation guidance, and a pre-delivery audit.
 
 Use it when you want:
 
@@ -306,7 +306,7 @@ python3 scripts/contrast.py --pairs assets/token-contrast-pairs.json --check
 python3 scripts/contrast.py --self-test
 ```
 
-It supports hex, `rgb()`, `hsl()`, alpha compositing, text/large-text/UI thresholds, JSON output, and a non-zero exit code for CI. The bundled fixture covers 64 light/dark pairs and 27 semantic combinations from the starter token sheet and passes WCAG 2.2 AA.
+It supports hex, `rgb()`, `hsl()`, alpha compositing, text/large-text/UI thresholds, JSON output, and a non-zero exit code for CI. The bundled fixture covers 64 light/dark pairs and 35 semantic combinations from the starter token sheet and passes WCAG 2.2 AA.
 
 ## Design principles of this hub
 

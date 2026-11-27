@@ -476,7 +476,7 @@ For design-to-code handoff:
 
 ## Starter token sheet
 
-`assets/tokens.css` contains a starting point with primitive hex scales, semantic light/dark tokens, the fluid type scale, 4/8 px spacing, containers and breakpoints in comments, radii, borders, shadows, z-index, motion, and base reset/focus styles. Use it as a reference, not a drop-in theme. Replace the brand hue, neutrals, and type families with values that fit the subject. `assets/token-contrast-pairs.json` contains 64 light/dark pairs and 27 semantic combinations covering the starter semantics; run it with:
+`assets/tokens.css` contains a starting point with primitive hex scales, semantic light/dark tokens, the fluid type scale, 4/8 px spacing, containers and breakpoints in comments, radii, borders, shadows, z-index, motion, and base reset/focus styles. Use it as a reference, not a drop-in theme. Replace the brand hue, neutrals, and type families with values that fit the subject. `assets/token-contrast-pairs.json` contains 64 light/dark pairs and 35 semantic combinations covering the starter semantics; run it with:
 
 ```bash
 python3 scripts/contrast.py --pairs assets/token-contrast-pairs.json --check

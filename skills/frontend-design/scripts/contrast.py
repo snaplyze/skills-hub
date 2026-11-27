@@ -51,7 +51,14 @@ NAMED_COLORS = {
 
 HEX_RE = re.compile(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
 FN_RE = re.compile(r"^([a-zA-Z]+)\((.*)\)$")
-HUE_RE = re.compile(r"^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(deg|rad|grad|turn)?$")
+CSS_NUMBER_RE = re.compile(
+    r"^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$",
+    re.IGNORECASE | re.ASCII,
+)
+HUE_RE = re.compile(
+    r"^([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)(deg|rad|grad|turn)?$",
+    re.IGNORECASE | re.ASCII,
+)
 
 
 @dataclass(frozen=True)
@@ -71,8 +78,9 @@ class Color:
 
     def hex(self) -> str:
         c = self.clamped()
-        if c.a < 1.0:
-            return f"#{round(c.r):02x}{round(c.g):02x}{round(c.b):02x}{round(c.a * 255):02x}"
+        alpha_byte = round(c.a * 255)
+        if alpha_byte < 255:
+            return f"#{round(c.r):02x}{round(c.g):02x}{round(c.b):02x}{alpha_byte:02x}"
         return f"#{round(c.r):02x}{round(c.g):02x}{round(c.b):02x}"
 
 
@@ -94,6 +102,8 @@ class Result:
 
 
 def _parse_finite_float(raw: str) -> float:
+    if not CSS_NUMBER_RE.fullmatch(raw):
+        raise ValueError(f"Invalid CSS number: {raw!r}")
     val = float(raw)
     if not math.isfinite(val):
         raise ValueError(f"Non-finite numeric value: {raw!r}")
@@ -174,20 +184,27 @@ def parse_function(value: str) -> Color:
         alpha = 1.0
 
     # Support both comma-separated (legacy) and space-separated (CSS Color 4) syntax.
-    if "," in main:
+    is_comma = "," in main
+    if is_comma:
         parts = [p.strip() for p in main.split(",")]
         if any(not p for p in parts):
             raise ValueError(f"Empty argument in color function: {value!r}")
     else:
         parts = main.split()
 
-    if has_slash:
-        if len(parts) != 3:
+    if is_comma:
+        if len(parts) not in (3, 4):
             raise ValueError(f"Invalid {name}() color: {value!r}")
-    elif len(parts) not in (3, 4):
+    elif len(parts) != 3:
         raise ValueError(f"Invalid {name}() color: {value!r}")
 
     if name in ("rgb", "rgba"):
+        if is_comma:
+            is_pct = [p.endswith("%") for p in parts[:3]]
+            if any(is_pct) and not all(is_pct):
+                raise ValueError(
+                    f"Mixed number and percentage channels in legacy {name}(): {value!r}"
+                )
         r = parse_channel(parts[0])
         g = parse_channel(parts[1])
         b = parse_channel(parts[2])
@@ -223,14 +240,16 @@ def parse_color(value: str) -> Color:
 
 def flatten(color: Color, backdrop: Color = WHITE) -> Color:
     """Composite a possibly translucent color over an opaque backdrop."""
-    if color.a >= 1.0:
-        return color if color.a == 1.0 else Color(color.r, color.g, color.b, 1.0)
-    a = color.a
+    c = color.clamped()
+    b = backdrop.clamped()
+    if c.a >= 1.0:
+        return Color(c.r, c.g, c.b, 1.0)
+    a = c.a
     inv = 1.0 - a
     return Color(
-        color.r * a + backdrop.r * inv,
-        color.g * a + backdrop.g * inv,
-        color.b * a + backdrop.b * inv,
+        c.r * a + b.r * inv,
+        c.g * a + b.g * inv,
+        c.b * a + b.b * inv,
         1.0,
     )
 

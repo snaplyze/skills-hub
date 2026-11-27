@@ -1673,3 +1673,41 @@ def test_aud47_cli_root_exit_two_placeholders_and_invalid_yaml(tmp_path: Path) -
     yml_errs: list[str] = []
     validate.check_yaml(yml_errs, root=bad_yaml_root)
     assert any("invalid YAML" in e for e in yml_errs), yml_errs
+
+
+def test_aud54_combination_theme_prefix_and_reserved_skill_ids(tmp_path: Path) -> None:
+    # 1. Combination label must start with "{theme}:".
+    repo = copy_contrast_assets(tmp_path)
+    data = load_fixture(repo)
+    assert len(data["combinations"]) == 35
+    data["combinations"][0]["label"] = "wrong: text / surface-raised"
+    save_fixture(repo, data)
+    assert_contrast_fixture_fails(repo, "must start with 'light:'")
+
+    # 2. Reserved built-in slash command IDs (27 total) fail closed.
+    assert len(validate.RESERVED_SKILL_IDS) == 27
+    for reserved_id in ("plan", "review", "swarm", "learn"):
+        write_simple_skill(tmp_path, skill_id=reserved_id)
+        assert_skill_fails(
+            tmp_path,
+            f"skill name {reserved_id!r} collides with a reserved built-in slash command",
+            skill_id=reserved_id,
+        )
+
+    # Frontmatter name colliding with a reserved ID (even in a non-reserved dir) also fails.
+    other = tmp_path / "skills" / "custom-skill"
+    other.mkdir(parents=True)
+    (other / "SKILL.md").write_text(
+        "---\n"
+        "name: help\n"
+        "description: A sufficiently long description testing reserved frontmatter name rejection.\n"
+        "license: MIT\n"
+        "---\n\n# Custom\n",
+        encoding="utf-8",
+    )
+    assert_skill_fails(
+        tmp_path,
+        "must match directory name",
+        "skill name 'help' collides with a reserved built-in slash command",
+        skill_id="custom-skill",
+    )

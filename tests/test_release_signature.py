@@ -71,6 +71,8 @@ def repo_release_tag() -> str | None:
             "-C",
             str(ROOT),
             *ISOLATED_GIT_CONFIG_ARGS,
+            "-c",
+            "versionsort.suffix=-",
             "tag",
             "--list",
             "v*",
