@@ -7,6 +7,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-27
+
 ### Added
 
 - First-class **Google Antigravity** support (App, CLI `agy`, IDE, and IDE
@@ -38,6 +40,11 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   `install-antigravity`, `install-opencode`, dual `shellcheck -x`, and dual
   `dry-run`, and update repository docs, `AGENTS.md`, and issue/PR templates
   for both Antigravity and OpenCode.
+- Refresh repository presentation and documentation: `README.md` hero, quick
+  start, Mermaid workflow diagram, orchestration summary, and documentation
+  index; cross-linked orchestration guides (`docs/antigravity-orchestration.md`
+  and `docs/opencode-orchestration.md`); updated GitHub repository description,
+  topics, and harness labels.
 
 ### Security
 

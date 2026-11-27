@@ -1,8 +1,17 @@
 # Repository settings evidence
 
-Verified 2026-11-26 from the GitHub API and repository files. Recheck after any
+Verified 2026-11-27 from the GitHub API and repository files. Recheck after any
 settings change; this file records the state, not a claim that a setting cannot
 regress.
+
+## Repository metadata and features
+
+| Setting | Current state | Where | Owner |
+|---|---|---|---|
+| Description | Portable, high-craft Agent Skills for Google Antigravity and OpenCode — frontend design plus a 10-skill engineering workflow suite. | Repository About | Maintainer |
+| Topics | `accessibility`, `agent-orchestration`, `agent-skills`, `ai-agents`, `antigravity`, `claude-code`, `codex`, `design-system`, `frontend-design`, `google-antigravity`, `opencode`, `ux`, `wcag`, `web-design` | Repository About | Maintainer |
+| Features | Issues enabled, Discussions enabled; Wiki and Projects disabled | Repository settings | Maintainer |
+| Harness labels | `antigravity`, `opencode`, `workflow-skills`, `frontend-design`, `skill`, `installer` (+ standard triage/security labels) | Repository labels | Maintainer |
 
 ## Branch and tag protection
 

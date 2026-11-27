@@ -28,7 +28,7 @@
 
 ## CI
 
-- `CI (проверено, 2026-11-26): hosted (ubuntu-24.04); self-hosted: 0; org: none; reusable workflows: none; обязательные проверки: validate, Analyze (python), Analyze (actions), dependency-review, gitleaks; CodeQL — обязательный code-scanning gate; Scorecard и Link Audit — отдельно.`
+- `CI (проверено, 2026-11-27): hosted (ubuntu-24.04); self-hosted: 0; org: none; reusable workflows: none; обязательные проверки: validate, Analyze (python), Analyze (actions), dependency-review, gitleaks; CodeQL — обязательный code-scanning gate; Scorecard и Link Audit — отдельно.`
 - `CI (владелец): по обнаружению; hosted по умолчанию; self-hosted — для подходящих заданий.`
 
 ## Оркестрация

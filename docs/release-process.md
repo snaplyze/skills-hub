@@ -7,7 +7,8 @@ risks the workflow cannot remove.
 
 The workflow does not create tags or publish releases. It is dispatched from
 `main` with a signed tag as input, then creates a **draft** release with a
-source archive, a SHA-256 checksum, and a build provenance attestation.
+source archive, a SHA-256 checksum, a `.sigstore.json` Sigstore bundle, and a
+build provenance attestation.
 Promotion is a manual owner action. Dispatching from `main` avoids running
 workflow code from the untrusted tag before the tag is verified.
 
@@ -253,6 +254,7 @@ cd skills-hub
 git -c gpg.format=ssh \
   -c gpg.ssh.allowedSignersFile=docs/release-signing/allowed_signers \
   verify-tag "$VERSION"
+# Antigravity (v1.4.0+):
 ./install/antigravity.sh --verify --ref "$VERSION"
 # Or for OpenCode:
 ./install/opencode.sh --verify --ref "$VERSION"

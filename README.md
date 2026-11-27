@@ -1,46 +1,78 @@
+<div align="center">
+
 # Skills Hub
+
+**Portable, high-craft Agent Skills for Google Antigravity and OpenCode**
+
+Frontend design plus a 10-skill engineering workflow suite following the [Agent Skills open standard](https://agentskills.io/specification).
+
+[![Antigravity](https://img.shields.io/badge/Antigravity-ready-1a73e8)](https://antigravity.google/)
+[![OpenCode](https://img.shields.io/badge/OpenCode-ready-0f766e)](https://opencode.ai/)
+[![Agent Skills](https://img.shields.io/badge/Standard-Agent%20Skills-6d28d9)](https://agentskills.io/specification)
+[![Release](https://img.shields.io/github/v/release/snaplyze/skills-hub)](https://github.com/snaplyze/skills-hub/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [![CI](https://github.com/snaplyze/skills-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/snaplyze/skills-hub/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/snaplyze/skills-hub/actions/workflows/codeql.yml/badge.svg)](https://github.com/snaplyze/skills-hub/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/snaplyze/skills-hub/badge)](https://securityscorecards.dev/viewer/?uri=github.com/snaplyze/skills-hub)
-[![Release](https://img.shields.io/github/v/release/snaplyze/skills-hub)](https://github.com/snaplyze/skills-hub/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Antigravity](https://img.shields.io/badge/Antigravity-ready-1a73e8)](https://antigravity.google/)
-[![OpenCode](https://img.shields.io/badge/OpenCode-ready-0f766e)](https://opencode.ai/)
 
-Portable, high-craft skills for AI coding agents following the [Agent Skills open standard](https://agentskills.io/specification). Each skill is a self-contained directory with a `SKILL.md`, optional references, assets, and deterministic scripts. Install them globally into the agent you use; keep them versioned here.
+[Quick start](#quick-start) · [Skills](#skills) · [Orchestration](#orchestration) · [Install](#install) · [Using the skills](#using-the-skills) · [Validation](#validation) · [Security & Protections](#repository-protections) · [Documentation](#documentation)
 
-The repository includes **Frontend Design** plus a compact 10-skill agent workflow suite for **Google Antigravity** (App, CLI `agy`, IDE & extensions) and **OpenCode**: specification, planning, orchestration, execution, debugging, TDD, review, delivery, clean code, and skill authoring. The workflow skills are deliberately smaller than hook-heavy frameworks: they use standard skill frontmatter and unified portable Markdown, with no plugin or session bootstrap.
+</div>
 
-## Status
+---
 
-| Harness | Status | Installer |
-|---|---|---|
-| [Google Antigravity](https://antigravity.google/) (App, CLI, IDE) | Ready | `install/antigravity.sh` |
-| [OpenCode](https://opencode.ai/) | Ready | `install/opencode.sh` |
-| Claude Code | Planned | — |
-| Codex | Planned | — |
-| Other agents | Planned | — |
+Each skill is a self-contained directory with a `SKILL.md`, optional references, assets, and deterministic scripts. Install them globally into **Google Antigravity** (App, CLI `agy`, IDE & extensions) or **OpenCode**; keep them versioned and audited here.
+
+The repository includes **Frontend Design** plus a compact 10-skill engineering workflow suite: specification, planning, orchestration, execution, debugging, TDD, review, delivery, clean code, and skill authoring. Every skill uses standard Agent Skills frontmatter and unified portable Markdown — no plugins, hooks, or session bootstrap required.
+
+## Quick start
+
+```bash
+git clone https://github.com/snaplyze/skills-hub.git
+cd skills-hub
+
+# Google Antigravity (App, CLI `agy`, IDE) -> ~/.gemini/config/skills
+./install/antigravity.sh
+
+# OpenCode -> ${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills
+./install/opencode.sh
+```
+
+> [!TIP]
+> For production or team setups, install from a verified, signed, immutable release (`v1.4.0+`) instead of `main` — see [Install](#install) below.
+
+## Supported harnesses
+
+| Harness | Status | Installer | Global target | Reload / invoke |
+|---|---|---|---|---|
+| [Google Antigravity](https://antigravity.google/) (App, CLI, IDE) | **Ready** | [`install/antigravity.sh`](install/antigravity.sh) | `~/.gemini/config/skills` | Auto-reread; `/skills reload`, `/<skill-name>` |
+| [OpenCode](https://opencode.ai/) | **Ready** | [`install/opencode.sh`](install/opencode.sh) | `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills` | `opencode reload`, `@<skill-name>` |
+| Claude Code | Planned | — | — | — |
+| Codex | Planned | — | — | — |
+| Other Agent Skills clients | Planned | — | — | — |
 
 ## Skills
 
-| Skill | Purpose | Harness |
+All 11 skills are written in unified English Markdown following the [Agent Skills open standard](https://agentskills.io/specification) (`name` matching folder ID, `compatibility: agentskills`, ≤ 32 KiB per typical reading set):
+
+| Skill | Category | Purpose |
 |---|---|---|
-| [`frontend-design`](skills/frontend-design/SKILL.md) | Distinctive, accessible web interface design and frontend quality | Antigravity, OpenCode |
-| [`orchestration`](skills/orchestration/SKILL.md) | Route complex work across native subagents, workflows, and orchestrators without a plugin | Antigravity, OpenCode |
-| [`specification`](skills/specification/SKILL.md) | Turn ambiguous requests into testable specs with non-goals and acceptance | Antigravity, OpenCode |
-| [`implementation-planning`](skills/implementation-planning/SKILL.md) | Turn a spec into small, testable, dependency-aware tasks | Antigravity, OpenCode |
-| [`autonomous-execution`](skills/autonomous-execution/SKILL.md) | Execute approved plans with subagents, isolated workspaces, TDD gates, and a ledger | Antigravity, OpenCode |
-| [`systematic-debugging`](skills/systematic-debugging/SKILL.md) | Reproduce, locate root cause, fix, and prove with a regression test | Antigravity, OpenCode |
-| [`test-driven-development`](skills/test-driven-development/SKILL.md) | Red-green-refactor with behavior-focused tests | Antigravity, OpenCode |
-| [`code-review`](skills/code-review/SKILL.md) | Request fresh-context review and evaluate feedback with evidence | Antigravity, OpenCode |
-| [`delivery`](skills/delivery/SKILL.md) | Verify, open a scoped PR, merge without bypass, and report evidence | Antigravity, OpenCode |
-| [`clean-code`](skills/clean-code/SKILL.md) | Language-agnostic readability, boundaries, errors, and refactoring | Antigravity, OpenCode |
-| [`skill-authoring`](skills/skill-authoring/SKILL.md) | Design, test, and integrate portable agent skills (Agent Skills standard) | Antigravity, OpenCode |
+| [`frontend-design`](skills/frontend-design/SKILL.md) | Design & UI | Distinctive, accessible web interface design, design systems, tokens, and WCAG 2.2 AA quality |
+| [`orchestration`](skills/orchestration/SKILL.md) | Workflow | Route complex work across native subagents, workflows, and orchestrators without a plugin |
+| [`specification`](skills/specification/SKILL.md) | Workflow | Turn ambiguous requests into testable specs with non-goals and acceptance criteria |
+| [`implementation-planning`](skills/implementation-planning/SKILL.md) | Workflow | Turn a spec into small, testable, dependency-aware tasks with explicit file ownership |
+| [`autonomous-execution`](skills/autonomous-execution/SKILL.md) | Workflow | Execute approved plans with subagents, isolated workspaces, TDD gates, and a ledger |
+| [`systematic-debugging`](skills/systematic-debugging/SKILL.md) | Workflow | Reproduce, locate root cause, fix, and prove with a regression test |
+| [`test-driven-development`](skills/test-driven-development/SKILL.md) | Workflow | Red-green-refactor with behavior-focused tests |
+| [`code-review`](skills/code-review/SKILL.md) | Workflow | Request fresh-context read-only review and evaluate feedback with evidence |
+| [`delivery`](skills/delivery/SKILL.md) | Workflow | Verify, open a scoped PR, merge without bypass, and report evidence |
+| [`clean-code`](skills/clean-code/SKILL.md) | Workflow | Language-agnostic readability, boundaries, error handling, and refactoring |
+| [`skill-authoring`](skills/skill-authoring/SKILL.md) | Meta | Design, test, and integrate portable agent skills (Agent Skills standard) |
 
 ### `frontend-design`
 
-A complete design and frontend-quality skill for building, redesigning, and reviewing web interfaces. It combines aesthetic direction with design systems, UX states, accessibility, responsive behavior, motion, implementation guidance, and a pre-delivery audit.
+A complete design and frontend-quality skill for building, redesigning, and reviewing web interfaces. It combines aesthetic direction with design systems, UX states, WCAG 2.2 AA accessibility (64 audited light/dark contrast pairs + 27 semantic combinations), responsive behavior, motion, modern CSS/React/Next.js implementation guidance, and a pre-delivery audit.
 
 Use it when you want:
 
@@ -55,15 +87,39 @@ It is deliberately opinionated about craft and deliberately neutral about style.
 
 ### Agent workflow suite
 
-These skills cover the path from an ambiguous request to a verified merge. They are independent enough to load on demand, but designed to hand off to one another: `specification` → `implementation-planning` → `autonomous-execution` → `code-review` → `delivery`, with `systematic-debugging`, `test-driven-development`, and `clean-code` available at the points where they change the outcome. `skill-authoring` is the meta-skill for extending the suite. `orchestration` is the thin routing layer over native orchestration — see [`docs/antigravity-orchestration.md`](docs/antigravity-orchestration.md) for Google Antigravity (`invoke_subagent`, `define_subagent`, `run_workflow`, `/swarm`, `/boost`, `/teamwork`) and [`docs/opencode-orchestration.md`](docs/opencode-orchestration.md) for OpenCode V2.
+These 10 skills cover the path from an ambiguous request to a verified merge. Each skill loads independently on demand and hands off cleanly to the next stage:
 
-No hooks, plugin bootstrap, or session injection are required. Trigger quality comes from each skill description and explicit routing. Each skill is loaded independently; the suite is not a single context load. Project plans live in `docs/plans/`; long runs keep a `progress.md` ledger beside the plan, not in a tool-owned hidden directory.
+```mermaid
+flowchart LR
+    S["specification"] --> P["implementation-planning"]
+    P --> E["autonomous-execution"]
+    E --> R["code-review"]
+    R --> D["delivery"]
+    O["orchestration"] -. routes & isolates .-> E
+    O -. dispatches fresh review .-> R
+    DBG["systematic-debugging"] -. root cause .-> TDD["test-driven-development"]
+    TDD -. refactor .-> CC["clean-code"]
+    TDD -. gates .-> E
+```
+
+No hooks, plugin bootstrap, or session injection are required. Trigger quality comes from each skill description and explicit routing. Project plans live in `docs/plans/`; long runs keep a `progress.md` ledger beside the plan, not in a tool-owned hidden directory. `skill-authoring` is the meta-skill for extending and evaluating the suite.
+
+## Orchestration
+
+One portable [`orchestration`](skills/orchestration/SKILL.md) skill routes complex work over each harness's native primitives — no custom plugins, hooks, background daemons, or hardcoded model profiles:
+
+| Capability | Google Antigravity ([full guide](docs/antigravity-orchestration.md)) | OpenCode V2 ([full guide](docs/opencode-orchestration.md)) |
+|---|---|---|
+| Subagents | Built-in `research`, `browser`, `self`, transient `define_subagent`, or user `~/.gemini/config/agents/*.md` via `invoke_subagent` / `send_message` / `manage_subagents` | Built-in `explore` and `general` (or local `.opencode/agents/*.md`) via async `subagent` (`sessionID`, `<background-result>`) |
+| Workspace isolation | Native `inherit`, `share`, and `branch` workspaces (integrate before killing workers) | Native git worktrees and session isolation |
+| Pipelines & multi-agent | Dynamic Workflows (`run_workflow`), plus user-invoked `/swarm`, `/boost`, and `/teamwork` | Native async background subagents and optional `automation` |
+| Read-only review | `research` or transient `define_subagent(EnableWriteTools=false)` (disables writes and shell) | Fresh `explore` child session with explicit read-only brief (or local reviewer agent) |
 
 ## Install
 
 Both global installers share [`install/lib.sh`](install/lib.sh) and use copy mode by default (snapshotting content without writing into this checkout). Use `--link` only when you want live symlinks to the clone. They require Bash and GNU coreutils/findutils/tar (`realpath -m`, `sort -z`, `mv -T`, `find -printf`, GNU `tar`); on systems without those tools, use the minimal manual copy below.
 
-Release `v1.3.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do not treat them as signed releases. The protected `release` environment, tag-signature trust, tag rules, and immutable-release setup are recorded in [docs/repository-settings.md](docs/repository-settings.md) and [docs/release-process.md](docs/release-process.md).
+Release `v1.4.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do not treat them as signed releases. The protected `release` environment, tag-signature trust, tag rules, and immutable-release setup are recorded in [docs/repository-settings.md](docs/repository-settings.md) and [docs/release-process.md](docs/release-process.md).
 
 ### Google Antigravity
 
@@ -71,12 +127,10 @@ The Antigravity installer copies skills into `$HOME/.gemini/config/skills` by de
 
 #### Install from a release (Antigravity)
 
-> Note: `install/antigravity.sh` and unified Antigravity support were added after `v1.3.0` and will be included starting with the next signed release (`v1.4.0+`). Until that release is published, use [Install from main (Antigravity)](#install-from-main-antigravity) below.
-
-Once a release containing `install/antigravity.sh` is published, clone the signed tag, verify its signature, and install with `--verify --ref`:
+Clone a signed release tag (`v1.4.0` or later), verify its signature, and install with `--verify --ref`:
 
 ```bash
-VERSION=vX.Y.Z  # replace with a signed release tag (>= v1.4.0)
+VERSION=vX.Y.Z  # replace with a signed release tag (v1.4.0+)
 git clone --branch "$VERSION" --depth 1 https://github.com/snaplyze/skills-hub.git
 cd skills-hub
 git -c gpg.format=ssh \
@@ -85,10 +139,10 @@ git -c gpg.format=ssh \
 ./install/antigravity.sh --verify --ref "$VERSION"
 ```
 
-Or install from a checksum-verified release archive (verify provenance with `gh attestation verify "skills-hub-$VERSION.tar.gz" --repo snaplyze/skills-hub`):
+Or install from a checksum-verified release archive (verify provenance with `gh attestation verify "skills-hub-$VERSION.tar.gz" --repo snaplyze/skills-hub`, or offline with `--bundle "skills-hub-$VERSION.tar.gz.sigstore.json"`):
 
 ```bash
-VERSION=vX.Y.Z  # replace with a signed release tag (>= v1.4.0)
+VERSION=vX.Y.Z  # replace with a signed release tag (v1.4.0+)
 curl -fsSLO "https://github.com/snaplyze/skills-hub/releases/download/$VERSION/skills-hub-$VERSION.tar.gz"
 curl -fsSLO "https://github.com/snaplyze/skills-hub/releases/download/$VERSION/SHA256SUMS"
 sha256sum -c SHA256SUMS
@@ -112,7 +166,12 @@ cd skills-hub
 ./install/antigravity.sh --list                  # list skills and descriptions
 ```
 
-Antigravity rereads skills automatically before each turn; in the Antigravity CLI, run `/skills reload` (or start a new conversation) to refresh slash commands (`/<skill-name>`). For a zero-copy personal setup without symlinks, you can also point `~/.gemini/config/skills.json` at your clone's absolute `skills/` path:
+Antigravity rereads skills automatically before each turn; in the Antigravity CLI, run `/skills reload` (or start a new conversation) to refresh slash commands (`/<skill-name>`). Antigravity discovers skills with a `SKILL.md` one level deep under workspace `.agents/skills/` (highest priority) and global `~/.gemini/config/skills/`, advertising each skill by its `name` (exposed as `/<name>`) and `description`.
+
+<details>
+<summary>Alternative Antigravity setup: <code>skills.json</code>, manual copy, and uninstall</summary>
+
+For a zero-copy personal setup without symlinks, point `~/.gemini/config/skills.json` at your clone's absolute `skills/` path:
 
 ```json
 {
@@ -122,12 +181,6 @@ Antigravity rereads skills automatically before each turn; in the Antigravity CL
 }
 ```
 
-To uninstall a skill from Antigravity, remove its folder:
-
-```bash
-rm -rf -- "$HOME/.gemini/config/skills/frontend-design"
-```
-
 Minimal manual copy (without safety checks or artifact exclusions):
 
 ```bash
@@ -135,7 +188,13 @@ mkdir -p -- ~/.gemini/config/skills
 cp -R -- skills/frontend-design ~/.gemini/config/skills/
 ```
 
-Antigravity discovers skills with a `SKILL.md` one level deep under workspace `.agents/skills/` (highest priority) and global `~/.gemini/config/skills/`, advertising each skill by its `name` (exposed as `/<name>`) and `description`.
+Uninstall a skill from Antigravity:
+
+```bash
+rm -rf -- "$HOME/.gemini/config/skills/frontend-design"
+```
+
+</details>
 
 ### OpenCode
 
@@ -165,7 +224,7 @@ cd "skills-hub-$VERSION"
 ./install/opencode.sh --copy
 ```
 
-The archive has no `.git` metadata, so `--verify` does not apply; the checksum and the release provenance attestation are the trust boundary. Verify provenance with `gh attestation verify "skills-hub-$VERSION.tar.gz" --repo snaplyze/skills-hub`.
+The archive has no `.git` metadata, so `--verify` does not apply; the checksum and the release provenance attestation are the trust boundary. Verify provenance with `gh attestation verify "skills-hub-$VERSION.tar.gz" --repo snaplyze/skills-hub` (or offline with `--bundle "skills-hub-$VERSION.tar.gz.sigstore.json"`).
 
 #### Install from main (OpenCode)
 
@@ -180,20 +239,25 @@ cd skills-hub
 ./install/opencode.sh --list                  # list skills and descriptions
 ```
 
-To uninstall a skill from OpenCode:
+OpenCode reloads skills automatically after install; run `opencode reload` (or `/reload` / Command Palette → Reload configuration) to force a refresh without restarting. OpenCode discovers directory skills with a `SKILL.md` and advertises them by their `description`. In OpenCode V2, project-local skill directories take precedence over global `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/`, extra skill paths can be configured via `skills[]`, and per-skill access can be controlled with `permission.skill` (`allow` / `ask` / `deny`) in OpenCode configuration.
 
-```bash
-rm -rf -- "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/frontend-design"
-```
+<details>
+<summary>Alternative OpenCode setup: manual copy and uninstall</summary>
 
-OpenCode reloads skills automatically after install; run `opencode reload` (or `/reload` / Command Palette → Reload configuration) to force a refresh without restarting. Minimal manual copy:
+Minimal manual copy (without safety checks or artifact exclusions):
 
 ```bash
 mkdir -p -- ~/.config/opencode/skills
 cp -R -- skills/frontend-design ~/.config/opencode/skills/
 ```
 
-OpenCode discovers directory skills with a `SKILL.md` and advertises them by their `description`. In OpenCode V2, project-local skill directories take precedence over global `${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/`, extra skill paths can be configured via `skills[]`, and per-skill access can be controlled with `permission.skill` (`allow` / `ask` / `deny`) in OpenCode configuration.
+Uninstall a skill from OpenCode:
+
+```bash
+rm -rf -- "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/frontend-design"
+```
+
+</details>
 
 ### Installer flags and safety
 
@@ -216,51 +280,6 @@ The installers canonicalize target and source paths and refuse `/`, `$HOME`, the
 ### Other harnesses
 
 The skills are written in unified plain Markdown following the [Agent Skills open standard](https://agentskills.io/specification), so the content is portable. Additional harness-specific installers will be added when their target paths and discovery rules are verified. Do not assume a Claude Code or Codex path until the installer exists.
-
-## Repository layout
-
-```text
-skills-hub/
-├── AGENTS.md                        # project facts for agents
-├── README.md
-├── CONTRIBUTING.md
-├── CODE_OF_CONDUCT.md
-├── SECURITY.md
-├── GOVERNANCE.md
-├── CHANGELOG.md
-├── LICENSE
-├── THIRD_PARTY_NOTICES.md
-├── Makefile                         # local validation entry points
-├── package.json                     # pinned Markdown/CSS tools
-├── package-lock.json                # locked npm dependency tree
-├── pyproject.toml                   # Ruff configuration
-├── requirements-dev.in              # direct Python development inputs
-├── requirements-dev.txt             # hash-locked Python development tools
-├── .github/                         # CI, security, issue/PR templates
-├── docs/
-│   ├── plan.md                      # audit and stage registry
-│   ├── plans/                       # project-local task plans and ledgers
-│   ├── antigravity-orchestration.md # native Antigravity orchestration guide
-│   ├── opencode-orchestration.md    # native OpenCode routing architecture
-│   ├── release-process.md           # release gate and owner setup
-│   ├── release-signing/             # public SSH allowed-signers and rotation
-│   └── repository-settings.md       # settings evidence and owner actions
-├── install/
-│   ├── antigravity.sh               # global Antigravity installer
-│   ├── opencode.sh                  # global OpenCode installer
-│   └── lib.sh                       # shared installer core and safety guards
-├── scripts/
-│   ├── validate.py                  # repository-wide validation
-│   ├── check_workflows.py           # Actions policy checks
-│   ├── check_external_links.py      # scheduled link audit
-│   ├── release_notes.py             # SemVer/changelog release notes
-│   └── release_checks.py            # required check-run gate
-├── tests/                           # validator, installer, release, workflow tests
-└── skills/                          # 11 portable skills; see the Skills table
-    ├── frontend-design/             # design references, assets, contrast script
-    ├── orchestration/               # native subagent & workflow routing
-    └── ...                          # nine workflow skills
-```
 
 ## Using the skills
 
@@ -287,7 +306,7 @@ python3 scripts/contrast.py --pairs assets/token-contrast-pairs.json --check
 python3 scripts/contrast.py --self-test
 ```
 
-It supports hex, `rgb()`, `hsl()`, alpha compositing, text/large-text/UI thresholds, JSON output, and a non-zero exit code for CI. The bundled fixture covers 64 light/dark pairs from the starter token sheet and passes WCAG 2.2 AA.
+It supports hex, `rgb()`, `hsl()`, alpha compositing, text/large-text/UI thresholds, JSON output, and a non-zero exit code for CI. The bundled fixture covers 64 light/dark pairs and 27 semantic combinations from the starter token sheet and passes WCAG 2.2 AA.
 
 ## Design principles of this hub
 
@@ -349,7 +368,67 @@ Security features enabled:
 - GitHub Actions with a read-only default token, job-scoped write permissions, pinned action commits, a GitHub-owned/verified action allowlist (with an explicit exception for `ossf/scorecard-action@*`), and approval required for all external fork contributors;
 - explicit settings evidence and owner-only release controls in [docs/repository-settings.md](docs/repository-settings.md).
 
-See [GOVERNANCE.md](GOVERNANCE.md) for the decision and review model, and [SECURITY.md](SECURITY.md) for private reporting. Agent-facing project facts live in [AGENTS.md](AGENTS.md); audit and stage tasks live in [docs/plan.md](docs/plan.md).
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [`docs/antigravity-orchestration.md`](docs/antigravity-orchestration.md) | Native Google Antigravity orchestration guide (subagents, `run_workflow`, `/swarm`, `/boost`, `/teamwork`) |
+| [`docs/opencode-orchestration.md`](docs/opencode-orchestration.md) | Native OpenCode V2 orchestration architecture |
+| [`docs/release-process.md`](docs/release-process.md) | Signed release gate, draft promotion checklist, and verification commands |
+| [`docs/release-signing/README.md`](docs/release-signing/README.md) | Public SSH `allowed_signers` trust file and key rotation procedure |
+| [`docs/repository-settings.md`](docs/repository-settings.md) | Verified GitHub rulesets, security features, metadata, and owner-only controls |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Development setup, skill authoring rules, and PR requirements |
+| [`SECURITY.md`](SECURITY.md) | Private vulnerability reporting, scope, and repository security controls |
+| [`GOVERNANCE.md`](GOVERNANCE.md) | Maintainer model, decision process, and merge/release policy |
+| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | Attribution and upstream license registry (`sources.md` pointer + workflow skills) |
+| [`CHANGELOG.md`](CHANGELOG.md) | Keep a Changelog release history |
+| [`AGENTS.md`](AGENTS.md) | Agent-facing repository facts and guardrails (Russian) |
+| [`docs/plan.md`](docs/plan.md) | Owner-facing stage, audit, and roadmap registry (Russian) |
+
+## Repository layout
+
+```text
+skills-hub/
+├── AGENTS.md                        # project facts for agents
+├── README.md
+├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+├── SECURITY.md
+├── GOVERNANCE.md
+├── CHANGELOG.md
+├── LICENSE
+├── THIRD_PARTY_NOTICES.md
+├── Makefile                         # local validation entry points
+├── package.json                     # pinned Markdown/CSS tools
+├── package-lock.json                # locked npm dependency tree
+├── pyproject.toml                   # Ruff configuration
+├── requirements-dev.in              # direct Python development inputs
+├── requirements-dev.txt             # hash-locked Python development tools
+├── .github/                         # CI, security, issue/PR templates
+├── docs/
+│   ├── plan.md                      # audit and stage registry
+│   ├── plans/                       # project-local task plans and ledgers
+│   ├── antigravity-orchestration.md # native Antigravity orchestration guide
+│   ├── opencode-orchestration.md    # native OpenCode routing architecture
+│   ├── release-process.md           # release gate and owner setup
+│   ├── release-signing/             # public SSH allowed-signers and rotation
+│   └── repository-settings.md       # settings evidence and owner actions
+├── install/
+│   ├── antigravity.sh               # global Antigravity installer
+│   ├── opencode.sh                  # global OpenCode installer
+│   └── lib.sh                       # shared installer core and safety guards
+├── scripts/
+│   ├── validate.py                  # repository-wide validation
+│   ├── check_workflows.py           # Actions policy checks
+│   ├── check_external_links.py      # scheduled link audit
+│   ├── release_notes.py             # SemVer/changelog release notes
+│   └── release_checks.py            # required check-run gate
+├── tests/                           # validator, installer, release, workflow tests
+└── skills/                          # 11 portable skills; see the Skills table
+    ├── frontend-design/             # design references, assets, contrast script
+    ├── orchestration/               # native subagent & workflow routing
+    └── ...                          # nine workflow skills
+```
 
 ## Adding a skill
 
@@ -357,7 +436,7 @@ See [GOVERNANCE.md](GOVERNANCE.md) for the decision and review model, and [SECUR
 2. Keep the description trigger-rich and scoped: what it does and when to use it.
 3. Put detailed material in `references/`, templates in `assets/`, deterministic helpers in `scripts/`.
 4. Use relative paths from the skill directory, avoid plugins/hooks and OpenCode-only runtime prose, and keep instructions mapped cleanly onto standard Agent Skills / Antigravity capabilities.
-5. Document the skill in the README Skills section; update the harness status table if it adds a new client.
+5. Document the skill in the README Skills section; update the Supported harnesses table if it adds a new client.
 6. Validate links, scripts, and installers (`make check`).
 
 ## Contributing
