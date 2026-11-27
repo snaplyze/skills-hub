@@ -42,7 +42,8 @@ short standard phrases may coincide. They are informed by:
   citing any other skill in that repository.
 
 The workflow skills deliberately avoid hooks, plugins, and session bootstrap;
-their ideas are expressed in new Markdown and tested as OpenCode skills.
+their ideas are expressed in new Markdown and tested as portable Agent Skills
+for Antigravity and OpenCode.
 
 ## Notes
 

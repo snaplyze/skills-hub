@@ -253,6 +253,8 @@ cd skills-hub
 git -c gpg.format=ssh \
   -c gpg.ssh.allowedSignersFile=docs/release-signing/allowed_signers \
   verify-tag "$VERSION"
+./install/antigravity.sh --verify --ref "$VERSION"
+# Or for OpenCode:
 ./install/opencode.sh --verify --ref "$VERSION"
 ```
 

@@ -7,6 +7,44 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+
+- First-class **Google Antigravity** support (App, CLI `agy`, IDE, and IDE
+  extensions) alongside OpenCode:
+  - Global installer `install/antigravity.sh` targeting
+    `$HOME/.gemini/config/skills` (shared across Antigravity App, CLI, and IDE)
+    with full safety parity via shared `install/lib.sh`.
+  - Native Antigravity orchestration guide (`docs/antigravity-orchestration.md`)
+    covering `invoke_subagent`, `define_subagent`, `send_message`,
+    `manage_subagents`, built-in `research`/`browser`/`self` subagents,
+    `branch`/`share` workspace isolation, Dynamic Workflows (`run_workflow`),
+    and user-invoked `/swarm`, `/boost`, and `/teamwork`.
+  - Agent Skills open-standard frontmatter enforcement in `scripts/validate.py`
+    (lowercase kebab-case `name` matching directory ID, `compatibility` ≤ 500
+    chars, `allowed-tools`, and `dict[str, str]` `metadata` checks while
+    preserving OpenCode V2 `metadata.opencode/autoinvoke` validation).
+
+### Changed
+
+- Unify all 11 skills under the Agent Skills open standard (`name` matching
+  directory ID, `compatibility: agentskills`) and remove OpenCode-specific
+  runtime descriptions from `skills/` so Antigravity and OpenCode interpret
+  every skill consistently.
+- Adapt `orchestration`, `autonomous-execution`, `code-review`, `delivery`,
+  `skill-authoring`, `frontend-design`, and `systematic-debugging` for native
+  Antigravity subagents, workflows, `/browser`, `/diff`, `/compact`, `/boost`,
+  and headless `agy -p ... --output-format json`.
+- Factor shared installer logic into `install/lib.sh`, update `Makefile` with
+  `install-antigravity`, `install-opencode`, dual `shellcheck -x`, and dual
+  `dry-run`, and update repository docs, `AGENTS.md`, and issue/PR templates
+  for both Antigravity and OpenCode.
+
+### Security
+
+- Ignore `.gemini/` in `.gitignore` and exclude `.gemini` in both installers'
+  copy mode; reject symlinked `install/` directories and installer scripts in
+  `scripts/validate.py` and wrapper scripts.
+
 ## [1.3.0] - 2026-11-26
 
 ### Added

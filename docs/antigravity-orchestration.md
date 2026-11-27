@@ -20,7 +20,7 @@ Antigravity ships five built-in execution patterns across its surfaces. The `orc
 | Pattern | Trigger | Mechanism & isolation | Best for |
 |---|---|---|---|
 | **Single agent** | Direct work | One session reads, edits, and verifies sequentially | Small fixes, single-file edits, sequential decisions |
-| **Subagents** (`invoke_subagent`, `define_subagent`, `send_message`, `manage_subagents`) | Agent-invoked | Built-in `research` (read-only sandbox, no network), `browser` (live UI/DOM/console), `self` (full clone), transient `define_subagent`, or user/workspace `.agents/agents/*.md`; workspaces `inherit` / `share` / `branch`; reactive wakeup (no polling); nesting depth cap 10 | Focused research sweeps (≤3 parallel), live browser checks, disjoint implementation slices, fresh read-only review |
+| **Subagents** (`invoke_subagent`, `define_subagent`, `send_message`, `manage_subagents`) | Agent-invoked | Built-in `research` (read-only sandbox, no network), `browser` (live UI/DOM/console), `self` (full clone), transient `define_subagent`, or user `~/.gemini/config/agents/*.md` / workspace `.agents/agents/*.md`; workspaces `inherit` / `share` / `branch`; reactive wakeup (no polling); nesting depth cap 10 | Focused research sweeps (≤3 parallel), live browser checks, disjoint implementation slices, fresh read-only review |
 | **Dynamic Workflows** (`run_workflow` / `/run-workflow`) | Agent- or user-invoked (all plans) | Python script coordinating `agent()`, `parallel()`, `pipeline()`, `phase()`, and JSON Schema `finish` results (`inherit` / `share` / `branch`, model tiers `inherit` / `flash_lite` / `flash` / `pro`) | Fan-out audits across many files/modules, repeatable staged pipelines, structured reviewer-fixer loops |
 | **Swarm** (`/swarm`) | User-invoked only (all plans) | Coordinator + named workers + `@verifier` collaborating on a shared message board with `@mentions`; idle workers sleep at zero token cost | Broad tasks dividing cleanly across independent files, packages, or investigation tracks where peers coordinate directly |
 | **Boost (`/boost`) & Teamwork (`/teamwork`)** | User-invoked only (paid plans) | `/boost`: iterative implement → challenge → fix → verify; `/teamwork`: scoping interview + milestone teams (`Critic`, `Challenger`, `Auditor`, `Success Auditor`) in `~/teamwork_projects/` | `/boost` for hard bugs, races, and algorithms; `/teamwork` for multi-milestone migrations or multi-day campaigns |
@@ -42,7 +42,13 @@ The goal is not to rebuild Antigravity's built-in orchestrators in Markdown. It 
 
 ## Zero-config use
 
-Install the skills into Antigravity's global personal skills directory (`~/.gemini/config/skills/`, shared across Antigravity App, CLI, and IDE), or point `~/.gemini/config/skills.json` at your clone's `skills/` directory.
+Install the skills into Antigravity's global personal skills directory (`~/.gemini/config/skills/`, shared across Antigravity App, CLI, and IDE):
+
+```bash
+./install/antigravity.sh --copy
+```
+
+Alternatively, point `~/.gemini/config/skills.json` at your clone's `skills/` directory for a zero-copy setup.
 
 Then describe complex work in plain language or invoke `/orchestration` directly. Antigravity loads the skill progressively from its `description`, and native subagent / workflow tools handle delegation without plugins, hooks, or project-local agent definitions.
 

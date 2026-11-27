@@ -42,7 +42,7 @@ Approval: Approved by repository owner request (2026-11-27, Milestone #10).
 - Create: `docs/antigravity-orchestration.md` — native Antigravity orchestration architecture (alongside existing `docs/opencode-orchestration.md`).
 - Create: `install/antigravity.sh` — global Antigravity installer (`$HOME/.gemini/config/skills`); update `install/opencode.sh` to exclude `.gemini` as well.
 - Modify: `Makefile`, `.gitignore` — dual-installer ShellCheck/dry-run/install targets and `.gemini/` ignore rule.
-- Modify: `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `THIRD_PARTY_NOTICES.md`, `docs/release-process.md`, `CHANGELOG.md`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/PULL_REQUEST_TEMPLATE.md` — dual-harness Antigravity + OpenCode documentation and templates.
+- Modify: `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `THIRD_PARTY_NOTICES.md`, `docs/antigravity-orchestration.md`, `docs/release-process.md`, `CHANGELOG.md`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/PULL_REQUEST_TEMPLATE.md` — dual-harness Antigravity + OpenCode documentation and templates.
 - Create / Modify: `docs/plans/2026-11-27-antigravity-support.md`, `docs/plan.md` — Stage 10 plan and tracker registry.
 - Modify: `tests/test_validation.py`, `tests/test_skill_suite.py`, `tests/test_installer.py`, `tests/test_release_assets.py`, `tests/test_secrets.py` — full dual-harness and negative test coverage.
 
@@ -98,7 +98,7 @@ Interfaces:
 
 Verification:
 
-- `shellcheck install/antigravity.sh install/opencode.sh`
+- `shellcheck -x install/antigravity.sh install/opencode.sh install/lib.sh`
 - `python3 -m pytest -q tests/test_installer.py tests/test_release_assets.py tests/test_secrets.py`
 - `make check`
 
@@ -108,7 +108,7 @@ Depends on: AGY-02, AGY-03
 
 Files:
 
-- Modify: `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `THIRD_PARTY_NOTICES.md`, `docs/release-process.md`, `CHANGELOG.md`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/PULL_REQUEST_TEMPLATE.md`
+- Modify: `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `THIRD_PARTY_NOTICES.md`, `docs/antigravity-orchestration.md`, `docs/release-process.md`, `CHANGELOG.md`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/PULL_REQUEST_TEMPLATE.md`
 
 Verification:
 
@@ -146,8 +146,8 @@ Verification:
 
 | Task | Issue | Base | Status | Evidence | Ruling | Next |
 |---|---|---|---|---|---|---|
-| AGY-01 | #99 | `66b9c9d` | in_progress | pending | Preserve OpenCode V2 `metadata.opencode/autoinvoke` check in `validate.py`; use unified `compatibility: agentskills` in skills | AGY-02 |
-| AGY-02 | #100 | `66b9c9d` | in_progress | pending | Keep `docs/opencode-orchestration.md` alongside new `docs/antigravity-orchestration.md`; use native Antigravity read-only reviewer subagent on each PR | AGY-03 |
-| AGY-03 | #101 | pending | pending | pending | Add `install/antigravity.sh` (`$HOME/.gemini/config/skills`) alongside `install/opencode.sh` | AGY-04 |
-| AGY-04 | #102 | pending | pending | pending | Document both Antigravity and OpenCode as Ready; keep released CHANGELOG versions immutable | AGY-05 |
-| AGY-05 | #103 | pending | pending | pending | Do not cut release tag without explicit owner authorization | Close Milestone #10 |
+| AGY-01 | #99 | `66b9c9d` | done | Merged in PR #104 (`67c14fa`); `make check` PASS (340 tests); `agy plugin validate` 11/11 skills, 0 errors/warnings; independent `readonly-reviewer` PASS | Preserve OpenCode V2 `metadata.opencode/autoinvoke` check in `validate.py`; enforce `dict[str, str]` on other `metadata` keys; use unified `compatibility: agentskills` | AGY-02 |
+| AGY-02 | #100 | `66b9c9d` | done | Merged in PR #104 (`67c14fa`); 0 OpenCode refs across `skills/**/*.md`; `docs/antigravity-orchestration.md` added alongside `docs/opencode-orchestration.md` | Document `EnableWriteTools: false` no-shell fallback in `orchestration`/`code-review`; align `branch`/`share` wording with live `agy 1.5.18` schema and docs | AGY-03 |
+| AGY-03 | #101 | `67c14fa` | done | Merged in PR #105 (`f6277cc`); `make check` PASS (343 tests, `shellcheck -x` on all 3 scripts, both dry-runs); independent `readonly-reviewer` 0 P0/P1 + P2-1..P2-3 fixed | Factor shared core into `install/lib.sh` with non-symlink guard; target `$HOME/.gemini/config/skills` ignoring `XDG_CONFIG_HOME`; reject symlinked `install/` dir | AGY-04 |
+| AGY-04 | #102 | `f6277cc` | in_progress | PR #106 (`make check` PASS: 343 tests, 42 md files, `shellcheck -x`, both dry-runs; `curl` HTTP 200 on all 3 new URLs; `make links` `NOT_TESTED` locally due to `198.18.0.0/15` fake-IP SSRF guard; independent `readonly-reviewer` 1 P1 + 3 P2 addressed) | Document both Antigravity and OpenCode as Ready; note `install/antigravity.sh` ships after `v1.3.0`; keep released CHANGELOG versions immutable | AGY-05 |
+| AGY-05 | #103 | `f6277cc` | in_progress | PR #106 (`make check` PASS; empirical `agy plugin validate --json` 11/11 skills, 0 errors/warnings; `make links` `NOT_TESTED` locally with `curl` HTTP 200 substitute; awaiting PR #106 CI + squash merge to close Milestone #10) | Do not cut release tag without explicit owner authorization | Close Milestone #10 |

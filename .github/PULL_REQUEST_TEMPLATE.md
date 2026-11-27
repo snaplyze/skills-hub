@@ -18,7 +18,7 @@
 
 - [ ] `make check` (validate, lint, pytest, ShellCheck, installer dry run, CSS, workflow policy)
 - [ ] `make links` (if external links changed; network)
-- [ ] Tested in OpenCode (if skill behavior changed)
+- [ ] Tested in Antigravity and/or OpenCode (if skill behavior changed)
 - [ ] Accessibility/contrast checks (if UI guidance changed)
 
 ## Checklist

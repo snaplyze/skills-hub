@@ -17,6 +17,7 @@ body:
       options:
         - frontend-design skill
         - Agent workflow skills (orchestration, planning, execution, review, etc.)
+        - Antigravity installer
         - OpenCode installer
         - Validation or contrast script
         - Documentation
@@ -30,7 +31,7 @@ body:
     attributes:
       label: Agent or harness
       description: Which agent and version are you using?
-      placeholder: OpenCode 2.x, Claude Code 2.x, Codex, other
+      placeholder: Antigravity (App/CLI/IDE), OpenCode 2.x, Claude Code, Codex, other
     validations:
       required: true
 
@@ -77,7 +78,7 @@ body:
         OS:
         Python:
         Node:
-        OpenCode:
+        Antigravity / OpenCode:
         Commit:
     validations:
       required: false
