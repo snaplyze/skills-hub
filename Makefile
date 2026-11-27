@@ -33,7 +33,7 @@ validate:
 
 lint:
 	$(RUFF) check .
-	$(MDLINT) "**/*.md" "#node_modules" "#.venv" "#.playwright-cli"
+	$(MDLINT) "**/*.md"
 
 test:
 	$(PYTHON) -m pytest -q

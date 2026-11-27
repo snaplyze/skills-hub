@@ -1487,3 +1487,59 @@ def test_aud46_markdown_links_footnotes_multiline_and_yaml12_rules(tmp_path: Pat
         "resolve_theme_tokens",
     ):
         assert not hasattr(validate, dead), f"dead symbol {dead} still exists"
+
+
+def test_aud49_markdownlint_ignores_private_dirs_and_shared_blockquote_fence(
+    tmp_path: Path,
+) -> None:
+    # 1. Shared _markdown closes blockquote fence on blockquote exit.
+    links = validate.extract_markdown_links(
+        "> ```text\n> [ignored](ignored.md)\n\n[real](real.md)\n"
+    )
+    assert "real.md" in links
+    assert "ignored.md" not in links
+
+    # 2. .markdownlint-cli2.jsonc ignores private/ignored dirs while still linting real files.
+    mdlint = REPO_ROOT / "node_modules" / ".bin" / "markdownlint-cli2"
+    if not mdlint.is_file():
+        pytest.fail("markdownlint-cli2 binary is required")
+    shutil.copy2(REPO_ROOT / ".markdownlint-cli2.jsonc", tmp_path / ".markdownlint-cli2.jsonc")
+    (tmp_path / "good.md").write_text("# Good\n", encoding="utf-8")
+    for ignored_dir in (
+        "node_modules",
+        ".venv",
+        "venv",
+        ".playwright-cli",
+        ".gemini",
+        ".opencode",
+        ".claude",
+        ".agents",
+        "secrets",
+        "nested/.gemini",
+    ):
+        d = tmp_path / ignored_dir
+        d.mkdir(parents=True)
+        # Trailing spaces + missing newline + bad heading trigger markdownlint if not ignored.
+        (d / "bad.md").write_text("#Bad   \n\n\n\n* a\n+ b", encoding="utf-8")
+
+    ok = subprocess.run(
+        [str(mdlint), "**/*.md"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert ok.returncode == 0, ok.stdout + ok.stderr
+
+    # Confirm a real violation at root is still caught.
+    (tmp_path / "bad.md").write_text("* a\n+ b\n", encoding="utf-8")
+    bad = subprocess.run(
+        [str(mdlint), "**/*.md"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert bad.returncode != 0

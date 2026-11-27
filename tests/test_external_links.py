@@ -405,3 +405,70 @@ def test_per_host_concurrency_cap_and_total_timeout(
     assert state == "failed"
     assert status is None
     assert elapsed < 0.6
+
+
+def test_aud49_shared_markdown_masking_and_private_dir_pruning(tmp_path: Path) -> None:
+    for private_dir in (
+        "venv",
+        ".mypy_cache",
+        "secrets",
+        ".gemini",
+        ".opencode",
+        ".claude",
+        ".agents",
+    ):
+        d = tmp_path / private_dir
+        d.mkdir(parents=True)
+        (d / "private.md").write_text(f"https://ignored.example/{private_dir}\n", encoding="utf-8")
+
+    (tmp_path / "edge.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "note: https://frontmatter.example/ignored",
+                "---",
+                "    ```python",
+                "https://after-four-space-fence.example/ok",
+                "> ```text",
+                "> > ```",
+                "> https://inside-blockquote-fence.example/ignored",
+                "",
+                "https://after-blockquote-exit.example/ok",
+                r"Escaped \` https://after-escaped-tick.example/ok \`",
+                r"Escaped pair \``https://in-code-after-esc.example/ignored` https://after-esc-pair.example/ok `bar`",
+                "`https://multiline-code-1.example/ignored",
+                "https://multiline-code-2.example/ignored`",
+                "`unclosed-before-ws-blank",
+                "   ",
+                "https://after-ws-blank-line.example/ok `closed`",
+                "<!--",
+                "https://inside-html-comment.example/ignored",
+                "-->",
+                "https://final-line.example/ok",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "extra.markdown").write_text(
+        "https://from-markdown-ext.example/ok\n", encoding="utf-8"
+    )
+
+    assert [p.name for p in markdown_files(tmp_path)] == ["edge.md", "extra.markdown"]
+    locs = external_url_locations(tmp_path)
+    assert external_urls(tmp_path) == [
+        "https://after-blockquote-exit.example/ok",
+        "https://after-esc-pair.example/ok",
+        "https://after-escaped-tick.example/ok",
+        "https://after-four-space-fence.example/ok",
+        "https://after-ws-blank-line.example/ok",
+        "https://final-line.example/ok",
+        "https://from-markdown-ext.example/ok",
+    ]
+    assert locs["https://after-four-space-fence.example/ok"] == [("edge.md", 5)]
+    assert locs["https://after-blockquote-exit.example/ok"] == [("edge.md", 10)]
+    assert locs["https://after-escaped-tick.example/ok"] == [("edge.md", 11)]
+    assert locs["https://after-esc-pair.example/ok"] == [("edge.md", 12)]
+    assert locs["https://after-ws-blank-line.example/ok"] == [("edge.md", 17)]
+    assert locs["https://final-line.example/ok"] == [("edge.md", 21)]
+    assert locs["https://from-markdown-ext.example/ok"] == [("extra.markdown", 1)]

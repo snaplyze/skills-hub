@@ -18,6 +18,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import re
 import sys
 from collections.abc import Sequence
@@ -27,6 +28,23 @@ from typing import NamedTuple
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CHANGELOG = ROOT / "CHANGELOG.md"
 
+
+def _load_markdown_module():
+    if __package__ == "scripts":
+        from . import _markdown
+
+        return _markdown
+    sibling = Path(__file__).resolve().with_name("_markdown.py")
+    spec = importlib.util.spec_from_file_location("_skills_hub_markdown", sibling)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {sibling}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_markdown = _load_markdown_module()
+
 # Semantic Versioning 2.0.0 with a required leading "v".
 SEMVER_TAG_RE = re.compile(
     r"^v(?P<major>0|[1-9][0-9]*)\.(?P<minor>0|[1-9][0-9]*)\.(?P<patch>0|[1-9][0-9]*)"
@@ -35,13 +53,11 @@ SEMVER_TAG_RE = re.compile(
     r"(?:\+(?P<build>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
 )
 SECTION_RE = re.compile(
-    r"^##[ \t]+\[(?P<version>[^\]]+)\](?:\([^)\n]+\))?(?:[ \t]+-[ \t]+.*)?[ \t]*$"
+    r"^ {0,3}##[ \t]+\[(?P<version>[^\]]+)\](?:\([^)\n]+\))?(?:[ \t]+-[ \t]+.*)?[ \t]*$"
 )
-H2_RE = re.compile(r"^##(?:[ \t]|$)")
+H2_RE = re.compile(r"^ {0,3}##(?:[ \t]|$)")
 # Match Markdown link reference definitions, excluding footnotes such as [^1]:.
 REFERENCE_RE = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:[ \t]*\S")
-OPEN_BACKTICK_FENCE_RE = re.compile(r"^ {0,3}(`{3,})[^`]*$")
-OPEN_TILDE_FENCE_RE = re.compile(r"^ {0,3}(~{3,}).*$")
 
 
 class ReleaseTag(NamedTuple):
@@ -69,47 +85,40 @@ def parse_tag(tag: str) -> ReleaseTag:
     )
 
 
-def _section_bounds(lines: Sequence[str], version: str) -> tuple[int, int]:
+def _section_bounds(
+    masked_lines: Sequence[str], raw_lines: Sequence[str], version: str
+) -> tuple[int, int]:
     """Return the start and end line indexes of the matching changelog section in one pass."""
     start: int | None = None
     end: int | None = None
     start_heading = ""
-    fence_char = ""
-    close_re: re.Pattern[str] | None = None
 
-    for index, line in enumerate(lines):
-        if fence_char:
-            assert close_re is not None
-            if close_re.match(line):
-                fence_char = ""
-                close_re = None
-            continue
-
-        fence_match = OPEN_BACKTICK_FENCE_RE.match(line) or OPEN_TILDE_FENCE_RE.match(line)
-        if fence_match:
-            fence = fence_match.group(1)
-            fence_char = fence[0]
-            close_re = re.compile(rf"^ {{0,3}}{re.escape(fence_char)}{{{len(fence)},}}[ \t]*$")
-            continue
-
-        section_match = SECTION_RE.match(line)
-        if section_match and section_match.group("version") == version:
+    for index, (masked_line, raw_line) in enumerate(zip(masked_lines, raw_lines, strict=True)):
+        section_match = SECTION_RE.match(masked_line)
+        if section_match and H2_RE.match(raw_line) and section_match.group("version") == version:
             if start is not None:
                 raise ValueError(
                     f"CHANGELOG.md has duplicate sections for {version!r}: "
-                    f"{start_heading!r} and {line.strip()!r}"
+                    f"{start_heading!r} and {raw_line.strip()!r}"
                 )
             start = index + 1
-            start_heading = line.strip()
+            start_heading = raw_line.strip()
             continue
 
-        if start is not None and end is None and (H2_RE.match(line) or REFERENCE_RE.match(line)):
+        if (
+            start is not None
+            and end is None
+            and (
+                (H2_RE.match(masked_line) and H2_RE.match(raw_line))
+                or (REFERENCE_RE.match(masked_line) and REFERENCE_RE.match(raw_line))
+            )
+        ):
             end = index
 
     if start is None:
         raise ValueError(f"CHANGELOG.md is missing a '## [{version}]' section")
 
-    return start, len(lines) if end is None else end
+    return start, len(masked_lines) if end is None else end
 
 
 def extract_section(changelog: Path, version: str) -> str:
@@ -119,9 +128,12 @@ def extract_section(changelog: Path, version: str) -> str:
     except FileNotFoundError:
         raise ValueError(f"changelog not found: {changelog}") from None
 
-    lines = text.splitlines()
-    start, end = _section_bounds(lines, version)
-    block = lines[start:end]
+    normalized = _markdown.normalize_newlines(text)
+    raw_lines = normalized.splitlines()
+    masked = _markdown.mask_code_and_comments(_markdown.strip_fenced_code(normalized))
+    masked_lines = masked.split("\n") if raw_lines else []
+    start, end = _section_bounds(masked_lines, raw_lines, version)
+    block = raw_lines[start:end]
     while block and not block[0].strip():
         block.pop(0)
     while block and not block[-1].strip():

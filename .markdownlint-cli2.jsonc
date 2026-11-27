@@ -1,4 +1,15 @@
 {
+  "ignores": [
+    "**/node_modules",
+    "**/.venv",
+    "**/venv",
+    "**/.playwright-cli",
+    "**/.gemini",
+    "**/.opencode",
+    "**/.claude",
+    "**/.agents",
+    "**/secrets"
+  ],
   "config": {
     "MD013": false,
     "MD024": {
