@@ -1087,3 +1087,29 @@ def test_validate_repo_in_process_does_not_mutate_root_and_catches_aa_failure(
         root=tmp_path,
     )
     assert any("fails AA" in e for e in errs)
+
+
+def test_check_installer_validates_both_harnesses_and_lib(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    assert_validation_passes(repo)
+
+    # Missing install/antigravity.sh fails.
+    agy = repo / "install" / "antigravity.sh"
+    agy.unlink()
+    assert_validation_fails(repo, "install/antigravity.sh: missing")
+
+    # Symlinked install/antigravity.sh fails.
+    agy.symlink_to(repo / "install" / "opencode.sh")
+    assert_validation_fails(repo, "install/antigravity.sh: symlinked installer script")
+
+    # Non-executable install/antigravity.sh fails.
+    agy.unlink()
+    shutil.copy2(REPO_ROOT / "install" / "antigravity.sh", agy)
+    agy.chmod(0o644)
+    assert_validation_fails(repo, "install/antigravity.sh: not executable")
+    agy.chmod(0o755)
+
+    # Missing install/lib.sh fails.
+    lib = repo / "install" / "lib.sh"
+    lib.unlink()
+    assert_validation_fails(repo, "install/lib.sh: missing")

@@ -10,7 +10,7 @@ import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-INSTALLER = ROOT / "install" / "opencode.sh"
+INSTALL_DIR = ROOT / "install"
 
 
 def _isolated_git_env() -> dict[str, str]:
@@ -47,10 +47,9 @@ def is_git_worktree(path: Path) -> bool:
 
 def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
-    (repo / "install").mkdir(parents=True)
+    shutil.copytree(INSTALL_DIR, repo / "install")
     skill = repo / "skills" / "frontend-design"
     skill.mkdir(parents=True)
-    shutil.copy2(INSTALLER, repo / "install" / "opencode.sh")
     (skill / "SKILL.md").write_text(
         "---\nname: frontend-design\ndescription: Archive install fixture.\n"
         "license: MIT\n---\n\n# Fixture\n",
@@ -132,24 +131,25 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
         bundle.extractall(extracted, filter="data")
     home = tmp_path / "home"
     home.mkdir()
-    target = tmp_path / "target"
     env = os.environ.copy()
     env["HOME"] = str(home)
     env.pop("XDG_CONFIG_HOME", None)
-    result = subprocess.run(
-        [
-            str(extracted / "skills-hub-v1.2.3" / "install" / "opencode.sh"),
-            "--copy",
-            "--target",
-            str(target),
-        ],
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode == 0, result.stderr
-    assert (target / "frontend-design" / "asset.txt").read_text() == "archive payload\n"
+    for installer_name in ("antigravity.sh", "opencode.sh"):
+        target = tmp_path / f"target-{installer_name}"
+        result = subprocess.run(
+            [
+                str(extracted / "skills-hub-v1.2.3" / "install" / installer_name),
+                "--copy",
+                "--target",
+                str(target),
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, (installer_name, result.stderr)
+        assert (target / "frontend-design" / "asset.txt").read_text() == "archive payload\n"
 
 
 def test_current_tree_archive_contains_all_skills(tmp_path: Path) -> None:

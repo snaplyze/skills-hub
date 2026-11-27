@@ -38,3 +38,4 @@ id_dsa
 .opencode/
 .claude/
 .agents/
+.gemini/
