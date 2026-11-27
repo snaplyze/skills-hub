@@ -230,7 +230,7 @@ an ancestor of `origin/main` fails even if the tag itself is valid.
 Download all assets from the release into one directory:
 
 ```bash
-VERSION=v1.2.3
+VERSION=v1.4.0  # replace with a signed release tag (v1.4.0+)
 gh release download "$VERSION" --repo snaplyze/skills-hub \
   --pattern 'skills-hub-*.tar.gz' \
   --pattern 'SHA256SUMS' \

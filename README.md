@@ -265,7 +265,7 @@ Both `./install/antigravity.sh` and `./install/opencode.sh` support the same opt
 
 | Flag | Behavior |
 |---|---|
-| `--copy` | Copy the skill tree (default). Excludes generated artifacts and secret-like files (`__pycache__`, `*.py[cod]`, `.ruff_cache`, `.pytest_cache`, `.mypy_cache`, `.venv`, `venv`, `.git`, `.playwright-cli`, `node_modules`, `.DS_Store`, `.env`, `.env.*` except `.env.example`, `*.key`, `*.pem`, `*.p12`, `secrets`, `credentials*`, `id_*` SSH keys, `.opencode`, `.claude`, `.agents`, `.gemini`). |
+| `--copy` | Copy the skill tree (default). Excludes generated artifacts and secret-like files (`__pycache__`, `*.py[cod]`, `.ruff_cache`, `.pytest_cache`, `.mypy_cache`, `.venv`, `venv`, `.git`, `.playwright-cli`, `node_modules`, `.DS_Store`, `.env`, `.env.*` except `.env.example`, `*.key`, `*.pem`, `*.p12`, `secrets`, `credentials*`, `id_rsa`, `id_ed25519`, `id_ecdsa`, `id_dsa`, `.opencode`, `.claude`, `.agents`, `.gemini`). |
 | `--link` | Symlink the skill directory. Explicit opt-in; links follow the clone and break if it moves or is deleted. |
 | `--all` | Install every discovered skill. Invalid kebab-case IDs are rejected. |
 | `--force` | Move an existing installation to `<target>/.skills-hub-backups/` and atomically replace it. |
@@ -336,6 +336,7 @@ make lint       # ruff + markdownlint (pinned Python/npm tools)
 make test       # pytest suite, including contrast CLI and negative fixtures
 make shellcheck # ShellCheck (-x) on both installers and install/lib.sh
 make dry-run    # preview both Antigravity and OpenCode installs
+make css        # parse skills/frontend-design/assets/tokens.css
 make workflows  # pinned-action and permissions policy
 make links      # external link audit (network; scheduled)
 make check      # every required local check, exactly once

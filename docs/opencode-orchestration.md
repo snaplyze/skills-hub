@@ -6,10 +6,10 @@ This repository uses a **skill-only** orchestration layer. It keeps the useful r
 
 ## What it is
 
-`skills/orchestration/SKILL.md` tells the main session when to:
+`skills/orchestration/SKILL.md` defines portable routing decisions (with no OpenCode-specific runtime prose inside `skills/`), telling the main session when to:
 
 - work directly;
-- send one bounded read-only or implementation task to a native OpenCode subagent;
+- send one bounded read-only or implementation task to a subagent (mapping onto OpenCode V2's native `explore` and `general` agents);
 - run parallel independent read-only investigations;
 - serialize writers that share files;
 - request a fresh review and verify the integrated result.
@@ -39,7 +39,7 @@ Install the skills normally:
 
 Then ask for complex work in plain language. The `orchestration` description triggers it; OpenCode V2's native `subagent` tool handles asynchronous delegation. No `opencode.json`, plugin entry, hook, or extra background daemon is required.
 
-If the project already defines custom agents (for example `.opencode/agents/reviewer.md`), substitute their names for `explore`/`general` in the brief. The skill does not install or change those definitions.
+If the project already defines custom agents (for example `.opencode/agents/reviewer.md`), select those agent names instead of `explore`/`general` when invoking OpenCode's `subagent` tool. The skill does not install or change those definitions.
 
 ## Routing examples
 
@@ -77,7 +77,7 @@ approve on my behalf.
 ## Verification
 
 - `python3 scripts/validate.py` checks the skill frontmatter and links.
-- `tests/test_skill_suite.py` checks the native routing contract and the docs.
+- `tests/test_skill_suite.py` checks the unified routing contract, absence of OpenCode-only prose in `skills/`, and doc test-path references.
 - `make check` runs the full repository suite.
 
 See [the plan](plan.md) for the task record and [the workflow skills](../skills/orchestration/SKILL.md) for the operational instructions.
