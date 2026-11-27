@@ -1,8 +1,8 @@
 ---
-name: Clean Code
+name: clean-code
 description: Use when refactoring existing code or reviewing a diff for readability, boundaries, errors, duplication, and coupling. Applies language-agnostic heuristics while preserving behavior and following repository conventions. Not for implementing a new feature from scratch, UI/visual design audits (use frontend-design), reviewing correctness instead of code quality, or cosmetic rewrites that do not serve the task.
 license: MIT
-compatibility: opencode
+compatibility: agentskills
 ---
 
 # Clean Code

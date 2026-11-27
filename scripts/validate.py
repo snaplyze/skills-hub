@@ -51,8 +51,10 @@ ALLOWED_FRONTMATTER_KEYS = frozenset(
         "compatibility",
         "metadata",
         "disable-model-invocation",
+        "allowed-tools",
     }
 )
+COMPATIBILITY_MAX_LEN = 500
 AGGREGATE_DESCRIPTION_LIMIT = 16384
 READING_SET_HARD_LIMIT = 32768
 
@@ -883,10 +885,30 @@ def check_skill(
         if not isinstance(value, str) or not value.strip():
             errors.append(f"{rel}: frontmatter needs a non-empty '{key}'")
 
+    name = frontmatter.get("name")
+    if isinstance(name, str) and name.strip():
+        if not SKILL_ID_RE.fullmatch(name) or len(name) > 64:
+            errors.append(
+                f"{rel}: frontmatter 'name' ({name!r}) must be lowercase kebab-case (1-64 chars)"
+            )
+        elif name != skill_dir.name:
+            errors.append(
+                f"{rel}: frontmatter 'name' ({name!r}) must match directory name ({skill_dir.name!r})"
+            )
+
     if "compatibility" in frontmatter:
         compat = frontmatter["compatibility"]
         if not isinstance(compat, str) or not compat.strip():
             errors.append(f"{rel}: frontmatter 'compatibility' must be a non-empty string")
+        elif len(compat) > COMPATIBILITY_MAX_LEN:
+            errors.append(
+                f"{rel}: frontmatter 'compatibility' exceeds {COMPATIBILITY_MAX_LEN} characters"
+            )
+
+    if "allowed-tools" in frontmatter:
+        allowed_tools = frontmatter["allowed-tools"]
+        if not isinstance(allowed_tools, str) or not allowed_tools.strip():
+            errors.append(f"{rel}: frontmatter 'allowed-tools' must be a non-empty string")
 
     disable_model = frontmatter.get("disable-model-invocation")
     if "disable-model-invocation" in frontmatter and not isinstance(disable_model, bool):
@@ -898,17 +920,20 @@ def check_skill(
         if not isinstance(metadata, dict):
             errors.append(f"{rel}: frontmatter 'metadata' must be a mapping")
         else:
-            for meta_key in metadata:
+            for meta_key, meta_val in metadata.items():
                 if not isinstance(meta_key, str) or not meta_key.strip():
                     errors.append(f"{rel}: frontmatter 'metadata' keys must be non-empty strings")
-            if "opencode/autoinvoke" in metadata:
-                raw_auto = metadata["opencode/autoinvoke"]
-                if not isinstance(raw_auto, bool):
+                elif meta_key == "opencode/autoinvoke":
+                    if not isinstance(meta_val, bool):
+                        errors.append(
+                            f"{rel}: frontmatter 'metadata.opencode/autoinvoke' must be a boolean"
+                        )
+                    else:
+                        autoinvoke = meta_val
+                elif not isinstance(meta_val, str):
                     errors.append(
-                        f"{rel}: frontmatter 'metadata.opencode/autoinvoke' must be a boolean"
+                        f"{rel}: frontmatter 'metadata.{meta_key}' must be a string"
                     )
-                else:
-                    autoinvoke = raw_auto
 
     if isinstance(disable_model, bool) and autoinvoke is not None and disable_model == autoinvoke:
         errors.append(

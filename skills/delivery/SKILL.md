@@ -1,8 +1,8 @@
 ---
-name: Delivery
+name: delivery
 description: Use when implementation and review are complete to prove the result with fresh checks and deliver it through a PR, merge, and cleanup. Covers evidence gates, diff review, PR content, required checks, no-bypass merge rules, release handoff, and truthful completion reports. Not for starting implementation or merging unverified work.
 license: MIT
-compatibility: opencode
+compatibility: agentskills
 ---
 
 # Delivery
@@ -47,7 +47,7 @@ Before merging, confirm the base branch and present the integration choice:
 2. Push the branch and open a PR; keep the branch for review.
 3. Keep the branch/worktree as-is.
 
-Discard is allowed only after an explicit request and confirmation. Do not choose a destructive discard or force-push on your own. When working on a detached `HEAD`, offer only pushing to a new branch (`git push origin HEAD:refs/heads/<branch>`) + PR or keeping as-is. If the change came from a worktree, capture the worktree path, verify the base and test the merged result, `cd` to the main repository root before removing the worktree (using the harness's native remove operation when created natively), and never `--force` remove a dirty worktree without explicit confirmation.
+Discard is allowed only after an explicit request and confirmation. Do not choose a destructive discard or force-push on your own. When working on a detached `HEAD`, offer only pushing to a new branch (`git push origin HEAD:refs/heads/<branch>`) + PR or keeping as-is. If the change came from an isolated subagent workspace (`share`/`branch`), integrate and verify the changes on the target branch before terminating the subagent (killing deletes isolated workspaces). If using a manual `git worktree`, capture the worktree path, verify the base and test the merged result, `cd` to the main repository root before removing the worktree, and never `--force` remove a dirty worktree without explicit confirmation.
 
 ## Merge gate
 

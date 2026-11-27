@@ -1,8 +1,8 @@
 ---
-name: Systematic Debugging
+name: systematic-debugging
 description: Use when a bug, test failure, crash, regression, or unexpected behavior needs a root-cause fix. Requires reproducing the failure, isolating the cause, testing a falsifiable hypothesis, and adding a regression test before the fix. Not for feature work or for guessing at symptoms without evidence.
 license: MIT
-compatibility: opencode
+compatibility: agentskills
 ---
 
 # Systematic Debugging
@@ -41,7 +41,7 @@ State one falsifiable sentence: "If X causes the failure, then Y should change Z
 
 ## If no root cause is found
 
-Do not guess. Keep the reproduction, add the smallest safe diagnostic that will distinguish hypotheses, and report what is still unknown. A documented investigation with a next experiment is better than a random patch.
+Do not guess. Keep the reproduction, add the smallest safe diagnostic that will distinguish hypotheses, and report what is still unknown. A documented investigation with a next experiment is better than a random patch. For elusive race conditions or hard algorithmic defects where multi-round challenge-and-verify reasoning helps, recommend `/boost` if available.
 
 ## Red flags
 

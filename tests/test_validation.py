@@ -218,7 +218,7 @@ def test_empty_skill_body_fails(tmp_path: Path) -> None:
     skill = repo / "skills" / "frontend-design" / "SKILL.md"
     skill.write_text(
         "---\n"
-        "name: Frontend Design\n"
+        "name: frontend-design\n"
         "description: A deliberately long description for the empty-body mutation.\n"
         "license: MIT\n"
         "---\n",
@@ -231,8 +231,20 @@ def test_empty_skill_body_fails(tmp_path: Path) -> None:
     ("mutation", "needle"),
     [
         (
-            lambda text: text.replace("name: Frontend Design", "name: [unterminated", 1),
+            lambda text: text.replace("name: frontend-design", "name: [unterminated", 1),
             "invalid frontmatter",
+        ),
+        (
+            lambda text: text.replace("name: frontend-design", "name: Frontend Design", 1),
+            "must be lowercase kebab-case",
+        ),
+        (
+            lambda text: text.replace("name: frontend-design", "name: wrong-id", 1),
+            "must match directory name",
+        ),
+        (
+            lambda text: text.replace("name: frontend-design", f"name: {'a' * 65}", 1),
+            "must be lowercase kebab-case (1-64 chars)",
         ),
         (
             lambda text: text.replace("\n---\n", "\n", 1),
@@ -491,10 +503,10 @@ def write_simple_skill(
     skill.mkdir()
     (skill / "SKILL.md").write_text(
         "---\n"
-        "name: Simple Skill\n"
+        f"name: {skill_id}\n"
         "description: Use when a small test skill needs a deterministic validator contract.\n"
         "license: MIT\n"
-        "compatibility: opencode\n"
+        "compatibility: agentskills\n"
         "---\n\n"
         f"{body}",
         encoding="utf-8",
@@ -633,16 +645,30 @@ def test_v2_frontmatter_metadata_and_autoinvoke_pass(tmp_path: Path) -> None:
     skill.mkdir()
     (skill / "SKILL.md").write_text(
         "---\r\n"
-        "name: V2 Meta Skill\r\n"
-        "description: Use when testing OpenCode V2 frontmatter metadata and manual invocation controls.\r\n"
+        "name: v2-meta-skill\r\n"
+        "description: Use when testing Antigravity and OpenCode V2 frontmatter metadata and invocation controls.\r\n"
         "license: MIT\r\n"
-        "compatibility: opencode\r\n"
+        "compatibility: agentskills\r\n"
+        "allowed-tools: read_file grep_search\r\n"
         "disable-model-invocation: true\r\n"
         "metadata:\r\n"
         "  version: '1.0.0'\r\n"
         "  opencode/autoinvoke: false\r\n"
         "---\r\n\r\n"
         "# V2 Meta Skill\r\n\r\nWorkflow body.\r\n",
+        encoding="utf-8",
+    )
+    # Exact 500-char compatibility boundary must pass.
+    boundary = repo / "skills" / "compat-boundary"
+    boundary.mkdir()
+    (boundary / "SKILL.md").write_text(
+        "---\n"
+        "name: compat-boundary\n"
+        "description: Use when testing exact 500-character compatibility boundary passes validation.\n"
+        "license: MIT\n"
+        f"compatibility: {'a' * 500}\n"
+        "---\n\n"
+        "# Boundary\n",
         encoding="utf-8",
     )
     assert_validation_passes(repo)
@@ -652,8 +678,21 @@ def test_v2_frontmatter_metadata_and_autoinvoke_pass(tmp_path: Path) -> None:
     ("extra", "needle"),
     [
         ("compatibility: null\n", "'compatibility' must be a non-empty string"),
+        ("compatibility: '   '\n", "'compatibility' must be a non-empty string"),
+        (
+            f"compatibility: {'a' * 501}\n",
+            "'compatibility' exceeds 500 characters",
+        ),
+        ("allowed-tools: ''\n", "'allowed-tools' must be a non-empty string"),
+        ("allowed-tools: '   '\n", "'allowed-tools' must be a non-empty string"),
+        ("allowed-tools: []\n", "'allowed-tools' must be a non-empty string"),
         ("disable-model-invocation: 'yes'\n", "'disable-model-invocation' must be a boolean"),
         ("metadata: []\n", "'metadata' must be a mapping"),
+        ("metadata:\n  1: bad\n", "'metadata' keys must be non-empty strings"),
+        ("metadata:\n  '   ': bad\n", "'metadata' keys must be non-empty strings"),
+        ("metadata:\n  version: null\n", "'metadata.version' must be a string"),
+        ("metadata:\n  version: 1.0\n", "'metadata.version' must be a string"),
+        ("metadata:\n  tags: [a]\n", "'metadata.tags' must be a string"),
         (
             "metadata:\n  opencode/autoinvoke: 'false'\n",
             "'metadata.opencode/autoinvoke' must be a boolean",
@@ -669,7 +708,7 @@ def test_v2_frontmatter_invalid_fields_fail(tmp_path: Path, extra: str, needle: 
     repo = copy_repo(tmp_path)
     skill = repo / "skills" / "frontend-design" / "SKILL.md"
     text = skill.read_text(encoding="utf-8")
-    mutated = text.replace("compatibility: opencode\n", extra, 1)
+    mutated = text.replace("compatibility: agentskills\n", extra, 1)
     assert mutated != text
     skill.write_text(mutated, encoding="utf-8")
     assert_validation_fails(repo, needle)
@@ -700,7 +739,7 @@ def test_reading_sets_path_containment_and_per_set_limit_enforced(tmp_path: Path
     skill = tmp_path / "skills" / "probe"
     (skill / "assets").mkdir(parents=True)
     (skill / "SKILL.md").write_text(
-        "---\nname: P\ndescription: A sufficiently long probe skill description for testing.\n"
+        "---\nname: probe\ndescription: A sufficiently long probe skill description for testing.\n"
         "license: MIT\n---\n# Probe\n" + ("a" * 200) + "\n",
         encoding="utf-8",
     )
@@ -789,7 +828,7 @@ def test_symlink_inside_skill_fails(tmp_path: Path) -> None:
         skill = tmp_path / "skills" / "sym-skill"
         skill.mkdir(parents=True)
         (skill / "SKILL.md").write_text(
-            "---\nname: Sym\ndescription: A sufficiently long test description for symlink rejection.\n"
+            "---\nname: sym-skill\ndescription: A sufficiently long test description for symlink rejection.\n"
             "license: MIT\n---\n# Sym\n",
             encoding="utf-8",
         )
@@ -802,7 +841,7 @@ def test_symlink_inside_skill_fails(tmp_path: Path) -> None:
         skill2 = tmp_path / "skills" / "broken-sym"
         skill2.mkdir()
         (skill2 / "SKILL.md").write_text(
-            "---\nname: Sym2\ndescription: A sufficiently long test description for broken symlink.\n"
+            "---\nname: broken-sym\ndescription: A sufficiently long test description for broken symlink.\n"
             "license: MIT\n---\n# Sym2\n",
             encoding="utf-8",
         )
@@ -836,7 +875,7 @@ def test_top_level_file_symlink_and_aggregate_description_limit(tmp_path: Path) 
         skill = validate.SKILLS_DIR / "tiny-skill"
         skill.mkdir(parents=True)
         (skill / "SKILL.md").write_text(
-            "---\nname: Tiny\ndescription: A sufficiently long description exceeding fifty bytes total.\n"
+            "---\nname: tiny-skill\ndescription: A sufficiently long description exceeding fifty bytes total.\n"
             "license: MIT\n---\n# Tiny\n",
             encoding="utf-8",
         )
@@ -875,7 +914,7 @@ def test_frontmatter_edge_cases_unit(tmp_path: Path) -> None:
         # Closing --- at EOF without trailing newline parses frontmatter cleanly (then reports empty body).
         errs = check_raw(
             "eof-fm",
-            "---\nname: E\ndescription: A sufficiently long description for EOF frontmatter test.\n"
+            "---\nname: eof-fm\ndescription: A sufficiently long description for EOF frontmatter test.\n"
             "license: MIT\n---",
         )
         assert any("body is empty" in e for e in errs)
@@ -898,7 +937,7 @@ def test_frontmatter_edge_cases_unit(tmp_path: Path) -> None:
             "duplicate key 'v'" in e
             for e in check_raw(
                 "nested-dup",
-                "---\nname: N\ndescription: A sufficiently long description for nested duplicate key.\n"
+                "---\nname: nested-dup\ndescription: A sufficiently long description for nested duplicate key.\n"
                 "license: MIT\nmetadata:\n  v: '1'\n  v: '2'\n---\n# X\n",
             )
         )
@@ -906,7 +945,7 @@ def test_frontmatter_edge_cases_unit(tmp_path: Path) -> None:
             "frontmatter keys must be strings" in e
             for e in check_raw(
                 "non-str-key",
-                "---\nname: N\ndescription: A sufficiently long description for non string key test.\n"
+                "---\nname: non-str-key\ndescription: A sufficiently long description for non string key test.\n"
                 "license: MIT\n1: bad\n---\n# X\n",
             )
         )
@@ -914,7 +953,7 @@ def test_frontmatter_edge_cases_unit(tmp_path: Path) -> None:
             "conflicting 'disable-model-invocation'" in e
             for e in check_raw(
                 "false-conflict",
-                "---\nname: N\ndescription: A sufficiently long description for false conflict test.\n"
+                "---\nname: false-conflict\ndescription: A sufficiently long description for false conflict test.\n"
                 "license: MIT\ndisable-model-invocation: false\nmetadata:\n  opencode/autoinvoke: false\n---\n# X\n",
             )
         )
@@ -932,7 +971,7 @@ def test_reading_sets_and_local_ref_edge_cases_unit(tmp_path: Path) -> None:
         (skill / "references").mkdir(parents=True)
         (skill / "assets").mkdir(parents=True)
         (skill / "SKILL.md").write_text(
-            "---\nname: Edge\ndescription: A sufficiently long description for edge reading-set tests.\n"
+            "---\nname: edge-skill\ndescription: A sufficiently long description for edge reading-set tests.\n"
             "license: MIT\n---\n# Edge\n\nSee extra.md (bare basename only).\n",
             encoding="utf-8",
         )

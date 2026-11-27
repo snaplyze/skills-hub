@@ -1,8 +1,8 @@
 ---
-name: Skill Authoring
-description: Use when creating or editing an OpenCode skill, defining its trigger description, workflow, references, and pressure tests. Covers progressive disclosure, compact instructions, baseline-vs-skill evaluation, trigger quality, validation, and repository integration without hooks or plugins. Not for writing application documentation or general agent rules.
+name: skill-authoring
+description: Use when creating or editing a portable agent skill (Agent Skills standard for Antigravity and compatible harnesses), defining its trigger description, workflow, references, and pressure tests. Covers progressive disclosure, compact instructions, baseline-vs-skill evaluation, trigger quality, validation, and repository integration without hooks or plugins. Not for writing application documentation or general agent rules.
 license: MIT
-compatibility: opencode
+compatibility: agentskills
 ---
 
 # Skill Authoring
@@ -17,12 +17,12 @@ Collect a real prompt or session where the current agent failed. Name the behavi
 
 ## Directory shape
 
-Use `skills/<lowercase-kebab-id>/SKILL.md`, optional `references/` for depth, `assets/` for templates/data, and `scripts/` only for deterministic checks. Keep the entry point short; harnesses may sample only a subset of supporting files on load (OpenCode V2 caps at 10), so every required reference, asset, or script must be named explicitly in `SKILL.md` routing. When a skill adds Markdown files under `references/` or `assets/`, also add `skills/<lowercase-kebab-id>/assets/reading-sets.json` (`{"sets": {"<name>": ["SKILL.md", ...]}}`, each set ≤ 32,768 B) so the repository validator enforces the reading budget. Follow the Principle of Lack of Surprise (no hidden side effects or deceptive instructions), and never name a skill after a bare built-in slash command (`status`, `review`, `init`, `config`, `help`, `resume`).
+Use `skills/<lowercase-kebab-id>/SKILL.md`, optional `references/` for depth, `assets/` for templates/data, and `scripts/` only for deterministic checks. Frontmatter `name` must be lowercase kebab-case (1–64 chars) matching `<lowercase-kebab-id>` — Antigravity exposes every discovered skill as `/<name>` and scans customization folders (`.agents/skills/` and `~/.gemini/config/skills/`) one level deep unless registered via `skills.json`. Keep the entry point short; harnesses may sample only a subset of supporting files on load, so every required reference, asset, or script must be named explicitly in `SKILL.md` routing. When a skill adds Markdown files under `references/` or `assets/`, also add `skills/<lowercase-kebab-id>/assets/reading-sets.json` (`{"sets": {"<name>": ["SKILL.md", ...]}}`, each set ≤ 32,768 B) so the repository validator enforces the reading budget. Follow the Principle of Lack of Surprise (no hidden side effects or deceptive instructions), and never name a skill after a bare built-in slash command (`plan`, `grill-me`, `goal`, `boost`, `swarm`, `teamwork`, `run-workflow`, `browser`, `schedule`, `compact`, `diff`, `agents`, `skills`, `plugin`, `hooks`, `mcp`, `permissions`, `config`, `help`, `status`, `review`, `init`, `resume`, `rewind`, `clear`, `exit`, `learn`).
 
 ## Design before prose
 
 1. **Name the behavior change.** What should an agent do differently after loading this skill? If the answer is "know more", the skill is probably documentation.
-2. **Define the trigger and the anti-trigger.** Write the description in user vocabulary ("Use when..."), not internal script filenames, with the situation, the job, and what it is not for. Test it against realistic messy prompts and near-miss negatives.
+2. **Define the trigger and the anti-trigger.** Write the description in third-person user vocabulary ("Use when..."), not internal script filenames, with the situation, the job, and what it is not for. Test it against realistic messy prompts and near-miss negatives.
 3. **Match form to failure.** Explain *why* rather than stacking brittle `MUST`s, avoid vague nuance clauses ("unless it matters"), and pick the instruction form matching the failure mode (see table below).
 4. **Choose the smallest workflow.** One job per skill. Remove rules the model already follows, duplicated global instructions, and advice that does not change a decision.
 5. **Design the failure path.** What does the agent do when the input is ambiguous, a check is unavailable, or the task is outside scope?
@@ -39,15 +39,15 @@ Use `skills/<lowercase-kebab-id>/SKILL.md`, optional `references/` for depth, `a
 
 ```text
 ---
-name: <display name>
+name: <lowercase-kebab-id>
 description: <when to use + what it does + anti-trigger>
 license: MIT
-compatibility: opencode
-# Optional OpenCode V2 controls:
+compatibility: agentskills
+# Optional Agent Skills / Antigravity controls:
 # disable-model-invocation: true
+# allowed-tools: read_file grep_search
 # metadata:
 #   version: "1.0.0"
-#   opencode/autoinvoke: false
 ---
 
 # <title>
@@ -63,7 +63,7 @@ Only constraints that change behavior.
 What the agent returns and which skill or action comes next.
 ```
 
-Use short sections and imperative language. Prefer examples over adjectives. Do not copy an upstream skill's text; synthesize the idea and cite the source.
+Use short sections and imperative language. Prefer examples over adjectives. Do not copy an upstream skill's text; synthesize the idea and cite the source. Keep skill bodies harness-neutral or mapped cleanly onto standard capabilities so every supported agent interprets them consistently.
 
 ## Trigger mining
 
@@ -83,7 +83,7 @@ Use TDD for behavior-shaping documentation:
 
 1. **Baseline:** run realistic messy prompts without the skill (and against a snapshot of the previous skill version when editing an existing skill); record the failure mode.
 2. **Write:** add the smallest instruction that addresses that failure.
-3. **Wording micro-test & retest:** before full scenarios, run 5+ fresh-context reps per variant checking variance across runs; retest the prompts and pressure variants (optionally using headless `opencode run --standalone --archived --format json` and blind A/B comparison for major rewrites) and verify behavior changes for the intended reason.
+3. **Wording micro-test & retest:** before full scenarios, run 5+ fresh-context reps per variant checking variance across runs; retest the prompts and pressure variants (optionally using headless CLI runs such as `agy -p "<prompt>" --output-format json` with `--json-schema`, or a `run_workflow` parallel sweep and blind A/B comparison for major rewrites) and verify behavior changes for the intended reason.
 4. **Trigger test:** confirm the description fires on relevant prompts and not on nearby false positives.
 5. **Mutation test:** remove or weaken a rule and confirm the test scenario catches the regression.
 6. **Budget test:** keep the loaded set small; link references instead of dumping them.
@@ -105,8 +105,8 @@ Compare on the same prompt and model. Do not claim a quantitative improvement wi
 
 ## Repository integration
 
-- Add the skill under `skills/<lowercase-kebab-id>/SKILL.md`.
-- Validate frontmatter, links, anchors, file references, and the loaded reading budget.
+- Add the skill under `skills/<lowercase-kebab-id>/SKILL.md` with frontmatter `name: <lowercase-kebab-id>`.
+- Validate frontmatter, links, anchors, file references, and the loaded reading budget with the repository validator (and `agy plugin validate` when packaging a plugin bundle).
 - Add it to the README skills table and any project skill listing.
 - Record sources and licenses; do not copy upstream text. Verify the license of the exact source, not only the repository root.
 - Add a CHANGELOG entry and plan/tracker task when the repository uses them.

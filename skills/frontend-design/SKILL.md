@@ -1,8 +1,8 @@
 ---
-name: Frontend Design
+name: frontend-design
 description: "Design, build, and review distinctive, accessible web UI: pages, components, redesigns, design systems, type, color, responsive layouts, states, motion, UX copy, and audits. Not for backend-only work."
 license: MIT
-compatibility: opencode
+compatibility: agentskills
 ---
 
 # Frontend Design
@@ -27,7 +27,7 @@ Minimum verification:
 - [ ] Reduced motion; 200% text and 400% zoom reflow.
 - [ ] Loading, empty, error, success states; media reserves space; no console errors, broken images, or dead links.
 
-Screenshot target widths; if impossible, inspect DOM/CSS. Run `references/quality-gates.md` before done.
+Use the built-in `browser` subagent (`/browser`) or DevTools to verify target widths, console errors, and screenshots; if live rendering is unavailable, inspect DOM/CSS and report the gap. Run `references/quality-gates.md` before done.
 
 ## Principles
 
