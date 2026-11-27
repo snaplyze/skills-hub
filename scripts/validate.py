@@ -1000,20 +1000,33 @@ def check_skill(
 
 def check_installer(errors: list[str], *, root: Path | None = None) -> None:
     base_root = ROOT if root is None else root
-    installer = base_root / "install" / "opencode.sh"
-    if not installer.is_file():
-        errors.append("install/opencode.sh: missing")
+    install_dir = base_root / "install"
+    if install_dir.is_symlink():
+        errors.append("install: symlinked installer directory is not allowed")
         return
-    if not installer.stat().st_mode & 0o111:
-        errors.append("install/opencode.sh: not executable")
-    result = subprocess.run(
-        ["bash", "-n", str(installer)],
-        capture_output=True,
-        text=True,
-        check=False,
+    scripts = (
+        ("install/antigravity.sh", True),
+        ("install/opencode.sh", True),
+        ("install/lib.sh", False),
     )
-    if result.returncode != 0:
-        errors.append(f"install/opencode.sh: bash syntax error: {result.stderr.strip()}")
+    for rel_str, require_exec in scripts:
+        installer = install_dir / Path(rel_str).name
+        if installer.is_symlink():
+            errors.append(f"{rel_str}: symlinked installer script is not allowed")
+            continue
+        if not installer.is_file():
+            errors.append(f"{rel_str}: missing")
+            continue
+        if require_exec and not installer.stat().st_mode & 0o111:
+            errors.append(f"{rel_str}: not executable")
+        result = subprocess.run(
+            ["bash", "-n", str(installer)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            errors.append(f"{rel_str}: bash syntax error: {result.stderr.strip()}")
 
 
 def load_contrast_module(script: Path):

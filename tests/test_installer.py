@@ -14,7 +14,7 @@ from types import SimpleNamespace
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-INSTALLER = ROOT / "install" / "opencode.sh"
+INSTALL_DIR = ROOT / "install"
 _GIT_TEMPLATES: dict[str, Path] = {}
 
 FRONTEND_SKILL = """---
@@ -51,8 +51,7 @@ def write_skill(repo: Path, skill_id: str, frontmatter: str = FRONTEND_SKILL) ->
 
 def make_workspace(tmp_path: Path) -> SimpleNamespace:
     repo = tmp_path / "repo"
-    (repo / "install").mkdir(parents=True)
-    shutil.copy2(INSTALLER, repo / "install" / "opencode.sh")
+    shutil.copytree(INSTALL_DIR, repo / "install")
     write_skill(repo, "frontend-design")
     write_skill(repo, "other-skill", OTHER_SKILL)
     home = tmp_path / "home"
@@ -67,6 +66,8 @@ def make_workspace(tmp_path: Path) -> SimpleNamespace:
         target=tmp_path / "target",
         env=env,
         installer=repo / "install" / "opencode.sh",
+        antigravity_installer=repo / "install" / "antigravity.sh",
+        opencode_installer=repo / "install" / "opencode.sh",
     )
 
 
@@ -79,9 +80,10 @@ def run_installer(
     workspace: SimpleNamespace,
     *args: str,
     env: dict[str, str] | None = None,
+    installer: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [str(workspace.installer), *args],
+        [str(installer or workspace.installer), *args],
         cwd=workspace.repo,
         env=env or workspace.env,
         capture_output=True,
@@ -185,8 +187,7 @@ def test_refuses_unsafe_target_matrix(workspace: SimpleNamespace, tmp_path: Path
 
 def test_refuses_symlinked_source_root(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
-    (repo / "install").mkdir(parents=True)
-    shutil.copy2(INSTALLER, repo / "install" / "opencode.sh")
+    shutil.copytree(INSTALL_DIR, repo / "install")
     real_skills = repo / "real-skills"
     real_skills.mkdir()
     skill_dir = real_skills / "frontend-design"
@@ -199,18 +200,19 @@ def test_refuses_symlinked_source_root(tmp_path: Path) -> None:
     (tmp_path / "home").mkdir()
     env.pop("XDG_CONFIG_HOME", None)
 
-    result = subprocess.run(
-        [str(repo / "install" / "opencode.sh"), "--target", str(tmp_path / "target")],
-        cwd=repo,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    for installer_name in ("antigravity.sh", "opencode.sh"):
+        result = subprocess.run(
+            [str(repo / "install" / installer_name), "--target", str(tmp_path / "target")],
+            cwd=repo,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-    assert result.returncode != 0
-    assert "symlinked source root" in result.stderr
-    assert not (tmp_path / "target").exists()
+        assert result.returncode != 0
+        assert "symlinked source root" in result.stderr
+        assert not (tmp_path / "target").exists()
 
 
 def test_refuses_symlinked_skill_source(workspace: SimpleNamespace, tmp_path: Path) -> None:
@@ -827,25 +829,30 @@ def test_copy_handles_dash_filename_and_extended_secret_exclusions(
         "id_ed25519",
     ):
         (skill / secret_name).write_text("SECRET\n", encoding="utf-8")
-    for secret_dir in (".opencode", ".claude", ".agents"):
+    for secret_dir in (".opencode", ".claude", ".agents", ".gemini"):
         (skill / secret_dir).mkdir()
         (skill / secret_dir / "cfg.json").write_text("{}\n", encoding="utf-8")
 
-    res = run_installer(workspace, "--target", str(workspace.target), "frontend-design")
-    assert res.returncode == 0, res.stderr
-    installed = workspace.target / "frontend-design"
-    assert (installed / "--checkpoint=1").read_text(encoding="utf-8") == "safe dash file\n"
-    for name in (
-        "credentials_prod.json",
-        "cert.pem",
-        "keystore.p12",
-        "id_rsa",
-        "id_ed25519",
-        ".opencode",
-        ".claude",
-        ".agents",
-    ):
-        assert not (installed / name).exists()
+    for idx, installer in enumerate((workspace.antigravity_installer, workspace.opencode_installer)):
+        target = workspace.target / f"run-{idx}"
+        res = run_installer(
+            workspace, "--target", str(target), "frontend-design", installer=installer
+        )
+        assert res.returncode == 0, res.stderr
+        installed = target / "frontend-design"
+        assert (installed / "--checkpoint=1").read_text(encoding="utf-8") == "safe dash file\n"
+        for name in (
+            "credentials_prod.json",
+            "cert.pem",
+            "keystore.p12",
+            "id_rsa",
+            "id_ed25519",
+            ".opencode",
+            ".claude",
+            ".agents",
+            ".gemini",
+        ):
+            assert not (installed / name).exists()
 
 
 def test_verify_rejects_tracked_symlink_and_ignores_benign_pycache_in_copy(
@@ -992,7 +999,7 @@ def test_xdg_default_target_works_without_home_and_yaml_edge_cases(
     assert "    after blank\n" in listed.stdout
     assert "# pure comment" not in listed.stdout
 
-    # XDG_CONFIG_HOME without HOME must still resolve default target.
+    # XDG_CONFIG_HOME without HOME must still resolve default target for OpenCode.
     xdg = tmp_path / "xdg-no-home"
     env = workspace.env.copy()
     env.pop("HOME", None)
@@ -1000,3 +1007,109 @@ def test_xdg_default_target_works_without_home_and_yaml_edge_cases(
     res = run_installer(workspace, "frontend-design", env=env)
     assert res.returncode == 0, res.stderr
     assert (xdg / "opencode" / "skills" / "frontend-design" / "SKILL.md").is_file()
+
+
+def test_antigravity_installer_default_target_reload_verify_and_lib_guard(
+    workspace: SimpleNamespace, tmp_path: Path
+) -> None:
+    # Default target uses $HOME/.gemini/config/skills even when XDG_CONFIG_HOME is set.
+    xdg = tmp_path / "xdg-ignored"
+    env = workspace.env.copy()
+    env["XDG_CONFIG_HOME"] = str(xdg)
+    copied = run_installer(
+        workspace,
+        "frontend-design",
+        env=env,
+        installer=workspace.antigravity_installer,
+    )
+    assert copied.returncode == 0, copied.stderr
+    assert "Antigravity skill install" in copied.stdout
+    assert "/skills reload" in copied.stdout
+    expected_dir = workspace.home / ".gemini" / "config" / "skills" / "frontend-design"
+    assert (expected_dir / "SKILL.md").is_file()
+    assert not xdg.exists()
+
+    # --link mode and idempotent re-run work cleanly.
+    linked = run_installer(
+        workspace,
+        "--link",
+        "other-skill",
+        env=env,
+        installer=workspace.antigravity_installer,
+    )
+    assert linked.returncode == 0, linked.stderr
+    assert (workspace.home / ".gemini" / "config" / "skills" / "other-skill").is_symlink()
+    relinked = run_installer(
+        workspace,
+        "--link",
+        "other-skill",
+        env=env,
+        installer=workspace.antigravity_installer,
+    )
+    assert relinked.returncode == 0, relinked.stderr
+    assert "already linked" in relinked.stdout
+
+    # Without HOME, default target fails cleanly while --list still succeeds.
+    no_home = env.copy()
+    no_home.pop("HOME", None)
+    bad = run_installer(
+        workspace,
+        "frontend-design",
+        env=no_home,
+        installer=workspace.antigravity_installer,
+    )
+    assert bad.returncode != 0
+    assert "HOME is not set; pass --target DIR" in bad.stderr
+    listed = run_installer(
+        workspace,
+        "--list",
+        env=no_home,
+        installer=workspace.antigravity_installer,
+    )
+    assert listed.returncode == 0, listed.stderr
+    assert "frontend-design" in listed.stdout
+
+    # --help works with HOME unset and renders each wrapper's usage path and literal target.
+    for installer, harness, usage_cmd, literal_target in (
+        (
+            workspace.antigravity_installer,
+            "Antigravity",
+            "./install/antigravity.sh",
+            "$HOME/.gemini/config/skills",
+        ),
+        (
+            workspace.opencode_installer,
+            "OpenCode",
+            "./install/opencode.sh",
+            "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills",
+        ),
+    ):
+        help_res = run_installer(workspace, "--help", env=no_home, installer=installer)
+        assert help_res.returncode == 0, help_res.stderr
+        assert harness in help_res.stdout
+        assert usage_cmd in help_res.stdout
+        assert literal_target in help_res.stdout
+
+    # --verify --ref works with install/antigravity.sh on a clean tagged git checkout.
+    make_git_checkout(workspace, tag="v1.3.0")
+    verified = run_installer(
+        workspace,
+        "--verify",
+        "--ref",
+        "v1.3.0",
+        "--target",
+        str(workspace.target),
+        installer=workspace.antigravity_installer,
+    )
+    assert verified.returncode == 0, verified.stderr
+    assert "verified clean checkout at v1.3.0" in verified.stdout
+    assert (workspace.target / "frontend-design" / "SKILL.md").is_file()
+
+    # Both installers refuse a symlinked install/lib.sh.
+    real_lib = tmp_path / "real-lib.sh"
+    shutil.move(str(workspace.repo / "install" / "lib.sh"), str(real_lib))
+    (workspace.repo / "install" / "lib.sh").symlink_to(real_lib)
+    for installer in (workspace.antigravity_installer, workspace.opencode_installer):
+        sym_res = run_installer(workspace, "--dry-run", installer=installer)
+        assert sym_res.returncode != 0
+        assert "missing or symlinked" in sym_res.stderr

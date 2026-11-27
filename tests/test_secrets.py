@@ -33,6 +33,7 @@ REQUIRED_IGNORED = [
     ".opencode/config.json",
     ".claude/settings.json",
     ".agents/skills/example.md",
+    ".gemini/settings.json",
 ]
 
 EXISTING_IGNORED = [

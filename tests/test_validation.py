@@ -1087,3 +1087,43 @@ def test_validate_repo_in_process_does_not_mutate_root_and_catches_aa_failure(
         root=tmp_path,
     )
     assert any("fails AA" in e for e in errs)
+
+
+def test_check_installer_validates_both_harnesses_and_lib(tmp_path: Path) -> None:
+    repo = copy_repo(tmp_path)
+    assert_validation_passes(repo)
+
+    # Missing, symlinked, and non-executable entrypoints fail for both harnesses.
+    for name in ("antigravity.sh", "opencode.sh"):
+        script = repo / "install" / name
+        other = repo / "install" / ("opencode.sh" if name == "antigravity.sh" else "antigravity.sh")
+        script.unlink()
+        assert_validation_fails(repo, f"install/{name}: missing")
+
+        script.symlink_to(other)
+        assert_validation_fails(repo, f"install/{name}: symlinked installer script")
+
+        script.unlink()
+        shutil.copy2(REPO_ROOT / "install" / name, script)
+        script.chmod(0o644)
+        assert_validation_fails(repo, f"install/{name}: not executable")
+        script.chmod(0o755)
+
+    # Missing, symlinked, and syntax-broken install/lib.sh fail.
+    lib = repo / "install" / "lib.sh"
+    lib_text = lib.read_text(encoding="utf-8")
+    lib.write_text(lib_text + "\nif then\n", encoding="utf-8")
+    assert_validation_fails(repo, "install/lib.sh: bash syntax error")
+
+    lib.unlink()
+    assert_validation_fails(repo, "install/lib.sh: missing")
+
+    lib.symlink_to(repo / "install" / "opencode.sh")
+    assert_validation_fails(repo, "install/lib.sh: symlinked installer script")
+
+    # Symlinked install/ directory itself fails.
+    real_install = tmp_path / "real-install"
+    shutil.copytree(REPO_ROOT / "install", real_install)
+    shutil.rmtree(repo / "install")
+    (repo / "install").symlink_to(real_install)
+    assert_validation_fails(repo, "install: symlinked installer directory")
