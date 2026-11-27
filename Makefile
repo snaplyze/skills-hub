@@ -1,6 +1,8 @@
 PYTHON ?= python3
 NPM ?= npm
-RUFF ?= ruff
+ifeq ($(origin RUFF), undefined)
+RUFF = $(if $(shell $(PYTHON) -m ruff --version >/dev/null 2>&1 && printf ok),$(PYTHON) -m ruff,ruff)
+endif
 SHELLCHECK ?= shellcheck
 MDLINT ?= node_modules/.bin/markdownlint-cli2
 CSSTREE ?= node_modules/.bin/csstree-validator
@@ -33,6 +35,7 @@ validate:
 
 lint:
 	$(RUFF) check .
+	$(RUFF) format --check .
 	$(MDLINT) "**/*.md"
 
 test:
