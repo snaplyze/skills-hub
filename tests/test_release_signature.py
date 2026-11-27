@@ -252,3 +252,116 @@ def test_tampered_trust_and_unsigned_tag_fail(signed_tag_fixture: SignedTagFixtu
         real_out = real_tampered.stdout + real_tampered.stderr
         assert 'Good "git" signature for ' not in real_out
         assert "No principal matched" in real_out
+
+
+def test_tag_object_replay_and_direct_commit_binding(
+    signed_tag_fixture: SignedTagFixture,
+) -> None:
+    env = _isolated_git_env()
+    repo = signed_tag_fixture.repo
+
+    # Verify the legitimate signed tag binds its embedded tag header and targets a commit.
+    embedded = subprocess.run(
+        ["git", "-C", str(repo), "for-each-ref", "--format=%(tag)", "refs/tags/v1.2.3"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
+    ).stdout.strip()
+    assert embedded == "v1.2.3"
+
+    raw_tag = subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "tag", "refs/tags/v1.2.3"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
+    ).stdout
+    header_lines = raw_tag.split("\n\n", 1)[0].splitlines()
+    target_type = next(line.split(None, 1)[1] for line in header_lines if line.startswith("type "))
+    assert target_type == "commit"
+
+    # A nested tag targeting another tag object peels to a commit via ^{commit}
+    # but has header type == "tag", proving why release.yml checks target_type == "commit".
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "user.name=Release Test",
+            "-c",
+            "user.email=release@snaplyze.me",
+            "-c",
+            "tag.gpgsign=false",
+            "tag",
+            "-a",
+            "v1.2.5",
+            "refs/tags/v1.2.3",
+            "-m",
+            "Nested tag targeting v1.2.3",
+        ],
+        env=env,
+        check=True,
+        timeout=10,
+    )
+    try:
+        nested_raw = subprocess.run(
+            ["git", "-C", str(repo), "cat-file", "tag", "refs/tags/v1.2.5"],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        ).stdout
+        nested_headers = nested_raw.split("\n\n", 1)[0].splitlines()
+        nested_type = next(
+            line.split(None, 1)[1] for line in nested_headers if line.startswith("type ")
+        )
+        assert nested_type == "tag"
+    finally:
+        subprocess.run(
+            ["git", "-C", str(repo), "update-ref", "-d", "refs/tags/v1.2.5"],
+            env=env,
+            check=False,
+            timeout=10,
+        )
+
+    # Replaying the signed tag OID under a different ref passes raw git verify-tag,
+    # proving why release.yml must check %(tag) == $TAG.
+    tag_oid = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "refs/tags/v1.2.3"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
+    ).stdout.strip()
+    subprocess.run(
+        ["git", "-C", str(repo), "update-ref", "refs/tags/v1.9.9", tag_oid],
+        env=env,
+        check=True,
+        timeout=10,
+    )
+    try:
+        replayed_verify = run_git_verify(repo, "v1.9.9", signers=signed_tag_fixture.good_signers)
+        assert replayed_verify.returncode == 0
+        replayed_embedded = subprocess.run(
+            ["git", "-C", str(repo), "for-each-ref", "--format=%(tag)", "refs/tags/v1.9.9"],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        ).stdout.strip()
+        assert replayed_embedded == "v1.2.3"
+        assert replayed_embedded != "v1.9.9"
+    finally:
+        subprocess.run(
+            ["git", "-C", str(repo), "update-ref", "-d", "refs/tags/v1.9.9"],
+            env=env,
+            check=False,
+            timeout=10,
+        )

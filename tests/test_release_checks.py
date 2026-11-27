@@ -233,7 +233,8 @@ def test_newer_failed_in_progress_or_unreadable_run_fails_closed() -> None:
         )
     )
 
-    # Missing head_sha (expected_path, None) from tuple lookup must fail closed.
+    # Missing head_sha (expected_path, None) from tuple lookup must fail closed,
+    # even when an older passing run id=1 exists alongside newer run id=10.
     assert any(
         "workflow run targeted None" in e
         for e in check_run_errors(
@@ -244,6 +245,76 @@ def test_newer_failed_in_progress_or_unreadable_run_fails_closed() -> None:
             repo=REPO,
         )
     )
+    assert any(
+        "workflow run targeted None" in e
+        for e in check_run_errors(
+            failed_no_ts,
+            COMMIT,
+            EXPECTED_WORKFLOWS,
+            lambda rid: (".github/workflows/ci.yml", None) if rid == "10" else paths(rid),
+            repo=REPO,
+        )
+    )
+
+    # Malformed id (None, 0, -1, True, "abc") on a candidate from the expected workflow must
+    # fail closed instead of sorting behind an older passing id=1 — even if conclusion="success".
+    for bad_id, conclusion in [
+        (None, "failure"),
+        (None, "success"),
+        (0, "failure"),
+        (-1, "success"),
+        (True, "failure"),
+        ("abc", "success"),
+    ]:
+        bad_id_runs = [
+            *valid_runs(),
+            run(
+                "validate",
+                bad_id,
+                conclusion=conclusion,
+                details_url=f"https://github.com/{REPO}/actions/runs/10/job/1",
+            ),
+        ]
+        assert any(
+            "invalid check-run id" in e
+            for e in check_run_errors(bad_id_runs, COMMIT, EXPECTED_WORKFLOWS, lookup_10, repo=REPO)
+        )
+
+    # Spoofed or unrelated-workflow runs with id=None must still be ignored cleanly.
+    unrelated_null_id = [
+        *valid_runs(),
+        run("validate", None, app={"slug": "third-party-bot"}, conclusion="failure"),
+        run(
+            "validate",
+            None,
+            conclusion="failure",
+            details_url=f"https://github.com/{REPO}/actions/runs/99/job/1",
+        ),
+    ]
+    assert (
+        check_run_errors(
+            unrelated_null_id,
+            COMMIT,
+            EXPECTED_WORKFLOWS,
+            lambda rid: (".github/workflows/other.yml", COMMIT) if rid == "99" else paths(rid),
+            repo=REPO,
+        )
+        == []
+    )
+
+
+def test_repo_url_matching_is_case_insensitive_and_dead_helper_removed() -> None:
+    mixed_case = [
+        run(
+            "validate",
+            1,
+            details_url="https://github.com/O/R/actions/runs/1/job/1",
+        ),
+        *valid_runs()[1:],
+    ]
+    assert check_run_errors(mixed_case, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO) == []
+    assert check_run_errors(valid_runs(), COMMIT, EXPECTED_WORKFLOWS, paths, repo="O/R") == []
+    assert not hasattr(release_checks, "gh_workflow_path")
 
 
 def test_main_jsonl_handling_and_gh_workflow_info(
