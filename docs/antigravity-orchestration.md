@@ -1,6 +1,21 @@
 # Native Antigravity orchestration
 
+> Using OpenCode? See [Native OpenCode orchestration](opencode-orchestration.md). Both harnesses share the same unified [`skills/orchestration/SKILL.md`](../skills/orchestration/SKILL.md).
+
 This repository uses a **skill-only** orchestration layer over **Google Antigravity** (App, CLI `agy`, IDE, and IDE extensions). It preserves high-signal routing, workspace isolation, and verification gates without shipping a plugin, hooks, session bootstrap, custom background daemon, or hardcoded model profiles.
+
+## Routing flow
+
+```mermaid
+flowchart TD
+    T["Incoming task"] --> Q1{"Single small edit or sequential work?"}
+    Q1 -- Yes --> Direct["Work directly in main session"]
+    Q1 -- No --> Q2{"Many files or repeatable staged pipeline?"}
+    Q2 -- Yes --> WF["Dynamic Workflow (run_workflow)"]
+    Q2 -- No --> Q3{"Bounded research, UI check, disjoint slice, or fresh review?"}
+    Q3 -- Yes --> Sub["invoke_subagent (research / browser / self / transient define_subagent)"]
+    Q3 -- No --> Rec["Recommend user-invoked /swarm, /boost, or /teamwork"]
+```
 
 ## What it is
 

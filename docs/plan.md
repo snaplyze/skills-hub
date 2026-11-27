@@ -8,16 +8,16 @@
 |---|---|---|
 | `AGENTS.md` | сведения о проекте и стартовый контекст | 48 / 8 485 |
 | `docs/plan.md` | единый реестр плана (обновляется на месте) | — |
-| `README.md` | вход, установка (Antigravity + OpenCode), защиты | 377 / 24 276 |
-| `docs/antigravity-orchestration.md` | архитектура нативной оркестрации Antigravity | 108 / 8 948 |
-| `docs/opencode-orchestration.md` | архитектура native orchestration OpenCode | 81 / 5 307 |
-| `docs/release-process.md` | релизный гейт и owner setup | 283 / 13 152 |
-| `docs/repository-settings.md` | settings evidence (сверено 2026-11-26) | 75 / 5 000 |
+| `README.md` | вход, quick start, установка (Antigravity + OpenCode), оркестрация, защиты | 456 / 28 105 |
+| `docs/antigravity-orchestration.md` | архитектура нативной оркестрации Antigravity | 123 / 9 691 |
+| `docs/opencode-orchestration.md` | архитектура native orchestration OpenCode | 83 / 5 513 |
+| `docs/release-process.md` | релизный гейт и owner setup | 285 / 13 213 |
+| `docs/repository-settings.md` | settings evidence и метаданные репозитория (сверено 2026-11-27) | 84 / 5 824 |
 | `docs/release-signing/` | публичный SSH trust и ротация | 44 / 1 965 |
-| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила, безопасность, история релизов | 511 / 23 472 |
+| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила, безопасность, история релизов | 518 / 23 840 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция workflow-навыков и указатель `sources.md` | 53 / 3 444 |
 | `docs/plans/2026-11-16-skill-suite-v2.md` | завершённый детальный план этапа 08 | 281 / 10 726 |
-| `docs/plans/2026-11-27-antigravity-support.md` | детальный план этапа 10 (поддержка Antigravity) | 153 / 11 923 |
+| `docs/plans/2026-11-27-antigravity-support.md` | детальный план этапа 10 (поддержка Antigravity) | 153 / 11 860 |
 
 План не входит в бюджет загружаемых инструкций 32 KiB.
 

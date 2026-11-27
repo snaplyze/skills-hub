@@ -1,5 +1,7 @@
 # Native OpenCode orchestration
 
+> Using Google Antigravity? See [Native Antigravity orchestration](antigravity-orchestration.md). Both harnesses share the same unified [`skills/orchestration/SKILL.md`](../skills/orchestration/SKILL.md).
+
 This repository uses a **skill-only** orchestration layer. It keeps the useful routing and quality gates from orchestration frameworks without a plugin, hooks, session bootstrap, marketplace, TUI overlay, or hardcoded model-profile installer.
 
 ## What it is
