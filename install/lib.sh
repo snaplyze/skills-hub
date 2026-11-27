@@ -23,6 +23,7 @@ LIST=0
 ALL=0
 VERIFY=0
 REF=""
+REF_SET=0
 VERIFIED_COMMIT=""
 TARGET_ROOT=""
 TARGET_SET=0
@@ -30,6 +31,13 @@ REQUESTED=()
 STAGING=""
 PENDING_BACKUP=""
 PENDING_TARGET=""
+
+# Subshell-free out-variables for pure-Bash YAML helpers and batched pre-flight.
+TRIM_RESULT=""
+UNESCAPE_RESULT=""
+QUOTE_CLOSE_IDX=-1
+READ_DESCRIPTION_RESULT=""
+COPY_REL_PATHS=()
 
 usage() {
 	cat <<EOF
@@ -97,9 +105,11 @@ cleanup() {
 expand_tilde() {
 	if [[ "$1" == "~" ]]; then
 		[[ -n "${HOME:-}" ]] || die "HOME is not set; cannot expand ~"
+		[[ "$HOME" == /* ]] || die "HOME must be an absolute path: $HOME"
 		printf '%s\n' "$HOME"
 	elif [[ "${1:0:1}" == "~" && "${1:1:1}" == "/" ]]; then
 		[[ -n "${HOME:-}" ]] || die "HOME is not set; cannot expand ~/"
+		[[ "$HOME" == /* ]] || die "HOME must be an absolute path: $HOME"
 		printf '%s/%s\n' "$HOME" "${1:2}"
 	else
 		printf '%s\n' "$1"
@@ -130,8 +140,19 @@ validate_release_ref() {
 
 trim_trailing_ws() {
 	local s="$1"
-	s="${s%"${s##*[![:space:]]}"}"
-	printf '%s' "$s"
+	TRIM_RESULT="${s%"${s##*[![:space:]]}"}"
+}
+
+ends_with_unescaped_bs() {
+	local s="$1"
+	local count=0
+	local idx=$((${#s} - 1))
+	local bs="\\"
+	while ((idx >= 0)) && [[ "${s:idx:1}" == "$bs" ]]; do
+		count=$((count + 1))
+		idx=$((idx - 1))
+	done
+	((count % 2 == 1))
 }
 
 unescape_double_quoted() {
@@ -149,6 +170,7 @@ unescape_double_quoted() {
 			case "$nxt" in
 			'"') out+='"' ;;
 			"$bs") out+="$bs" ;;
+			/) out+="/" ;;
 			n) out+=$'\n' ;;
 			t) out+=$'\t' ;;
 			r) out+=$'\r' ;;
@@ -160,7 +182,7 @@ unescape_double_quoted() {
 			i=$((i + 1))
 		fi
 	done
-	printf '%s' "$out"
+	UNESCAPE_RESULT="$out"
 }
 
 find_double_quote_close() {
@@ -169,6 +191,7 @@ find_double_quote_close() {
 	local n=${#s}
 	local ch=""
 	local bs="\\"
+	QUOTE_CLOSE_IDX=-1
 	while ((i < n)); do
 		ch="${s:i:1}"
 		if [[ "$ch" == "$bs" ]]; then
@@ -176,7 +199,7 @@ find_double_quote_close() {
 			continue
 		fi
 		if [[ "$ch" == '"' ]]; then
-			printf '%d' "$i"
+			QUOTE_CLOSE_IDX=$i
 			return 0
 		fi
 		i=$((i + 1))
@@ -189,13 +212,14 @@ find_single_quote_close() {
 	local i=1
 	local n=${#s}
 	local sq="'"
+	QUOTE_CLOSE_IDX=-1
 	while ((i < n)); do
 		if [[ "${s:i:1}" == "$sq" ]]; then
 			if ((i + 1 < n)) && [[ "${s:i+1:1}" == "$sq" ]]; then
 				i=$((i + 2))
 				continue
 			fi
-			printf '%d' "$i"
+			QUOTE_CLOSE_IDX=$i
 			return 0
 		fi
 		i=$((i + 1))
@@ -206,9 +230,9 @@ find_single_quote_close() {
 read_description() {
 	local file="$1"
 	local in_frontmatter=0
+	local closed=0
 	local state="none" # none | block | plain | dquote | squote
 	local style=""
-	local chomp=""
 	local block_indent=""
 	local blank_count=0
 	local text=""
@@ -216,25 +240,25 @@ read_description() {
 	local line=""
 	local value=""
 	local content=""
-	local close_idx=0
+	local chunk=""
 	local sq="'"
+	local key_re='^("description"|'"'"'description'"'"'|description):([[:space:]]+(.*)|[[:space:]]*)$'
 
 	_finish_desc_scalar() {
 		case "$state" in
 		block)
-			if [[ "$chomp" == "+" ]]; then
-				while ((blank_count > 0)); do
-					cur+=$'\n'
-					blank_count=$((blank_count - 1))
-				done
-			fi
 			text="$cur"
 			;;
 		plain)
-			text="$(trim_trailing_ws "$cur")"
+			trim_trailing_ws "$cur"
+			text="$TRIM_RESULT"
+			case "$text" in
+			"~" | null | Null | NULL) text="" ;;
+			esac
 			;;
 		dquote)
-			text="$(unescape_double_quoted "$cur")"
+			unescape_double_quoted "$cur"
+			text="$UNESCAPE_RESULT"
 			;;
 		squote)
 			text="${cur//"$sq$sq"/$sq}"
@@ -256,6 +280,7 @@ read_description() {
 		fi
 
 		if [[ "$line" == "---" ]]; then
+			closed=1
 			_finish_desc_scalar
 			break
 		fi
@@ -306,13 +331,18 @@ read_description() {
 				continue
 			fi
 			if [[ "$line" =~ ^[[:space:]]+(.*)$ ]]; then
-				content="$(trim_trailing_ws "${BASH_REMATCH[1]}")"
+				trim_trailing_ws "${BASH_REMATCH[1]}"
+				content="$TRIM_RESULT"
 				if [[ "$content" == \#* ]]; then
+					if [[ -z "$cur" ]]; then
+						continue
+					fi
+					_finish_desc_scalar
 					continue
 				fi
 				if [[ -z "$cur" && "${content:0:1}" == '"' ]]; then
-					if close_idx="$(find_double_quote_close "$content")"; then
-						cur="${content:1:close_idx-1}"
+					if find_double_quote_close "$content"; then
+						cur="${content:1:QUOTE_CLOSE_IDX-1}"
 						state="dquote"
 						_finish_desc_scalar
 					else
@@ -322,8 +352,8 @@ read_description() {
 					continue
 				fi
 				if [[ -z "$cur" && "${content:0:1}" == "$sq" ]]; then
-					if close_idx="$(find_single_quote_close "$content")"; then
-						cur="${content:1:close_idx-1}"
+					if find_single_quote_close "$content"; then
+						cur="${content:1:QUOTE_CLOSE_IDX-1}"
 						state="squote"
 						_finish_desc_scalar
 					else
@@ -332,8 +362,19 @@ read_description() {
 					fi
 					continue
 				fi
-				content="${content%%[[:space:]]#*}"
-				content="$(trim_trailing_ws "$content")"
+				if [[ "$content" == *[[:space:]]#* ]]; then
+					content="${content%%[[:space:]]#*}"
+					trim_trailing_ws "$content"
+					content="$TRIM_RESULT"
+					if [[ -n "$content" ]]; then
+						if [[ -n "$cur" ]]; then
+							cur+=" "
+						fi
+						cur+="$content"
+					fi
+					_finish_desc_scalar
+					continue
+				fi
 				if [[ -n "$content" ]]; then
 					if [[ -n "$cur" ]]; then
 						cur+=" "
@@ -346,15 +387,25 @@ read_description() {
 		elif [[ "$state" == "dquote" ]]; then
 			if [[ "$line" =~ ^[[:space:]]*(.*)$ ]]; then
 				content="${BASH_REMATCH[1]}"
-				if close_idx="$(find_double_quote_close " $content")"; then
-					if ((close_idx > 1)); then
+				if find_double_quote_close " $content"; then
+					chunk=""
+					if ((QUOTE_CLOSE_IDX > 1)); then
+						chunk="${content:0:QUOTE_CLOSE_IDX-1}"
+					fi
+					if ends_with_unescaped_bs "$cur"; then
+						cur="${cur%?}${chunk}"
+					elif [[ -n "$chunk" ]]; then
 						[[ -n "$cur" ]] && cur+=" "
-						cur+="${content:0:close_idx-1}"
+						cur+="$chunk"
 					fi
 					_finish_desc_scalar
 				else
-					[[ -n "$cur" ]] && cur+=" "
-					cur+="$content"
+					if ends_with_unescaped_bs "$cur"; then
+						cur="${cur%?}${content}"
+					else
+						[[ -n "$cur" ]] && cur+=" "
+						cur+="$content"
+					fi
 				fi
 				continue
 			fi
@@ -362,10 +413,10 @@ read_description() {
 		elif [[ "$state" == "squote" ]]; then
 			if [[ "$line" =~ ^[[:space:]]*(.*)$ ]]; then
 				content="${BASH_REMATCH[1]}"
-				if close_idx="$(find_single_quote_close " $content")"; then
-					if ((close_idx > 1)); then
+				if find_single_quote_close " $content"; then
+					if ((QUOTE_CLOSE_IDX > 1)); then
 						[[ -n "$cur" ]] && cur+=" "
-						cur+="${content:0:close_idx-1}"
+						cur+="${content:0:QUOTE_CLOSE_IDX-1}"
 					fi
 					_finish_desc_scalar
 				else
@@ -377,11 +428,11 @@ read_description() {
 			_finish_desc_scalar
 		fi
 
-		if [[ "$line" =~ ^description:[[:space:]]*(.*)$ ]]; then
-			value="$(trim_trailing_ws "${BASH_REMATCH[1]}")"
+		if [[ "$line" =~ $key_re ]]; then
+			trim_trailing_ws "${BASH_REMATCH[3]:-}"
+			value="$TRIM_RESULT"
 			if [[ "$value" =~ ^([>|])([+-]?[0-9]?|[0-9]?[+-]?)([[:space:]]+#.*)?$ ]]; then
 				style="${BASH_REMATCH[1]}"
-				chomp="${BASH_REMATCH[2]//[0-9]/}"
 				state="block"
 				cur=""
 				block_indent=""
@@ -390,8 +441,8 @@ read_description() {
 				state="plain"
 				cur=""
 			elif [[ "${value:0:1}" == '"' ]]; then
-				if close_idx="$(find_double_quote_close "$value")"; then
-					cur="${value:1:close_idx-1}"
+				if find_double_quote_close "$value"; then
+					cur="${value:1:QUOTE_CLOSE_IDX-1}"
 					state="dquote"
 					_finish_desc_scalar
 				else
@@ -399,8 +450,8 @@ read_description() {
 					state="dquote"
 				fi
 			elif [[ "${value:0:1}" == "$sq" ]]; then
-				if close_idx="$(find_single_quote_close "$value")"; then
-					cur="${value:1:close_idx-1}"
+				if find_single_quote_close "$value"; then
+					cur="${value:1:QUOTE_CLOSE_IDX-1}"
 					state="squote"
 					_finish_desc_scalar
 				else
@@ -408,47 +459,45 @@ read_description() {
 					state="squote"
 				fi
 			else
-				value="${value%%[[:space:]]#*}"
-				cur="$(trim_trailing_ws "$value")"
-				state="plain"
+				if [[ "$value" == *[[:space:]]#* ]]; then
+					value="${value%%[[:space:]]#*}"
+					trim_trailing_ws "$value"
+					cur="$TRIM_RESULT"
+					state="plain"
+					_finish_desc_scalar
+				else
+					cur="$value"
+					state="plain"
+				fi
 			fi
 		fi
 	done <"$file"
 
-	if [[ "$state" != "none" ]]; then
-		_finish_desc_scalar
+	if ((closed == 0)); then
+		text=""
 	fi
-
-	printf '%s' "$text"
+	READ_DESCRIPTION_RESULT="$text"
 }
 
-check_skill_tree_safe() {
-	local source_dir="$1"
-	local prune_excluded="${2:-1}"
+check_link_trees_safe() {
+	local -a skills=("$@")
 	local bad_entry=""
 	local entry=""
 	local find_pid=0
 
-	if ((prune_excluded)); then
-		exec 3< <(
-			find "$source_dir" -mindepth 1 \
-				"${COPY_EXCLUDE_FIND_ARGS[@]}" \
-				-o \( -type l -o \( ! -type f ! -type d \) \) -print0
-		)
-	else
-		exec 3< <(
-			find "$source_dir" -mindepth 1 \
+	exec 3< <(
+		cd -- "$SKILLS_DIR" &&
+			find "${skills[@]}" -mindepth 1 \
 				\( -type l -o \( ! -type f ! -type d \) \) -print0
-		)
-	fi
+	)
 	find_pid=$!
 	while IFS= read -r -d '' entry <&3; do
 		if [[ -z "$bad_entry" ]]; then
-			bad_entry="$entry"
+			bad_entry="$SKILLS_DIR/$entry"
 		fi
 	done
 	exec 3<&-
-	wait "$find_pid" || die "failed to scan skill source tree: $source_dir"
+	wait "$find_pid" || die "failed to scan skill source tree: $SKILLS_DIR"
 
 	if [[ -n "$bad_entry" ]]; then
 		if [[ -L "$bad_entry" ]]; then
@@ -458,14 +507,57 @@ check_skill_tree_safe() {
 	fi
 }
 
-check_verified_git_tree_safe() {
-	local skill="$1"
+scan_and_collect_copy_trees() {
+	local -a skills=("$@")
+	local bad_entry=""
+	local bad_type=""
+	local record=""
+	local ftype=""
+	local rel=""
+	local find_pid=0
+	COPY_REL_PATHS=()
+
+	exec 3< <(
+		cd -- "$SKILLS_DIR" &&
+			find "${skills[@]}" -mindepth 1 \
+				"${COPY_EXCLUDE_FIND_ARGS[@]}" \
+				-o -printf '%y\t%p\0'
+	)
+	find_pid=$!
+	while IFS= read -r -d '' record <&3; do
+		ftype="${record%%$'\t'*}"
+		rel="${record#*$'\t'}"
+		if [[ "$ftype" == "f" || "$ftype" == "d" ]]; then
+			COPY_REL_PATHS+=("$rel")
+		elif [[ -z "$bad_entry" ]]; then
+			bad_entry="$SKILLS_DIR/$rel"
+			bad_type="$ftype"
+		fi
+	done
+	exec 3<&-
+	wait "$find_pid" || die "failed to scan skill source tree: $SKILLS_DIR"
+
+	if [[ -n "$bad_entry" ]]; then
+		if [[ "$bad_type" == "l" || -L "$bad_entry" ]]; then
+			die "refusing symlink inside skill source: $bad_entry"
+		fi
+		die "unsupported file type in skill source: $bad_entry"
+	fi
+}
+
+check_verified_git_trees_safe() {
+	local -a git_paths=()
+	local skill=""
 	local record=""
 	local mode=""
 	local bad_record=""
 	local git_pid=0
 
-	exec 3< <(git -C "$REPO_ROOT" ls-tree -r -z "$VERIFIED_COMMIT" -- "skills/$skill")
+	for skill in "$@"; do
+		git_paths+=("skills/$skill")
+	done
+
+	exec 3< <(git -C "$REPO_ROOT" ls-tree -r -z "$VERIFIED_COMMIT" -- "${git_paths[@]}")
 	git_pid=$!
 	while IFS= read -r -d '' record <&3; do
 		mode="${record%% *}"
@@ -476,41 +568,45 @@ check_verified_git_tree_safe() {
 		fi
 	done
 	exec 3<&-
-	wait "$git_pid" || die "failed to inspect verified git tree for skill: $skill"
+	wait "$git_pid" || die "failed to inspect verified git tree for selected skills"
 
 	if [[ -n "$bad_record" ]]; then
 		die "refusing symlink or gitlink inside verified skill source: $bad_record"
 	fi
 }
 
-copy_skill_tree() {
-	local source_dir="$1"
-	local target_dir="$2"
-
-	find "$source_dir" -mindepth 1 \
-		"${COPY_EXCLUDE_FIND_ARGS[@]}" \
-		-o -printf '%P\0' |
-		tar -C "$source_dir" --no-recursion --verbatim-files-from --null -T - -cf - |
-		tar -C "$target_dir" --no-same-owner -xf -
+stage_copy_trees() {
+	local staging_root="$1"
+	shift
+	local skill=""
+	for skill in "$@"; do
+		mkdir -p -- "$staging_root/$skill"
+	done
+	if ((${#COPY_REL_PATHS[@]} > 0)); then
+		printf '%s\0' "${COPY_REL_PATHS[@]}" |
+			tar -C "$SKILLS_DIR" --no-recursion --verbatim-files-from --null -T - -cf - |
+			tar -C "$staging_root" --no-same-owner --no-same-permissions -xf -
+	fi
 }
 
-copy_verified_skill_from_git() {
-	local skill="$1"
-	local staging_root="$2"
-
-	git -C "$REPO_ROOT" -c tar.umask=0022 archive --format=tar "$VERIFIED_COMMIT" -- "skills/$skill" |
-		tar -C "$staging_root" --strip-components=1 --no-same-owner -xf -
+stage_verified_skills_from_git() {
+	local staging_root="$1"
+	shift
+	local -a git_paths=()
+	local skill=""
+	for skill in "$@"; do
+		git_paths+=("skills/$skill")
+	done
+	git -C "$REPO_ROOT" -c tar.umask=0022 archive --format=tar "$VERIFIED_COMMIT" -- "${git_paths[@]}" |
+		tar -C "$staging_root" --strip-components=1 --no-same-owner --no-same-permissions -xf -
 }
 
 verify_source() {
 	command -v git >/dev/null 2>&1 || die "git is required for --verify"
 
-	git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
-		die "cannot --verify: $REPO_ROOT is not a git checkout; archive installs rely on checksum verification"
-
 	local toplevel
 	toplevel="$(git -C "$REPO_ROOT" rev-parse --show-toplevel 2>/dev/null)" ||
-		die "cannot --verify: failed to read the git worktree root"
+		die "cannot --verify: $REPO_ROOT is not a git checkout; archive installs rely on checksum verification"
 	toplevel="$(canonicalize "$toplevel")"
 	[[ "$toplevel" == "$REPO_ROOT" ]] ||
 		die "cannot --verify: $REPO_ROOT is not the root of its git worktree"
@@ -578,35 +674,20 @@ verify_source() {
 	info "  verified clean checkout at $tag"
 }
 
-install_skill() {
+commit_staged_skill() {
 	local skill="$1"
-	local source_dir="$2"
+	local staged="$2"
 	local target_dir="$3"
-	local staging_root=""
-	local staged=""
 	local backup=""
 	local backup_root=""
-	local root_now=""
 
-	root_now="$(canonicalize "$TARGET_ROOT")" ||
-		die "could not re-canonicalize target: $TARGET_ROOT"
-	[[ "$root_now" == "$TARGET_ROOT" && ! -L "$TARGET_ROOT" ]] ||
+	[[ ! -L "$TARGET_ROOT" && -d "$TARGET_ROOT" ]] ||
 		die "target root changed or became a symlink during install: $TARGET_ROOT"
-	staging_root="$(mktemp -d -- "$TARGET_ROOT/.skills-hub-tmp.XXXXXX")" ||
-		die "could not create a staging directory in $TARGET_ROOT"
-	STAGING="$staging_root"
-	staged="$staging_root/$skill"
-
-	if [[ "$MODE" == "link" ]]; then
-		ln -s -- "$source_dir" "$staged"
-	elif ((VERIFY)); then
-		copy_verified_skill_from_git "$skill" "$staging_root"
-	else
-		mkdir -p -- "$staged"
-		copy_skill_tree "$source_dir" "$staged"
-	fi
 
 	if [[ -e "$target_dir" || -L "$target_dir" ]]; then
+		if ((FORCE == 0)); then
+			die "$skill already exists at $target_dir (created concurrently); use --force to replace it"
+		fi
 		backup_root="$TARGET_ROOT/.skills-hub-backups"
 		if [[ -L "$backup_root" ]]; then
 			die "refusing symlinked backup directory: $backup_root"
@@ -640,24 +721,45 @@ install_skill() {
 
 	PENDING_BACKUP=""
 	PENDING_TARGET=""
-	rm -rf -- "$staging_root" || warn "could not remove staging directory: $staging_root"
-	STAGING=""
 	if [[ -n "$backup" ]]; then
 		info "    backup: $backup"
 	fi
+}
+
+check_write_tools() {
+	local tar_help=""
+	local mv_help=""
+	if [[ "$MODE" == "copy" ]]; then
+		command -v tar >/dev/null 2>&1 || die "tar is required for --copy"
+		tar_help="$(tar --help 2>&1 || true)"
+		if ((VERIFY)); then
+			[[ "$tar_help" == *"--strip-components"* && "$tar_help" == *"--no-same-owner"* && "$tar_help" == *"--no-same-permissions"* ]] ||
+				die "GNU tar with --strip-components, --no-same-owner, and --no-same-permissions is required"
+		else
+			[[ "$tar_help" == *"--verbatim-files-from"* && "$tar_help" == *"--null"* && "$tar_help" == *"--no-same-owner"* && "$tar_help" == *"--no-same-permissions"* ]] ||
+				die "GNU tar with --verbatim-files-from, --null, --no-same-owner, and --no-same-permissions is required"
+		fi
+	fi
+	mv_help="$(mv --help 2>&1 || true)"
+	[[ "$mv_help" == *"--no-target-directory"* ]] ||
+		die "GNU mv with -T is required (GNU coreutils)"
 }
 
 resolve_default_target() {
 	case "$DEFAULT_TARGET_MODE" in
 	antigravity)
 		[[ -n "${HOME:-}" ]] || die "HOME is not set; pass --target DIR"
+		[[ "$HOME" == /* ]] || die "HOME must be an absolute path: $HOME"
 		TARGET_ROOT="${HOME}/.gemini/config/skills"
 		;;
 	opencode)
 		if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+			[[ "$XDG_CONFIG_HOME" == /* ]] ||
+				die "XDG_CONFIG_HOME must be an absolute path: $XDG_CONFIG_HOME"
 			TARGET_ROOT="${XDG_CONFIG_HOME}/opencode/skills"
 		else
 			[[ -n "${HOME:-}" ]] || die "HOME is not set; pass --target DIR or set XDG_CONFIG_HOME"
+			[[ "$HOME" == /* ]] || die "HOME must be an absolute path: $HOME"
 			TARGET_ROOT="${HOME}/.config/opencode/skills"
 		fi
 		;;
@@ -694,6 +796,7 @@ skills_hub_install_main() {
 			shift
 			(($# > 0)) || die "--ref needs a tag"
 			REF="$1"
+			REF_SET=1
 			VERIFY=1
 			;;
 		--target)
@@ -728,7 +831,8 @@ skills_hub_install_main() {
 	realpath -m / >/dev/null 2>&1 || die "GNU realpath with -m is required (GNU coreutils)"
 	sort -z </dev/null >/dev/null 2>&1 || die "GNU sort with -z is required (GNU coreutils)"
 
-	if [[ -n "$REF" ]]; then
+	if ((REF_SET)); then
+		[[ -n "$REF" ]] || die "invalid --ref tag: empty value (expected vX.Y.Z or a prerelease such as vX.Y.Z-rc.1)"
 		has_control_chars "$REF" && die "refusing --ref with control characters"
 		validate_release_ref "$REF" ||
 			die "invalid --ref tag: $REF (expected vX.Y.Z or a prerelease such as vX.Y.Z-rc.1)"
@@ -744,7 +848,7 @@ skills_hub_install_main() {
 	local -a AVAILABLE=()
 	local entry=""
 	while IFS= read -r -d '' entry; do
-		if [[ -d "$entry" && -f "$entry/SKILL.md" ]]; then
+		if [[ -d "$entry" && (-f "$entry/SKILL.md" || -L "$entry/SKILL.md") ]]; then
 			AVAILABLE+=("${entry##*/}")
 		fi
 	done < <(find "$SKILLS_DIR" -mindepth 1 -maxdepth 1 -print0 | sort -z)
@@ -754,20 +858,25 @@ skills_hub_install_main() {
 	fi
 
 	local skill=""
-	local description=""
 	local desc_line=""
 	if ((LIST)); then
 		if ((VERIFY)); then
 			verify_source
+			check_verified_git_trees_safe "${AVAILABLE[@]}"
 		fi
+		for skill in "${AVAILABLE[@]}"; do
+			[[ -L "$SKILLS_DIR/$skill" ]] && die "refusing symlinked skill source: $SKILLS_DIR/$skill"
+			[[ -L "$SKILLS_DIR/$skill/SKILL.md" ]] &&
+				die "refusing symlink inside skill source: $SKILLS_DIR/$skill/SKILL.md"
+		done
 		info "Available skills in $SKILLS_DIR:"
 		for skill in "${AVAILABLE[@]}"; do
-			description="$(read_description "$SKILLS_DIR/$skill/SKILL.md")"
+			read_description "$SKILLS_DIR/$skill/SKILL.md"
 			info "  $skill"
-			if [[ -n "$description" ]]; then
+			if [[ -n "$READ_DESCRIPTION_RESULT" ]]; then
 				while IFS= read -r desc_line; do
 					info "    $desc_line"
-				done <<<"$description"
+				done <<<"$READ_DESCRIPTION_RESULT"
 			fi
 		done
 		exit 0
@@ -775,27 +884,6 @@ skills_hub_install_main() {
 
 	if ((ALL && ${#REQUESTED[@]} > 0)); then
 		die "cannot combine --all with explicit skill names"
-	fi
-
-	local tar_help=""
-	local mv_help=""
-	if [[ "$MODE" == "copy" && "$DRY_RUN" == "0" ]]; then
-		command -v tar >/dev/null 2>&1 || die "tar is required for --copy"
-		tar_help="$(tar --help 2>&1 || true)"
-		if ((VERIFY)); then
-			[[ "$tar_help" == *"--strip-components"* && "$tar_help" == *"--no-same-owner"* ]] ||
-				die "GNU tar with --strip-components and --no-same-owner is required"
-		else
-			[[ "$tar_help" == *"--verbatim-files-from"* && "$tar_help" == *"--null"* && "$tar_help" == *"--no-same-owner"* ]] ||
-				die "GNU tar with --verbatim-files-from, --null, and --no-same-owner is required"
-			find /dev/null -maxdepth 0 -printf '' >/dev/null 2>&1 ||
-				die "GNU find with -printf is required (GNU findutils)"
-		fi
-	fi
-	if ((DRY_RUN == 0)); then
-		mv_help="$(mv --help 2>&1 || true)"
-		[[ "$mv_help" == *"--no-target-directory"* ]] ||
-			die "GNU mv with -T is required (GNU coreutils)"
 	fi
 
 	if ((TARGET_SET == 0)); then
@@ -868,6 +956,8 @@ skills_hub_install_main() {
 				die "invalid skill id: $requested (use lowercase kebab-case)"
 			source_dir="$SKILLS_DIR/$requested"
 			[[ -L "$source_dir" ]] && die "refusing symlinked skill source: $source_dir"
+			[[ -L "$source_dir/SKILL.md" ]] &&
+				die "refusing symlink inside skill source: $source_dir/SKILL.md"
 			[[ -f "$source_dir/SKILL.md" ]] || die "skill not found: $requested"
 			if [[ -z "${SEEN_SELECTED[$requested]+x}" ]]; then
 				SEEN_SELECTED["$requested"]=1
@@ -890,73 +980,67 @@ skills_hub_install_main() {
 	fi
 	info ""
 
-	# Pre-flight pass: verify all sources, path boundaries, backup directory, and conflicts
-	# before creating TARGET_ROOT or installing any skill (prevents partial installs).
+	# Pre-flight safety scan BEFORE reading SKILL.md or creating TARGET_ROOT.
+	if [[ "$MODE" == "link" ]]; then
+		check_link_trees_safe "${SELECTED[@]}"
+		if ((VERIFY)); then
+			check_verified_git_trees_safe "${SELECTED[@]}"
+		fi
+	elif ((VERIFY)); then
+		check_verified_git_trees_safe "${SELECTED[@]}"
+	else
+		find /dev/null -maxdepth 0 -printf '' >/dev/null 2>&1 ||
+			die "GNU find with -printf is required (GNU findutils)"
+		scan_and_collect_copy_trees "${SELECTED[@]}"
+	fi
+
 	local conflicts=0
 	local needs_backup=0
-	local -a PLAN_ACTIONS=()
-	local -a PLAN_SOURCES=()
-	local -a PLAN_TARGETS=()
-	local source_real=""
+	local -a INSTALL_SKILLS=()
+	local -a INSTALL_SOURCES=()
+	local -a INSTALL_TARGETS=()
 	local target_dir=""
 
 	for skill in "${SELECTED[@]}"; do
 		source_dir="$SKILLS_DIR/$skill"
-		source_real="$(canonicalize "$source_dir")" ||
-			die "could not canonicalize skill source: $source_dir"
 		target_dir="$TARGET_ROOT/$skill"
 
-		if [[ -z "$(read_description "$source_dir/SKILL.md")" ]]; then
+		[[ -L "$source_dir/SKILL.md" ]] &&
+			die "refusing symlink inside skill source: $source_dir/SKILL.md"
+		read_description "$source_dir/SKILL.md"
+		if [[ -z "$READ_DESCRIPTION_RESULT" ]]; then
 			warn "$skill has no description in SKILL.md; ${HARNESS_NAME} will not advertise it"
-		fi
-
-		case "$target_dir" in
-		"$TARGET_ROOT"/*) ;;
-		*) die "refusing to write outside target root: $target_dir" ;;
-		esac
-		[[ "${target_dir##*/}" == "$skill" ]] ||
-			die "refusing to write unexpected target: $target_dir"
-		if [[ "$target_dir" == "$source_real" || "$target_dir" == "$source_real"/* ||
-			"$source_real" == "$target_dir"/* ]]; then
-			die "refusing target that overlaps the skill source: $target_dir"
-		fi
-
-		if [[ "$MODE" == "link" ]]; then
-			check_skill_tree_safe "$source_real" 0
-			if ((VERIFY)); then
-				check_verified_git_tree_safe "$skill"
-			fi
-		elif ((VERIFY)); then
-			check_verified_git_tree_safe "$skill"
-		else
-			check_skill_tree_safe "$source_real" 1
 		fi
 
 		if [[ -e "$target_dir" || -L "$target_dir" ]]; then
 			if [[ "$MODE" == "link" && -L "$target_dir" &&
-				"$(readlink -- "$target_dir")" == "$source_real" ]]; then
+				"$(readlink -- "$target_dir")" == "$source_dir" ]]; then
 				info "  = $skill (already linked)"
-				PLAN_ACTIONS+=("skip")
 			elif ((FORCE == 0)); then
 				warn "$skill already exists at $target_dir; use --force to replace it"
 				conflicts=$((conflicts + 1))
-				PLAN_ACTIONS+=("conflict")
 			else
 				info "  ~ $skill (replacing existing; backup kept)"
 				needs_backup=1
-				PLAN_ACTIONS+=("install")
+				INSTALL_SKILLS+=("$skill")
+				INSTALL_SOURCES+=("$source_dir")
+				INSTALL_TARGETS+=("$target_dir")
 			fi
 		else
 			info "  + $skill"
-			PLAN_ACTIONS+=("install")
+			INSTALL_SKILLS+=("$skill")
+			INSTALL_SOURCES+=("$source_dir")
+			INSTALL_TARGETS+=("$target_dir")
 		fi
-		PLAN_SOURCES+=("$source_real")
-		PLAN_TARGETS+=("$target_dir")
 	done
 
 	if ((DRY_RUN)); then
 		info ""
-		info "Dry run complete. Re-run without --dry-run to install."
+		if ((conflicts > 0)); then
+			warn "Dry run found $conflicts conflict(s); re-run with --force (without --dry-run) to replace existing skills."
+		else
+			info "Dry run complete. Re-run without --dry-run to install."
+		fi
 		exit 0
 	fi
 
@@ -977,24 +1061,41 @@ skills_hub_install_main() {
 		fi
 	fi
 
-	local need_any_write=0
-	local action=""
-	for action in "${PLAN_ACTIONS[@]}"; do
-		if [[ "$action" == "install" ]]; then
-			need_any_write=1
-			break
-		fi
-	done
-	if ((need_any_write)); then
+	if ((${#INSTALL_SKILLS[@]} > 0)); then
+		check_write_tools
 		mkdir -p -- "$TARGET_ROOT"
-	fi
+		local root_now=""
+		root_now="$(canonicalize "$TARGET_ROOT")" ||
+			die "could not re-canonicalize target: $TARGET_ROOT"
+		[[ "$root_now" == "$TARGET_ROOT" && ! -L "$TARGET_ROOT" ]] ||
+			die "target root changed or became a symlink during install: $TARGET_ROOT"
 
-	local i=0
-	for i in "${!SELECTED[@]}"; do
-		if [[ "${PLAN_ACTIONS[$i]}" == "install" ]]; then
-			install_skill "${SELECTED[$i]}" "${PLAN_SOURCES[$i]}" "${PLAN_TARGETS[$i]}"
+		local staging_root=""
+		staging_root="$(mktemp -d -- "$TARGET_ROOT/.skills-hub-tmp.XXXXXX")" ||
+			die "could not create a staging directory in $TARGET_ROOT"
+		STAGING="$staging_root"
+
+		local i=0
+		if [[ "$MODE" == "link" ]]; then
+			for i in "${!INSTALL_SKILLS[@]}"; do
+				ln -s -- "${INSTALL_SOURCES[$i]}" "$staging_root/${INSTALL_SKILLS[$i]}"
+			done
+		elif ((VERIFY)); then
+			stage_verified_skills_from_git "$staging_root" "${INSTALL_SKILLS[@]}"
+		else
+			stage_copy_trees "$staging_root" "${INSTALL_SKILLS[@]}"
 		fi
-	done
+
+		for i in "${!INSTALL_SKILLS[@]}"; do
+			commit_staged_skill \
+				"${INSTALL_SKILLS[$i]}" \
+				"$staging_root/${INSTALL_SKILLS[$i]}" \
+				"${INSTALL_TARGETS[$i]}"
+		done
+
+		rm -rf -- "$staging_root" || warn "could not remove staging directory: $staging_root"
+		STAGING=""
+	fi
 
 	info ""
 	info "$RELOAD_HINT"

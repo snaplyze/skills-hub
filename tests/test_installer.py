@@ -833,7 +833,9 @@ def test_copy_handles_dash_filename_and_extended_secret_exclusions(
         (skill / secret_dir).mkdir()
         (skill / secret_dir / "cfg.json").write_text("{}\n", encoding="utf-8")
 
-    for idx, installer in enumerate((workspace.antigravity_installer, workspace.opencode_installer)):
+    for idx, installer in enumerate(
+        (workspace.antigravity_installer, workspace.opencode_installer)
+    ):
         target = workspace.target / f"run-{idx}"
         res = run_installer(
             workspace, "--target", str(target), "frontend-design", installer=installer
@@ -989,7 +991,7 @@ def test_xdg_default_target_works_without_home_and_yaml_edge_cases(
     write_skill(
         workspace.repo,
         "plain-comment",
-        "---\nname: pc\ndescription: hello\n  # pure comment\n  world\nlicense: MIT\n---\n# PC\n",
+        "---\nname: pc\ndescription: hello\n  world # trailing comment\nlicense: MIT\n---\n# PC\n",
     )
     listed = run_installer(workspace, "--list")
     assert listed.returncode == 0, listed.stderr
@@ -997,6 +999,7 @@ def test_xdg_default_target_works_without_home_and_yaml_edge_cases(
     assert "    literal __SQ__ and 'quote'\n" in listed.stdout
     assert "    hello world\n" in listed.stdout
     assert "    after blank\n" in listed.stdout
+    assert "# trailing comment" not in listed.stdout
     assert "# pure comment" not in listed.stdout
 
     # XDG_CONFIG_HOME without HOME must still resolve default target for OpenCode.
@@ -1113,3 +1116,240 @@ def test_antigravity_installer_default_target_reload_verify_and_lib_guard(
         sym_res = run_installer(workspace, "--dry-run", installer=installer)
         assert sym_res.returncode != 0
         assert "missing or symlinked" in sym_res.stderr
+
+
+def test_aud48_ref_empty_relative_xdg_home_non_xdg_and_dry_run_conflicts(
+    workspace: SimpleNamespace, tmp_path: Path
+) -> None:
+    # 1. --ref "" must fail closed even on a cleanly tagged checkout.
+    make_git_checkout(workspace, tag="v1.2.3")
+    empty_ref = run_installer(workspace, "--verify", "--ref", "", "--target", str(workspace.target))
+    assert empty_ref.returncode != 0
+    assert "invalid --ref tag" in empty_ref.stderr
+    assert not workspace.target.exists()
+
+    # 2. Relative XDG_CONFIG_HOME and relative HOME must fail closed.
+    rel_xdg_env = workspace.env.copy()
+    rel_xdg_env["XDG_CONFIG_HOME"] = "relative/xdg"
+    rel_xdg = run_installer(workspace, "frontend-design", env=rel_xdg_env)
+    assert rel_xdg.returncode != 0
+    assert "XDG_CONFIG_HOME must be an absolute path" in rel_xdg.stderr
+
+    rel_home_env = workspace.env.copy()
+    rel_home_env["HOME"] = "relative/home"
+    for installer in (workspace.antigravity_installer, workspace.opencode_installer):
+        rel_home = run_installer(
+            workspace, "frontend-design", env=rel_home_env, installer=installer
+        )
+        assert rel_home.returncode != 0
+        assert "HOME must be an absolute path" in rel_home.stderr
+
+    # Relative HOME must also be rejected when expanding ~ or ~/ in --target.
+    for tilde_target in ("~", "~/skills"):
+        rel_tilde = run_installer(
+            workspace, "--target", tilde_target, "frontend-design", env=rel_home_env
+        )
+        assert rel_tilde.returncode != 0
+        assert "HOME must be an absolute path" in rel_tilde.stderr
+
+    # Concurrent target creation with FORCE=0 must fail closed without creating backups.
+    conc_target = tmp_path / "concurrent-target"
+    conc_existing = conc_target / "frontend-design"
+    conc_existing.mkdir(parents=True)
+    (conc_existing / "marker.txt").write_text("existing\n", encoding="utf-8")
+    conc_staged = conc_target / ".staged-skill"
+    conc_staged.mkdir()
+    (conc_staged / "SKILL.md").write_text(FRONTEND_SKILL, encoding="utf-8")
+    conc_cmd = (
+        f'source "{workspace.repo / "install" / "lib.sh"}" && '
+        f'TARGET_ROOT="{conc_target}" && FORCE=0 && '
+        f'commit_staged_skill "frontend-design" "{conc_staged}" "{conc_existing}"'
+    )
+    conc_res = subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", conc_cmd],
+        env=workspace.env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert conc_res.returncode != 0
+    assert "created concurrently" in conc_res.stderr
+    assert (conc_existing / "marker.txt").read_text(encoding="utf-8") == "existing\n"
+    assert not (conc_target / ".skills-hub-backups").exists()
+
+    # 3. OpenCode non-XDG default target ($HOME/.config/opencode/skills) and both-unset failure.
+    non_xdg = run_installer(
+        workspace, "frontend-design", env=workspace.env, installer=workspace.opencode_installer
+    )
+    assert non_xdg.returncode == 0, non_xdg.stderr
+    assert (
+        workspace.home / ".config" / "opencode" / "skills" / "frontend-design" / "SKILL.md"
+    ).is_file()
+
+    no_env = workspace.env.copy()
+    no_env.pop("HOME", None)
+    no_env.pop("XDG_CONFIG_HOME", None)
+    both_unset = run_installer(
+        workspace, "frontend-design", env=no_env, installer=workspace.opencode_installer
+    )
+    assert both_unset.returncode != 0
+    assert "HOME is not set; pass --target DIR or set XDG_CONFIG_HOME" in both_unset.stderr
+
+    # 4. --dry-run with existing conflicts must warn instead of printing clean install hint.
+    first = run_installer(workspace, "--target", str(workspace.target), "frontend-design")
+    assert first.returncode == 0, first.stderr
+    dry_conflict = run_installer(
+        workspace, "--dry-run", "--target", str(workspace.target), "frontend-design"
+    )
+    assert dry_conflict.returncode == 0
+    assert "Dry run found 1 conflict(s)" in dry_conflict.stderr
+    assert "Re-run without --dry-run to install." not in dry_conflict.stdout
+
+
+def test_aud48_list_symlinks_verify_and_read_description_yaml_parity(
+    workspace: SimpleNamespace, tmp_path: Path
+) -> None:
+    # 1. YAML parity cases in read_description.
+    write_skill(
+        workspace.repo,
+        "colon-key",
+        "---\nname: ck\ndescription:foo: bar\nlicense: MIT\n---\n# CK\n",
+    )
+    write_skill(
+        workspace.repo,
+        "quoted-key-dq",
+        '---\nname: qd\n"description": "Path a\\/b \\\n  joined"\nlicense: MIT\n---\n# QD\n',
+    )
+    write_skill(
+        workspace.repo,
+        "quoted-key-sq",
+        "---\nname: qs\n'description': 'Single quoted key value'\nlicense: MIT\n---\n# QS\n",
+    )
+    write_skill(
+        workspace.repo,
+        "unclosed-fm",
+        "---\nname: uf\ndescription: must not be read from unclosed frontmatter\n# UF\n",
+    )
+    write_skill(
+        workspace.repo,
+        "null-unquoted",
+        "---\nname: nu\ndescription: null\nlicense: MIT\n---\n# NU\n",
+    )
+    write_skill(
+        workspace.repo,
+        "tilde-unquoted",
+        "---\nname: tu\ndescription: ~\nlicense: MIT\n---\n# TU\n",
+    )
+    write_skill(
+        workspace.repo,
+        "null-quoted",
+        '---\nname: nq\ndescription: "null"\nlicense: MIT\n---\n# NQ\n',
+    )
+
+    listed = run_installer(workspace, "--list", installer=workspace.antigravity_installer)
+    assert listed.returncode == 0, listed.stderr
+    assert "foo: bar" not in listed.stdout
+    assert "    Path a/b joined\n" in listed.stdout
+    assert "    Single quoted key value\n" in listed.stdout
+    assert "must not be read" not in listed.stdout
+    assert "    null\n" in listed.stdout  # from null-quoted
+    # Unquoted null, tilde, colon-key, and unclosed-fm must warn as missing description on dry-run.
+    for empty_skill in ("colon-key", "unclosed-fm", "null-unquoted", "tilde-unquoted"):
+        dry = run_installer(
+            workspace,
+            "--dry-run",
+            "--target",
+            str(workspace.target),
+            empty_skill,
+            installer=workspace.antigravity_installer,
+        )
+        assert dry.returncode == 0, dry.stderr
+        assert f"{empty_skill} has no description" in dry.stderr
+
+    # 2. --list refuses symlinked SKILL.md and symlinked skill dir.
+    outside_dir = tmp_path / "outside-skill"
+    outside_dir.mkdir()
+    (outside_dir / "SKILL.md").write_text("---\ndescription: leaked dir\n---\n", encoding="utf-8")
+    linked_skill = workspace.repo / "skills" / "linked-skill"
+    linked_skill.symlink_to(outside_dir)
+    bad_list_dir = run_installer(workspace, "--list")
+    assert bad_list_dir.returncode != 0
+    assert "symlinked skill source" in bad_list_dir.stderr
+    assert "leaked dir" not in bad_list_dir.stdout
+    linked_skill.unlink()
+
+    outside = tmp_path / "outside.md"
+    outside.write_text("---\ndescription: leaked\n---\n", encoding="utf-8")
+    target_skill_md = workspace.repo / "skills" / "other-skill" / "SKILL.md"
+    target_skill_md.unlink()
+    target_skill_md.symlink_to(outside)
+
+    bad_list_md = run_installer(workspace, "--list")
+    assert bad_list_md.returncode != 0
+    assert "symlink inside skill source" in bad_list_md.stderr
+    assert "leaked" not in bad_list_md.stdout
+
+    # Pre-flight must reject symlinks BEFORE calling read_description on both explicit and --all.
+    # Point SKILL.md to a dangling symlink, and also test a description-less SKILL.md with a
+    # sibling symlink so read_description would emit "has no description" if called too early.
+    target_skill_md.unlink()
+    target_skill_md.symlink_to(tmp_path / "dangling-skill.md")
+    for args in (
+        ("--dry-run", "--target", str(workspace.target), "other-skill"),
+        ("--dry-run", "--all", "--target", str(workspace.target)),
+    ):
+        bad_dry = run_installer(workspace, *args)
+        assert bad_dry.returncode != 0
+        assert "symlink inside skill source" in bad_dry.stderr
+        assert "has no description" not in bad_dry.stderr
+
+    target_skill_md.unlink()
+    target_skill_md.write_text(
+        "---\nname: other-skill\nlicense: MIT\n---\n# No desc\n", encoding="utf-8"
+    )
+    (workspace.repo / "skills" / "other-skill" / "leak.txt").symlink_to(outside)
+    for args in (
+        ("--dry-run", "--target", str(workspace.target), "other-skill"),
+        ("--dry-run", "--all", "--target", str(workspace.target)),
+    ):
+        bad_preflight = run_installer(workspace, *args)
+        assert bad_preflight.returncode != 0
+        assert "symlink inside skill source" in bad_preflight.stderr
+        assert "has no description" not in bad_preflight.stderr
+    (workspace.repo / "skills" / "other-skill" / "leak.txt").unlink()
+
+    # 3. --list --verify rejects a tracked symlink in the verified git tree.
+    make_git_checkout(workspace, tag="v1.2.3")
+    (workspace.repo / "skills" / "other-skill" / "leak.txt").symlink_to("/etc/hosts")
+    assert run_git(workspace, "add", "-f", "skills/other-skill/leak.txt").returncode == 0
+    assert (
+        run_git(
+            workspace,
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.test",
+            "commit",
+            "-qm",
+            "add-sym",
+        ).returncode
+        == 0
+    )
+    assert (
+        run_git(
+            workspace,
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.test",
+            "tag",
+            "-a",
+            "v1.2.4",
+            "-m",
+            "v1.2.4",
+        ).returncode
+        == 0
+    )
+    bad_list_verify = run_installer(workspace, "--list", "--verify", "--ref", "v1.2.4")
+    assert bad_list_verify.returncode != 0
+    assert "symlink or gitlink inside verified skill source" in bad_list_verify.stderr

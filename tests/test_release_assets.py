@@ -200,6 +200,10 @@ def test_current_tree_archive_contains_all_skills(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     expected = {
         f"skills/{path.parent.name}/SKILL.md" for path in (ROOT / "skills").glob("*/SKILL.md")
+    } | {
+        "install/antigravity.sh",
+        "install/opencode.sh",
+        "install/lib.sh",
     }
     assert expected
     with tarfile.open(archive) as bundle:
