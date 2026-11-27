@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import shlex
 import shutil
 import subprocess
@@ -10,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+
+from tests._helpers import ISOLATED_GIT_CONFIG_ARGS, isolated_git_env
 
 ROOT = Path(__file__).resolve().parents[1]
 SIGNERS = ROOT / "docs" / "release-signing" / "allowed_signers"
@@ -38,20 +39,13 @@ class SignedTagFixture:
     unsigned_tag: str
 
 
-def _isolated_git_env() -> dict[str, str]:
-    env = os.environ.copy()
-    env["GIT_CONFIG_GLOBAL"] = os.devnull
-    env["GIT_CONFIG_NOSYSTEM"] = "1"
-    env["LC_ALL"] = "C"
-    return env
-
-
 def run_git_verify(repo: Path, tag: str, *, signers: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
             "git",
             "-C",
             str(repo),
+            *ISOLATED_GIT_CONFIG_ARGS,
             "-c",
             "gpg.format=ssh",
             "-c",
@@ -60,7 +54,7 @@ def run_git_verify(repo: Path, tag: str, *, signers: Path) -> subprocess.Complet
             "--",
             f"refs/tags/{tag}",
         ],
-        env=_isolated_git_env(),
+        env=isolated_git_env(),
         capture_output=True,
         text=True,
         timeout=30,
@@ -72,8 +66,17 @@ def repo_release_tag() -> str | None:
     if not (ROOT / ".git").exists():
         return None
     result = subprocess.run(
-        ["git", "-C", str(ROOT), "tag", "--list", "v*", "--sort=-v:refname"],
-        env=_isolated_git_env(),
+        [
+            "git",
+            "-C",
+            str(ROOT),
+            *ISOLATED_GIT_CONFIG_ARGS,
+            "tag",
+            "--list",
+            "v*",
+            "--sort=-v:refname",
+        ],
+        env=isolated_git_env(),
         capture_output=True,
         text=True,
         timeout=10,
@@ -126,19 +129,28 @@ def signed_tag_fixture(tmp_path_factory: pytest.TempPathFactory) -> SignedTagFix
     tampered_signers = base / "tampered_signers"
     tampered_signers.write_text(f"release@snaplyze.me ssh-ed25519 {wrong_pub}\n", encoding="utf-8")
 
-    env = _isolated_git_env()
+    home = base / "home"
+    home.mkdir()
+    env = isolated_git_env(home=home)
     git_identity = [
+        *ISOLATED_GIT_CONFIG_ARGS,
         "-c",
         "user.name=Release Test",
         "-c",
         "user.email=release@snaplyze.me",
-        "-c",
-        "commit.gpgsign=false",
-        "-c",
-        "tag.gpgsign=false",
     ]
-    subprocess.run(["git", "-C", str(repo), "init", "-q"], env=env, check=True, timeout=10)
-    subprocess.run(["git", "-C", str(repo), "add", "README.md"], env=env, check=True, timeout=10)
+    subprocess.run(
+        ["git", "-C", str(repo), *ISOLATED_GIT_CONFIG_ARGS, "init", "-q"],
+        env=env,
+        check=True,
+        timeout=10,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), *ISOLATED_GIT_CONFIG_ARGS, "add", "README.md"],
+        env=env,
+        check=True,
+        timeout=10,
+    )
     subprocess.run(
         ["git", "-C", str(repo), *git_identity, "commit", "-qm", "initial"],
         env=env,
@@ -257,12 +269,20 @@ def test_tampered_trust_and_unsigned_tag_fail(signed_tag_fixture: SignedTagFixtu
 def test_tag_object_replay_and_direct_commit_binding(
     signed_tag_fixture: SignedTagFixture,
 ) -> None:
-    env = _isolated_git_env()
+    env = isolated_git_env()
     repo = signed_tag_fixture.repo
 
     # Verify the legitimate signed tag binds its embedded tag header and targets a commit.
     embedded = subprocess.run(
-        ["git", "-C", str(repo), "for-each-ref", "--format=%(tag)", "refs/tags/v1.2.3"],
+        [
+            "git",
+            "-C",
+            str(repo),
+            *ISOLATED_GIT_CONFIG_ARGS,
+            "for-each-ref",
+            "--format=%(tag)",
+            "refs/tags/v1.2.3",
+        ],
         env=env,
         capture_output=True,
         text=True,
@@ -272,7 +292,7 @@ def test_tag_object_replay_and_direct_commit_binding(
     assert embedded == "v1.2.3"
 
     raw_tag = subprocess.run(
-        ["git", "-C", str(repo), "cat-file", "tag", "refs/tags/v1.2.3"],
+        ["git", "-C", str(repo), *ISOLATED_GIT_CONFIG_ARGS, "cat-file", "tag", "refs/tags/v1.2.3"],
         env=env,
         capture_output=True,
         text=True,
@@ -290,12 +310,11 @@ def test_tag_object_replay_and_direct_commit_binding(
             "git",
             "-C",
             str(repo),
+            *ISOLATED_GIT_CONFIG_ARGS,
             "-c",
             "user.name=Release Test",
             "-c",
             "user.email=release@snaplyze.me",
-            "-c",
-            "tag.gpgsign=false",
             "tag",
             "-a",
             "v1.2.5",
@@ -309,7 +328,15 @@ def test_tag_object_replay_and_direct_commit_binding(
     )
     try:
         nested_raw = subprocess.run(
-            ["git", "-C", str(repo), "cat-file", "tag", "refs/tags/v1.2.5"],
+            [
+                "git",
+                "-C",
+                str(repo),
+                *ISOLATED_GIT_CONFIG_ARGS,
+                "cat-file",
+                "tag",
+                "refs/tags/v1.2.5",
+            ],
             env=env,
             capture_output=True,
             text=True,
@@ -323,7 +350,15 @@ def test_tag_object_replay_and_direct_commit_binding(
         assert nested_type == "tag"
     finally:
         subprocess.run(
-            ["git", "-C", str(repo), "update-ref", "-d", "refs/tags/v1.2.5"],
+            [
+                "git",
+                "-C",
+                str(repo),
+                *ISOLATED_GIT_CONFIG_ARGS,
+                "update-ref",
+                "-d",
+                "refs/tags/v1.2.5",
+            ],
             env=env,
             check=False,
             timeout=10,
@@ -332,7 +367,7 @@ def test_tag_object_replay_and_direct_commit_binding(
     # Replaying the signed tag OID under a different ref passes raw git verify-tag,
     # proving why release.yml must check %(tag) == $TAG.
     tag_oid = subprocess.run(
-        ["git", "-C", str(repo), "rev-parse", "refs/tags/v1.2.3"],
+        ["git", "-C", str(repo), *ISOLATED_GIT_CONFIG_ARGS, "rev-parse", "refs/tags/v1.2.3"],
         env=env,
         capture_output=True,
         text=True,
@@ -340,7 +375,15 @@ def test_tag_object_replay_and_direct_commit_binding(
         timeout=10,
     ).stdout.strip()
     subprocess.run(
-        ["git", "-C", str(repo), "update-ref", "refs/tags/v1.9.9", tag_oid],
+        [
+            "git",
+            "-C",
+            str(repo),
+            *ISOLATED_GIT_CONFIG_ARGS,
+            "update-ref",
+            "refs/tags/v1.9.9",
+            tag_oid,
+        ],
         env=env,
         check=True,
         timeout=10,
@@ -349,7 +392,15 @@ def test_tag_object_replay_and_direct_commit_binding(
         replayed_verify = run_git_verify(repo, "v1.9.9", signers=signed_tag_fixture.good_signers)
         assert replayed_verify.returncode == 0
         replayed_embedded = subprocess.run(
-            ["git", "-C", str(repo), "for-each-ref", "--format=%(tag)", "refs/tags/v1.9.9"],
+            [
+                "git",
+                "-C",
+                str(repo),
+                *ISOLATED_GIT_CONFIG_ARGS,
+                "for-each-ref",
+                "--format=%(tag)",
+                "refs/tags/v1.9.9",
+            ],
             env=env,
             capture_output=True,
             text=True,
@@ -360,7 +411,15 @@ def test_tag_object_replay_and_direct_commit_binding(
         assert replayed_embedded != "v1.9.9"
     finally:
         subprocess.run(
-            ["git", "-C", str(repo), "update-ref", "-d", "refs/tags/v1.9.9"],
+            [
+                "git",
+                "-C",
+                str(repo),
+                *ISOLATED_GIT_CONFIG_ARGS,
+                "update-ref",
+                "-d",
+                "refs/tags/v1.9.9",
+            ],
             env=env,
             check=False,
             timeout=10,

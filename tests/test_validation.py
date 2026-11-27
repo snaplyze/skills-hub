@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import atexit
+import io
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import pytest
@@ -23,10 +27,19 @@ IGNORE = shutil.ignore_patterns(
     ".venv",
     "venv",
     "node_modules",
+    ".gemini",
+    ".agents",
+    ".opencode",
+    ".claude",
+    ".env",
+    ".env.*",
+    "secrets",
     "*.pyc",
     "tests",
 )
 _TEMPLATE_DIR: Path | None = None
+_FRONTEND_SKILL_TEMPLATE: Path | None = None
+_CONTRAST_MODULE: object | None = None
 
 
 def _clean_template() -> Path:
@@ -40,15 +53,51 @@ def _clean_template() -> Path:
     return _TEMPLATE_DIR
 
 
+def _frontend_skill_template() -> Path:
+    global _FRONTEND_SKILL_TEMPLATE
+    if _FRONTEND_SKILL_TEMPLATE is None:
+        base = Path(tempfile.mkdtemp(prefix="skills-hub-fe-tpl-"))
+        atexit.register(shutil.rmtree, base, True)
+        dest = base / "frontend-design"
+        shutil.copytree(REPO_ROOT / "skills" / "frontend-design", dest, ignore=IGNORE)
+        _FRONTEND_SKILL_TEMPLATE = dest
+    return _FRONTEND_SKILL_TEMPLATE
+
+
+def _contrast_module():
+    global _CONTRAST_MODULE
+    if _CONTRAST_MODULE is None:
+        _CONTRAST_MODULE = validate.load_contrast_module(
+            REPO_ROOT / "skills" / "frontend-design" / "scripts" / "contrast.py"
+        )
+    return _CONTRAST_MODULE
+
+
 def copy_repo(tmp_path: Path) -> Path:
     destination = tmp_path / "repo"
     shutil.copytree(_clean_template(), destination)
     return destination
 
 
-def run_validate(repo: Path) -> subprocess.CompletedProcess[str]:
+def copy_frontend_skill(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    shutil.copytree(_frontend_skill_template(), repo / "skills" / "frontend-design")
+    return repo
+
+
+def copy_contrast_assets(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    assets = repo / "skills" / "frontend-design" / "assets"
+    assets.mkdir(parents=True)
+    src = REPO_ROOT / "skills" / "frontend-design" / "assets"
+    shutil.copy2(src / "token-contrast-pairs.json", assets / "token-contrast-pairs.json")
+    shutil.copy2(src / "tokens.css", assets / "tokens.css")
+    return repo
+
+
+def run_validate(repo: Path, *extra_args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "scripts/validate.py"],
+        [sys.executable, "scripts/validate.py", *extra_args],
         cwd=repo,
         capture_output=True,
         text=True,
@@ -57,14 +106,43 @@ def run_validate(repo: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def assert_validation_passes(repo: Path) -> None:
-    _, errors = validate.validate_repo(repo)
+def assert_skill_passes(repo: Path, skill_id: str = "frontend-design") -> None:
+    errors: list[str] = []
+    validate.check_skill(repo / "skills" / skill_id, errors, root=repo)
     assert not errors, "\n".join(errors)
 
 
-def assert_validation_fails(repo: Path, *needles: str) -> None:
-    _, errors = validate.validate_repo(repo)
-    assert errors, f"expected validation failure matching {needles!r}, got 0 errors"
+def assert_skill_fails(repo: Path, *needles: str, skill_id: str = "frontend-design") -> None:
+    errors: list[str] = []
+    validate.check_skill(repo / "skills" / skill_id, errors, root=repo)
+    assert errors, f"expected skill validation failure matching {needles!r}, got 0 errors"
+    joined = "\n".join(errors)
+    for needle in needles:
+        assert needle in joined, joined
+
+
+def assert_contrast_fixture_passes(repo: Path) -> None:
+    errors: list[str] = []
+    validate.check_contrast_fixture(
+        fixture_path(repo),
+        repo / "skills" / "frontend-design" / "assets" / "tokens.css",
+        _contrast_module(),
+        errors,
+        root=repo,
+    )
+    assert not errors, "\n".join(errors)
+
+
+def assert_contrast_fixture_fails(repo: Path, *needles: str) -> None:
+    errors: list[str] = []
+    validate.check_contrast_fixture(
+        fixture_path(repo),
+        repo / "skills" / "frontend-design" / "assets" / "tokens.css",
+        _contrast_module(),
+        errors,
+        root=repo,
+    )
+    assert errors, f"expected contrast fixture failure matching {needles!r}, got 0 errors"
     joined = "\n".join(errors)
     for needle in needles:
         assert needle in joined, joined
@@ -140,7 +218,7 @@ def test_cli_exits_one_on_validation_error(tmp_path: Path) -> None:
 
 
 def test_skill_link_formats_pass(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     relax_reading_budget(repo)
     append_to_skill(
         repo,
@@ -151,11 +229,13 @@ def test_skill_link_formats_pass(tmp_path: Path) -> None:
         "\n[accessibility]: references/accessibility.md#testing-protocol\n"
         "[collapsed]: references/accessibility.md\n",
     )
+    assert_skill_passes(repo)
+
     readme = repo / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8") + "\n[root](/README.md)\n", encoding="utf-8"
-    )
-    assert_validation_passes(repo)
+    readme.write_text("# Root\n\n[root](/README.md)\n", encoding="utf-8")
+    errs: list[str] = []
+    validate.check_markdown_links(readme, errs, root=repo)
+    assert not errs, errs
 
 
 @pytest.mark.parametrize(
@@ -188,14 +268,14 @@ def test_skill_link_formats_pass(tmp_path: Path) -> None:
     ],
 )
 def test_skill_link_mutations_fail(tmp_path: Path, text: str, needle: str) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     relax_reading_budget(repo)
     append_to_skill(repo, text)
-    assert_validation_fails(repo, needle)
+    assert_skill_fails(repo, needle)
 
 
 def test_duplicate_and_setext_heading_slugs(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     relax_reading_budget(repo)
     append_to_skill(
         repo,
@@ -207,16 +287,16 @@ def test_duplicate_and_setext_heading_slugs(tmp_path: Path) -> None:
         "--------------\n"
         "[setext](#setext-heading)\n",
     )
-    assert_validation_passes(repo)
+    assert_skill_passes(repo)
 
     append_to_skill(repo, "\n[bad duplicate](#duplicate-check-2)\n")
-    assert_validation_fails(repo, "missing anchor")
+    assert_skill_fails(repo, "missing anchor")
 
 
 def test_empty_skill_body_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
-    skill = repo / "skills" / "frontend-design" / "SKILL.md"
-    skill.write_text(
+    skill = tmp_path / "skills" / "frontend-design"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
         "---\n"
         "name: frontend-design\n"
         "description: A deliberately long description for the empty-body mutation.\n"
@@ -224,7 +304,7 @@ def test_empty_skill_body_fails(tmp_path: Path) -> None:
         "---\n",
         encoding="utf-8",
     )
-    assert_validation_fails(repo, "body is empty")
+    assert_skill_fails(tmp_path, "body is empty")
 
 
 @pytest.mark.parametrize(
@@ -261,62 +341,87 @@ def test_frontmatter_mutations_fail(
     mutation,
     needle: str,
 ) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     skill = repo / "skills" / "frontend-design" / "SKILL.md"
     skill.write_text(mutation(skill.read_text(encoding="utf-8")), encoding="utf-8")
-    assert_validation_fails(repo, needle)
+    assert_skill_fails(repo, needle)
 
 
 def test_agents_and_pull_request_template_links_are_checked(tmp_path: Path) -> None:
-    agents_repo = copy_repo(tmp_path / "agents")
+    agents_repo = tmp_path / "agents"
+    agents_repo.mkdir()
+    for name in (
+        "README.md",
+        "CONTRIBUTING.md",
+        "CODE_OF_CONDUCT.md",
+        "SECURITY.md",
+        "CHANGELOG.md",
+        "GOVERNANCE.md",
+        "THIRD_PARTY_NOTICES.md",
+    ):
+        (agents_repo / name).write_text("# Doc\n", encoding="utf-8")
     agents_file = agents_repo / "AGENTS.md"
     agents_file.write_text(
-        agents_file.read_text(encoding="utf-8") + "\n[broken](/docs/does-not-exist.md)\n",
+        (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        + "\n[broken](/docs/does-not-exist.md)\n",
         encoding="utf-8",
     )
-    assert_validation_fails(agents_repo, "broken link")
+    root_errs: list[str] = []
+    validate.check_root_docs(root_errs, root=agents_repo)
+    assert any("AGENTS.md: broken link -> /docs/does-not-exist.md" in e for e in root_errs), (
+        root_errs
+    )
 
-    template_repo = copy_repo(tmp_path / "template")
+    template_repo = tmp_path / "template"
+    (template_repo / ".github").mkdir(parents=True)
+    shutil.copy2(REPO_ROOT / "CONTRIBUTING.md", template_repo / "CONTRIBUTING.md")
     template = template_repo / ".github" / "PULL_REQUEST_TEMPLATE.md"
+    shutil.copy2(REPO_ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md", template)
+    ok_errs: list[str] = []
+    validate.check_github_docs(ok_errs, root=template_repo)
+    assert ok_errs == []
+
     template.write_text(
         template.read_text(encoding="utf-8").replace("../CONTRIBUTING.md", "../DOES_NOT_EXIST.md"),
         encoding="utf-8",
     )
-    assert_validation_fails(template_repo, "broken link")
+    gh_errs: list[str] = []
+    validate.check_github_docs(gh_errs, root=template_repo)
+    assert any("broken link" in e for e in gh_errs), gh_errs
 
 
 def test_external_links_are_skipped(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     relax_reading_budget(repo)
     append_to_skill(
         repo,
         "\n\n[external](https://example.invalid/this-page-does-not-exist)\n",
     )
-    assert_validation_passes(repo)
+    assert_skill_passes(repo)
 
 
 def test_fixture_shrink_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     data = load_fixture(repo)
     data["pairs"].pop()
     save_fixture(repo, data)
-    assert_validation_fails(repo, "expected 64 pairs")
+    assert_contrast_fixture_fails(repo, "expected 64 pairs")
 
 
 def test_fixture_theme_counts_fail(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     data = load_fixture(repo)
     data["pairs"][0]["label"] = "dark: theme count probe"
     save_fixture(repo, data)
-    assert_validation_fails(repo, "expected 32 light pairs")
+    assert_contrast_fixture_fails(repo, "expected 32 light pairs")
 
 
 def test_fixture_duplicate_label_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     data = load_fixture(repo)
     data["pairs"][1]["label"] = data["pairs"][0]["label"]
     save_fixture(repo, data)
-    assert_validation_fails(repo, "duplicates label")
+    assert_contrast_fixture_fails(repo, "duplicates label")
 
 
 @pytest.mark.parametrize(
@@ -331,27 +436,28 @@ def test_fixture_shape_mutations_fail(
     mutation,
     needle: str,
 ) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     data = load_fixture(repo)
     mutation(data["pairs"][0])
     save_fixture(repo, data)
-    assert_validation_fails(repo, needle)
+    assert_contrast_fixture_fails(repo, needle)
 
 
 def test_missing_contrast_script_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
-    (repo / "skills" / "frontend-design" / "scripts" / "contrast.py").unlink()
-    assert_validation_fails(repo, "missing contrast checker")
+    repo = copy_contrast_assets(tmp_path)
+    errs: list[str] = []
+    validate.check_contrast(errs, root=repo)
+    assert any("missing contrast checker" in e for e in errs), errs
 
 
 def test_new_semantic_token_without_coverage_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     tokens = repo / "skills" / "frontend-design" / "assets" / "tokens.css"
     tokens.write_text(
         tokens.read_text(encoding="utf-8") + "\n:root {\n  --color-mystery: var(--brand-500);\n}\n",
         encoding="utf-8",
     )
-    assert_validation_fails(repo, "--color-mystery", "without contrast coverage")
+    assert_contrast_fixture_fails(repo, "--color-mystery", "without contrast coverage")
 
 
 @pytest.mark.parametrize(
@@ -385,16 +491,16 @@ def test_semantic_combination_regressions_fail(
     new: str,
     needle: str,
 ) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     tokens = repo / "skills" / "frontend-design" / "assets" / "tokens.css"
     original = tokens.read_text(encoding="utf-8")
     assert old in original
     tokens.write_text(original.replace(old, new, 1), encoding="utf-8")
-    assert_validation_fails(repo, needle)
+    assert_contrast_fixture_fails(repo, needle)
 
 
 def test_new_semantic_token_with_coverage_passes(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     tokens = repo / "skills" / "frontend-design" / "assets" / "tokens.css"
     tokens.write_text(
         tokens.read_text(encoding="utf-8")
@@ -425,15 +531,15 @@ def test_new_semantic_token_with_coverage_passes(tmp_path: Path) -> None:
         "dark: mystery / canvas",
     ]
     save_fixture(repo, data)
-    assert_validation_passes(repo)
+    assert_contrast_fixture_passes(repo)
 
 
 def test_single_theme_coverage_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     data = load_fixture(repo)
     data["coverage"]["--color-surface-raised"] = ["dark: text / surface-raised"]
     save_fixture(repo, data)
-    assert_validation_fails(repo, "missing light theme coverage")
+    assert_contrast_fixture_fails(repo, "missing light theme coverage")
 
 
 def test_string_aware_css_parser_and_var_fallback() -> None:
@@ -461,7 +567,7 @@ def test_string_aware_css_parser_and_var_fallback() -> None:
 
 
 def test_token_literal_parity_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     tokens = repo / "skills" / "frontend-design" / "assets" / "tokens.css"
     original = tokens.read_text(encoding="utf-8")
     assert "--neutral-50: #f7f6f2;" in original
@@ -469,11 +575,11 @@ def test_token_literal_parity_fails(tmp_path: Path) -> None:
         original.replace("--neutral-50: #f7f6f2;", "--neutral-50: #000000;", 1),
         encoding="utf-8",
     )
-    assert_validation_fails(repo, "does not match --color-canvas")
+    assert_contrast_fixture_fails(repo, "does not match --color-canvas")
 
 
 def test_new_semantic_token_with_unrelated_coverage_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     tokens = repo / "skills" / "frontend-design" / "assets" / "tokens.css"
     tokens.write_text(
         tokens.read_text(encoding="utf-8")
@@ -483,15 +589,15 @@ def test_new_semantic_token_with_unrelated_coverage_fails(tmp_path: Path) -> Non
     data = load_fixture(repo)
     data["coverage"]["--color-mystery"] = ["light: text / canvas"]
     save_fixture(repo, data)
-    assert_validation_fails(repo, "does not test --color-mystery")
+    assert_contrast_fixture_fails(repo, "does not test --color-mystery")
 
 
 def test_missing_coverage_mapping_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     data = load_fixture(repo)
     data.pop("coverage")
     save_fixture(repo, data)
-    assert_validation_fails(repo, "needs a 'coverage' mapping")
+    assert_contrast_fixture_fails(repo, "needs a 'coverage' mapping")
 
 
 def write_simple_skill(
@@ -500,7 +606,7 @@ def write_simple_skill(
     body: str = "# Simple\n\nKeep this skill small.\n",
 ) -> Path:
     skill = repo / "skills" / skill_id
-    skill.mkdir()
+    skill.mkdir(parents=True, exist_ok=True)
     (skill / "SKILL.md").write_text(
         "---\n"
         f"name: {skill_id}\n"
@@ -515,34 +621,31 @@ def write_simple_skill(
 
 
 def test_simple_skill_without_manifest_passes(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
-    write_simple_skill(repo)
-    assert_validation_passes(repo)
+    write_simple_skill(tmp_path)
+    assert_skill_passes(tmp_path, "simple-skill")
 
 
 def test_simple_skill_oversize_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
-    write_simple_skill(repo, body="#" + ("x" * 32769))
-    assert_validation_fails(repo, "hard limit is 32768 B")
+    write_simple_skill(tmp_path, body="#" + ("x" * 32769))
+    assert_skill_fails(tmp_path, "hard limit is 32768 B", skill_id="simple-skill")
 
 
 def test_simple_skill_references_without_manifest_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
-    skill = write_simple_skill(repo, body="# Simple\n\nRead `references/extra.md`.\n")
+    skill = write_simple_skill(tmp_path, body="# Simple\n\nRead `references/extra.md`.\n")
     references = skill / "references"
     references.mkdir()
     (references / "extra.md").write_text("# Extra\n", encoding="utf-8")
-    assert_validation_fails(repo, "missing reading-set manifest")
+    assert_skill_fails(tmp_path, "missing reading-set manifest", skill_id="simple-skill")
 
 
 def test_reading_sets_missing_manifest_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     (repo / "skills" / "frontend-design" / "assets" / "reading-sets.json").unlink()
-    assert_validation_fails(repo, "missing reading-set manifest")
+    assert_skill_fails(repo, "missing reading-set manifest")
 
 
 def test_reading_sets_object_shape_manifest_passes(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     relax_reading_budget(repo)
     data = load_reading_sets(repo)
     data["sets"] = {
@@ -550,11 +653,11 @@ def test_reading_sets_object_shape_manifest_passes(tmp_path: Path) -> None:
         "component-state": {"limit_bytes": 16384, "files": ["SKILL.md"]},
     }
     write_reading_sets(repo, data)
-    assert_validation_passes(repo)
+    assert_skill_passes(repo)
 
 
 def test_reading_sets_missing_path_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     write_reading_sets(
         repo,
         {
@@ -564,35 +667,35 @@ def test_reading_sets_missing_path_fails(tmp_path: Path) -> None:
             }
         },
     )
-    assert_validation_fails(repo, "path does not exist")
+    assert_skill_fails(repo, "path does not exist")
 
 
 def test_nested_markdown_not_covered_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     nested = repo / "skills" / "frontend-design" / "references" / "nested"
     nested.mkdir()
     (nested / "extra.md").write_text("# Extra\n", encoding="utf-8")
-    assert_validation_fails(repo, "not covered by a set or excluded")
+    assert_skill_fails(repo, "not covered by a set or excluded")
 
 
 def test_pair_token_fields_must_be_strings(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     data = load_fixture(repo)
     data["pairs"][0]["theme"] = None
     save_fixture(repo, data)
-    assert_validation_fails(repo, "must be non-empty strings")
+    assert_contrast_fixture_fails(repo, "must be non-empty strings")
 
 
 def test_pair_theme_must_match_label(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_contrast_assets(tmp_path)
     data = load_fixture(repo)
     data["pairs"][0]["theme"] = "dark"
     save_fixture(repo, data)
-    assert_validation_fails(repo, "does not match label theme")
+    assert_contrast_fixture_fails(repo, "does not match label theme")
 
 
 def test_reading_sets_unrouted_markdown_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     extra = repo / "skills" / "frontend-design" / "assets" / "unrouted.md"
     extra.write_text("# Unrouted\n", encoding="utf-8")
     write_reading_sets(
@@ -604,11 +707,11 @@ def test_reading_sets_unrouted_markdown_fails(tmp_path: Path) -> None:
             }
         },
     )
-    assert_validation_fails(repo, "not mentioned in SKILL routing")
+    assert_skill_fails(repo, "not mentioned in SKILL routing")
 
 
 def test_reading_sets_hard_limit_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     oversized = repo / "skills" / "frontend-design" / "assets" / "oversized.bin"
     oversized.write_bytes(b"x" * 32769)
     write_reading_sets(
@@ -620,29 +723,28 @@ def test_reading_sets_hard_limit_fails(tmp_path: Path) -> None:
             }
         },
     )
-    assert_validation_fails(repo, "hard limit is 32768 B")
+    assert_skill_fails(repo, "hard limit is 32768 B")
 
 
 def test_reading_sets_new_page_hard_limit_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     skill = repo / "skills" / "frontend-design" / "SKILL.md"
     skill_size = skill.stat().st_size
     padding = repo / "skills" / "frontend-design" / "assets" / "new-page-padding.bin"
     padding.write_bytes(b"x" * (32768 - skill_size + 1))
     write_reading_sets(repo, {"sets": {"new-page": ["SKILL.md", "assets/new-page-padding.bin"]}})
-    assert_validation_fails(repo, "hard limit is 32768 B")
+    assert_skill_fails(repo, "hard limit is 32768 B")
 
 
 def test_reading_sets_missing_new_page_set_fails(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
+    repo = copy_frontend_skill(tmp_path)
     write_reading_sets(repo, {"sets": {"component-state": ["SKILL.md"]}})
-    assert_validation_fails(repo, "missing new-page set")
+    assert_skill_fails(repo, "missing new-page set")
 
 
 def test_v2_frontmatter_metadata_and_autoinvoke_pass(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
-    skill = repo / "skills" / "v2-meta-skill"
-    skill.mkdir()
+    skill = tmp_path / "skills" / "v2-meta-skill"
+    skill.mkdir(parents=True)
     (skill / "SKILL.md").write_text(
         "---\r\n"
         "name: v2-meta-skill\r\n"
@@ -658,8 +760,10 @@ def test_v2_frontmatter_metadata_and_autoinvoke_pass(tmp_path: Path) -> None:
         "# V2 Meta Skill\r\n\r\nWorkflow body.\r\n",
         encoding="utf-8",
     )
+    assert_skill_passes(tmp_path, "v2-meta-skill")
+
     # Exact 500-char compatibility boundary must pass.
-    boundary = repo / "skills" / "compat-boundary"
+    boundary = tmp_path / "skills" / "compat-boundary"
     boundary.mkdir()
     (boundary / "SKILL.md").write_text(
         "---\n"
@@ -671,7 +775,7 @@ def test_v2_frontmatter_metadata_and_autoinvoke_pass(tmp_path: Path) -> None:
         "# Boundary\n",
         encoding="utf-8",
     )
-    assert_validation_passes(repo)
+    assert_skill_passes(tmp_path, "compat-boundary")
 
 
 @pytest.mark.parametrize(
@@ -705,19 +809,24 @@ def test_v2_frontmatter_metadata_and_autoinvoke_pass(tmp_path: Path) -> None:
     ],
 )
 def test_v2_frontmatter_invalid_fields_fail(tmp_path: Path, extra: str, needle: str) -> None:
-    repo = copy_repo(tmp_path)
-    skill = repo / "skills" / "frontend-design" / "SKILL.md"
-    text = skill.read_text(encoding="utf-8")
-    mutated = text.replace("compatibility: agentskills\n", extra, 1)
-    assert mutated != text
-    skill.write_text(mutated, encoding="utf-8")
-    assert_validation_fails(repo, needle)
+    skill = tmp_path / "skills" / "v2-bad-skill"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\n"
+        "name: v2-bad-skill\n"
+        "description: Use when testing invalid V2 frontmatter fields fail validation cleanly.\n"
+        "license: MIT\n"
+        f"{extra}"
+        "---\n\n"
+        "# V2 Bad Skill\n",
+        encoding="utf-8",
+    )
+    assert_skill_fails(tmp_path, needle, skill_id="v2-bad-skill")
 
 
 def test_second_skill_with_references_does_not_require_new_page_set(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
     skill = write_simple_skill(
-        repo,
+        tmp_path,
         skill_id="modular-skill",
         body="# Modular\n\nRead `references/extra.md` when needed.\n",
     )
@@ -730,12 +839,10 @@ def test_second_skill_with_references_does_not_require_new_page_set(tmp_path: Pa
         ),
         encoding="utf-8",
     )
-    assert_validation_passes(repo)
+    assert_skill_passes(tmp_path, "modular-skill")
 
 
 def test_reading_sets_path_containment_and_per_set_limit_enforced(tmp_path: Path) -> None:
-    from scripts import validate
-
     skill = tmp_path / "skills" / "probe"
     (skill / "assets").mkdir(parents=True)
     (skill / "SKILL.md").write_text(
@@ -743,55 +850,46 @@ def test_reading_sets_path_containment_and_per_set_limit_enforced(tmp_path: Path
         "license: MIT\n---\n# Probe\n" + ("a" * 200) + "\n",
         encoding="utf-8",
     )
-    orig_root = validate.ROOT
-    try:
-        validate.ROOT = tmp_path
-        manifest = skill / "assets" / "reading-sets.json"
+    manifest = skill / "assets" / "reading-sets.json"
 
-        manifest.write_text(
-            json.dumps({"sets": {"s": ["SKILL.md", "/etc/hosts"]}}), encoding="utf-8"
-        )
-        errs: list[str] = []
-        validate.check_reading_sets(skill, "# Probe\n", errs)
-        assert any("must be relative" in e for e in errs)
+    manifest.write_text(json.dumps({"sets": {"s": ["SKILL.md", "/etc/hosts"]}}), encoding="utf-8")
+    errs: list[str] = []
+    validate.check_reading_sets(skill, "# Probe\n", errs, root=tmp_path)
+    assert any("must be relative" in e for e in errs)
 
-        manifest.write_text(
-            json.dumps({"sets": {"s": ["SKILL.md", "../../README.md"]}}), encoding="utf-8"
-        )
-        errs = []
-        validate.check_reading_sets(skill, "# Probe\n", errs)
-        assert any("escapes skill directory" in e for e in errs)
+    manifest.write_text(
+        json.dumps({"sets": {"s": ["SKILL.md", "../../README.md"]}}), encoding="utf-8"
+    )
+    errs = []
+    validate.check_reading_sets(skill, "# Probe\n", errs, root=tmp_path)
+    assert any("escapes skill directory" in e for e in errs)
 
-        manifest.write_text(
-            json.dumps({"sets": {"s": {"limit_bytes": 100, "files": ["SKILL.md"]}}}),
-            encoding="utf-8",
-        )
-        errs = []
-        validate.check_reading_sets(skill, "# Probe\n", errs)
-        assert any("limit is 100 B" in e for e in errs)
+    manifest.write_text(
+        json.dumps({"sets": {"s": {"limit_bytes": 100, "files": ["SKILL.md"]}}}),
+        encoding="utf-8",
+    )
+    errs = []
+    validate.check_reading_sets(skill, "# Probe\n", errs, root=tmp_path)
+    assert any("limit is 100 B" in e for e in errs)
 
-        manifest.write_text(
-            json.dumps({"sets": {"s": {"limit_bytes": True, "files": ["SKILL.md"]}}}),
-            encoding="utf-8",
-        )
-        errs = []
-        validate.check_reading_sets(skill, "# Probe\n", errs)
-        assert any("invalid manifest" in e for e in errs)
+    manifest.write_text(
+        json.dumps({"sets": {"s": {"limit_bytes": True, "files": ["SKILL.md"]}}}),
+        encoding="utf-8",
+    )
+    errs = []
+    validate.check_reading_sets(skill, "# Probe\n", errs, root=tmp_path)
+    assert any("invalid manifest" in e for e in errs)
 
-        manifest.write_text(
-            json.dumps({"sets": {"s": ["SKILL.md"]}, "excluded": {"SKILL.md": "nope"}}),
-            encoding="utf-8",
-        )
-        errs = []
-        validate.check_reading_sets(skill, "# Probe\n", errs)
-        assert any("SKILL.md cannot be excluded" in e for e in errs)
-    finally:
-        validate.ROOT = orig_root
+    manifest.write_text(
+        json.dumps({"sets": {"s": ["SKILL.md"]}, "excluded": {"SKILL.md": "nope"}}),
+        encoding="utf-8",
+    )
+    errs = []
+    validate.check_reading_sets(skill, "# Probe\n", errs, root=tmp_path)
+    assert any("SKILL.md cannot be excluded" in e for e in errs)
 
 
 def test_nested_docs_and_relative_repo_escape_fail(tmp_path: Path) -> None:
-    from scripts import validate
-
     (tmp_path / "docs" / "nested").mkdir(parents=True)
     nested_doc = tmp_path / "docs" / "nested" / "broken.md"
     nested_doc.write_text("# Nested\n\n[escape](../../../../etc/hosts)\n", encoding="utf-8")
@@ -807,209 +905,164 @@ def test_nested_docs_and_relative_repo_escape_fail(tmp_path: Path) -> None:
     ):
         (tmp_path / name).write_text("# Doc\n", encoding="utf-8")
 
-    orig_root = validate.ROOT
-    try:
-        validate.ROOT = tmp_path
-        errs: list[str] = []
-        validate.check_root_docs(errs)
-        assert any("escapes repository root" in e for e in errs)
-    finally:
-        validate.ROOT = orig_root
+    errs: list[str] = []
+    validate.check_root_docs(errs, root=tmp_path)
+    assert any("escapes repository root" in e for e in errs)
 
 
 def test_symlink_inside_skill_fails(tmp_path: Path) -> None:
-    from scripts import validate
-
-    orig_root = validate.ROOT
-    try:
-        validate.ROOT = tmp_path
-
-        # Symlink to directory named leak.md must not crash with IsADirectoryError.
-        skill = tmp_path / "skills" / "sym-skill"
-        skill.mkdir(parents=True)
-        (skill / "SKILL.md").write_text(
-            "---\nname: sym-skill\ndescription: A sufficiently long test description for symlink rejection.\n"
-            "license: MIT\n---\n# Sym\n",
-            encoding="utf-8",
-        )
-        (skill / "leak.md").symlink_to(tmp_path)
-        errs: list[str] = []
-        validate.check_skill(skill, errs)
-        assert any("symlink inside skill directory" in e for e in errs)
-
-        # Broken *.md symlink must not crash with FileNotFoundError.
-        skill2 = tmp_path / "skills" / "broken-sym"
-        skill2.mkdir()
-        (skill2 / "SKILL.md").write_text(
-            "---\nname: broken-sym\ndescription: A sufficiently long test description for broken symlink.\n"
-            "license: MIT\n---\n# Sym2\n",
-            encoding="utf-8",
-        )
-        (skill2 / "dangling.md").symlink_to(tmp_path / "does-not-exist")
-        errs = []
-        validate.check_skill(skill2, errs)
-        assert any("symlink inside skill directory" in e for e in errs)
-
-        # Symlinked skill directory itself.
-        link_dir = tmp_path / "skills" / "sym-dir"
-        link_dir.symlink_to(skill)
-        errs = []
-        validate.check_skill(link_dir, errs)
-        assert any("symlinked skill directory" in e for e in errs)
-    finally:
-        validate.ROOT = orig_root
-
-
-def test_top_level_file_symlink_and_aggregate_description_limit(tmp_path: Path) -> None:
-    from scripts import validate
-
-    orig_root, orig_skills, orig_limit = (
-        validate.ROOT,
-        validate.SKILLS_DIR,
-        validate.AGGREGATE_DESCRIPTION_LIMIT,
+    # Symlink to directory named leak.md must not crash with IsADirectoryError.
+    skill = tmp_path / "skills" / "sym-skill"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\nname: sym-skill\ndescription: A sufficiently long test description for symlink rejection.\n"
+        "license: MIT\n---\n# Sym\n",
+        encoding="utf-8",
     )
-    try:
-        validate.ROOT = tmp_path
-        validate.SKILLS_DIR = tmp_path / "skills"
-        validate.AGGREGATE_DESCRIPTION_LIMIT = 50
-        skill = validate.SKILLS_DIR / "tiny-skill"
-        skill.mkdir(parents=True)
-        (skill / "SKILL.md").write_text(
-            "---\nname: tiny-skill\ndescription: A sufficiently long description exceeding fifty bytes total.\n"
-            "license: MIT\n---\n# Tiny\n",
-            encoding="utf-8",
-        )
-        (validate.SKILLS_DIR / "stray-link").symlink_to(tmp_path / "does-not-exist")
-        import io
-        from contextlib import redirect_stderr
+    (skill / "leak.md").symlink_to(tmp_path)
+    errs: list[str] = []
+    validate.check_skill(skill, errs, root=tmp_path)
+    assert any("symlink inside skill directory" in e for e in errs)
 
-        buf = io.StringIO()
-        with redirect_stderr(buf):
-            rc = validate.main()
-        assert rc == 1
-        err_text = buf.getvalue()
-        assert "symlink inside skills/ is not allowed" in err_text
-        assert "aggregate description bytes" in err_text
-    finally:
-        validate.ROOT = orig_root
-        validate.SKILLS_DIR = orig_skills
-        validate.AGGREGATE_DESCRIPTION_LIMIT = orig_limit
+    # Broken *.md symlink must not crash with FileNotFoundError.
+    skill2 = tmp_path / "skills" / "broken-sym"
+    skill2.mkdir()
+    (skill2 / "SKILL.md").write_text(
+        "---\nname: broken-sym\ndescription: A sufficiently long test description for broken symlink.\n"
+        "license: MIT\n---\n# Sym2\n",
+        encoding="utf-8",
+    )
+    (skill2 / "dangling.md").symlink_to(tmp_path / "does-not-exist")
+    errs = []
+    validate.check_skill(skill2, errs, root=tmp_path)
+    assert any("symlink inside skill directory" in e for e in errs)
+
+    # Symlinked skill directory itself.
+    link_dir = tmp_path / "skills" / "sym-dir"
+    link_dir.symlink_to(skill)
+    errs = []
+    validate.check_skill(link_dir, errs, root=tmp_path)
+    assert any("symlinked skill directory" in e for e in errs)
+
+
+def test_top_level_file_symlink_and_aggregate_description_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(validate, "AGGREGATE_DESCRIPTION_LIMIT", 50)
+    skills_dir = tmp_path / "skills"
+    skill = skills_dir / "tiny-skill"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\nname: tiny-skill\ndescription: A sufficiently long description exceeding fifty bytes total.\n"
+        "license: MIT\n---\n# Tiny\n",
+        encoding="utf-8",
+    )
+    (skills_dir / "stray-link").symlink_to(tmp_path / "does-not-exist")
+
+    buf = io.StringIO()
+    with redirect_stderr(buf):
+        rc = validate.main(["--root", str(tmp_path)])
+    assert rc == 1
+    err_text = buf.getvalue()
+    assert "symlink inside skills/ is not allowed" in err_text
+    assert "aggregate description bytes" in err_text
 
 
 def test_frontmatter_edge_cases_unit(tmp_path: Path) -> None:
-    from scripts import validate
+    def check_raw(name: str, raw: str) -> list[str]:
+        skill = tmp_path / "skills" / name
+        skill.mkdir(parents=True, exist_ok=True)
+        (skill / "SKILL.md").write_text(raw, encoding="utf-8")
+        errs: list[str] = []
+        validate.check_skill(skill, errs, root=tmp_path)
+        return errs
 
-    orig_root = validate.ROOT
-    try:
-        validate.ROOT = tmp_path
+    # Closing --- at EOF without trailing newline parses frontmatter cleanly (then reports empty body).
+    errs = check_raw(
+        "eof-fm",
+        "---\nname: eof-fm\ndescription: A sufficiently long description for EOF frontmatter test.\n"
+        "license: MIT\n---",
+    )
+    assert any("body is empty" in e for e in errs)
 
-        def check_raw(name: str, raw: str) -> list[str]:
-            skill = tmp_path / "skills" / name
-            skill.mkdir(parents=True, exist_ok=True)
-            (skill / "SKILL.md").write_text(raw, encoding="utf-8")
-            errs: list[str] = []
-            validate.check_skill(skill, errs)
-            return errs
+    # Empty frontmatter ---\n--- must not swallow body until next horizontal rule.
+    empty_fm_doc = "---\n---\n# Title\n\n[broken](missing.md)\n\n---\n\nAfter\n"
+    assert "missing.md" in validate.extract_markdown_links(empty_fm_doc)
+    errs = check_raw("empty-fm", empty_fm_doc)
+    assert any("invalid frontmatter" in e for e in errs)
 
-        # Closing --- at EOF without trailing newline parses frontmatter cleanly (then reports empty body).
-        errs = check_raw(
-            "eof-fm",
-            "---\nname: eof-fm\ndescription: A sufficiently long description for EOF frontmatter test.\n"
-            "license: MIT\n---",
+    # Unhashable key, merge key <<, nested duplicate key, non-string key, and false/false conflict.
+    assert any("unhashable key" in e for e in check_raw("unhashable", "---\n[a, b]: 1\n---\n# X\n"))
+    assert any(
+        "merge key '<<'" in e
+        for e in check_raw("merge-key", "---\nbase: &b\n  k: v\n<<: *b\n---\n# X\n")
+    )
+    assert any(
+        "duplicate key 'v'" in e
+        for e in check_raw(
+            "nested-dup",
+            "---\nname: nested-dup\ndescription: A sufficiently long description for nested duplicate key.\n"
+            "license: MIT\nmetadata:\n  v: '1'\n  v: '2'\n---\n# X\n",
         )
-        assert any("body is empty" in e for e in errs)
-
-        # Empty frontmatter ---\n--- must not swallow body until next horizontal rule.
-        empty_fm_doc = "---\n---\n# Title\n\n[broken](missing.md)\n\n---\n\nAfter\n"
-        assert "missing.md" in validate.extract_markdown_links(empty_fm_doc)
-        errs = check_raw("empty-fm", empty_fm_doc)
-        assert any("invalid frontmatter" in e for e in errs)
-
-        # Unhashable key, merge key <<, nested duplicate key, non-string key, and false/false conflict.
-        assert any(
-            "unhashable key" in e for e in check_raw("unhashable", "---\n[a, b]: 1\n---\n# X\n")
+    )
+    assert any(
+        "frontmatter keys must be strings" in e
+        for e in check_raw(
+            "non-str-key",
+            "---\nname: non-str-key\ndescription: A sufficiently long description for non string key test.\n"
+            "license: MIT\n1: bad\n---\n# X\n",
         )
-        assert any(
-            "merge key '<<'" in e
-            for e in check_raw("merge-key", "---\nbase: &b\n  k: v\n<<: *b\n---\n# X\n")
+    )
+    assert any(
+        "conflicting 'disable-model-invocation'" in e
+        for e in check_raw(
+            "false-conflict",
+            "---\nname: false-conflict\ndescription: A sufficiently long description for false conflict test.\n"
+            "license: MIT\ndisable-model-invocation: false\nmetadata:\n  opencode/autoinvoke: false\n---\n# X\n",
         )
-        assert any(
-            "duplicate key 'v'" in e
-            for e in check_raw(
-                "nested-dup",
-                "---\nname: nested-dup\ndescription: A sufficiently long description for nested duplicate key.\n"
-                "license: MIT\nmetadata:\n  v: '1'\n  v: '2'\n---\n# X\n",
-            )
-        )
-        assert any(
-            "frontmatter keys must be strings" in e
-            for e in check_raw(
-                "non-str-key",
-                "---\nname: non-str-key\ndescription: A sufficiently long description for non string key test.\n"
-                "license: MIT\n1: bad\n---\n# X\n",
-            )
-        )
-        assert any(
-            "conflicting 'disable-model-invocation'" in e
-            for e in check_raw(
-                "false-conflict",
-                "---\nname: false-conflict\ndescription: A sufficiently long description for false conflict test.\n"
-                "license: MIT\ndisable-model-invocation: false\nmetadata:\n  opencode/autoinvoke: false\n---\n# X\n",
-            )
-        )
-    finally:
-        validate.ROOT = orig_root
+    )
 
 
 def test_reading_sets_and_local_ref_edge_cases_unit(tmp_path: Path) -> None:
-    from scripts import validate
-
-    orig_root = validate.ROOT
-    try:
-        validate.ROOT = tmp_path
-        skill = tmp_path / "skills" / "edge-skill"
-        (skill / "references").mkdir(parents=True)
-        (skill / "assets").mkdir(parents=True)
-        (skill / "SKILL.md").write_text(
-            "---\nname: edge-skill\ndescription: A sufficiently long description for edge reading-set tests.\n"
-            "license: MIT\n---\n# Edge\n\nSee extra.md (bare basename only).\n",
-            encoding="utf-8",
-        )
-        (skill / "references" / "extra.md").write_text(
-            "# Extra\n\nBad ref `references/../../README.md` and [pct](%2e%2e/%2e%2e/README.md) "
-            "and [nul](foo%00bar.md).\n",
-            encoding="utf-8",
-        )
-        manifest = skill / "assets" / "reading-sets.json"
-        manifest.write_text(
-            json.dumps(
-                {
-                    "budget_bytes": 50,
-                    "sets": {"no-skill": ["references/extra.md"]},
-                    "excluded": {"../../README.md": "escape"},
-                }
-            ),
-            encoding="utf-8",
-        )
-        errs: list[str] = []
-        validate.check_skill(skill, errs)
-        routing_errors = [
-            e for e in errs if "not mentioned in SKILL routing -> references/extra.md" in e
-        ]
-        assert len(routing_errors) == 1
-        assert any("must include SKILL.md" in e for e in errs)
-        assert any("limit is 50 B" in e for e in errs)
-        assert any("excluded path escapes skill directory" in e for e in errs)
-        assert any("local reference escapes skill directory" in e for e in errs)
-        assert any("skill link escapes skill directory" in e for e in errs)
-        assert any("broken link -> foo%00bar.md" in e for e in errs)
-    finally:
-        validate.ROOT = orig_root
+    skill = tmp_path / "skills" / "edge-skill"
+    (skill / "references").mkdir(parents=True)
+    (skill / "assets").mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\nname: edge-skill\ndescription: A sufficiently long description for edge reading-set tests.\n"
+        "license: MIT\n---\n# Edge\n\nSee extra.md (bare basename only).\n",
+        encoding="utf-8",
+    )
+    (skill / "references" / "extra.md").write_text(
+        "# Extra\n\nBad ref `references/../../README.md` and [pct](%2e%2e/%2e%2e/README.md) "
+        "and [nul](foo%00bar.md).\n",
+        encoding="utf-8",
+    )
+    manifest = skill / "assets" / "reading-sets.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "budget_bytes": 50,
+                "sets": {"no-skill": ["references/extra.md"]},
+                "excluded": {"../../README.md": "escape"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    errs: list[str] = []
+    validate.check_skill(skill, errs, root=tmp_path)
+    routing_errors = [
+        e for e in errs if "not mentioned in SKILL routing -> references/extra.md" in e
+    ]
+    assert len(routing_errors) == 1
+    assert any("must include SKILL.md" in e for e in errs)
+    assert any("limit is 50 B" in e for e in errs)
+    assert any("excluded path escapes skill directory" in e for e in errs)
+    assert any("local reference escapes skill directory" in e for e in errs)
+    assert any("skill link escapes skill directory" in e for e in errs)
+    assert any("broken link -> foo%00bar.md" in e for e in errs)
 
 
 def test_gfm_slug_and_commonmark_parser_unit(tmp_path: Path) -> None:
-    from scripts import validate
-
     assert validate.slug("foo_bar") == "foo_bar"
     assert validate.slug("`__init__`") == "__init__"
     assert validate.slug("A & B") == "a--b"
@@ -1024,7 +1077,9 @@ def test_gfm_slug_and_commonmark_parser_unit(tmp_path: Path) -> None:
     links = validate.extract_markdown_links(
         "```inline``` text\n\n"
         r"Use \` [escaped-ok](esc.md) \`"
-        "\n\n<!-- note ` --> [after-comment](comment.md) `code`\n\n"
+        "\n\n<!-- note ` [hidden-comment](hidden.md) --> [after-comment](comment.md) "
+        "`[hidden-inline](inline.md)`\n\n"
+        "```md\n[hidden-fence](fence.md)\n```\n\n"
         "`<!--` [kept](a.md) `-->`\n\n"
         "[![alt](img.svg)](target.md)\n\n"
         "[dup]: broken-first.md\n[dup]: second.md\n[dup][]\n"
@@ -1039,20 +1094,17 @@ def test_gfm_slug_and_commonmark_parser_unit(tmp_path: Path) -> None:
         "second.md",
     ):
         assert expected in links
+    for masked_out in ("hidden.md", "inline.md", "fence.md"):
+        assert masked_out not in links
 
     deep = "[" * 1500 + "x" + "](deep.md)" * 1500
     assert "deep.md" in validate.extract_markdown_links(deep)
 
-    orig_root = validate.ROOT
-    try:
-        validate.ROOT = tmp_path
-        doc = tmp_path / "doc.md"
-        doc.write_text("[proto](<//example.com/foo>)\n", encoding="utf-8")
-        errs: list[str] = []
-        validate.check_markdown_links(doc, errs)
-        assert errs == []
-    finally:
-        validate.ROOT = orig_root
+    doc = tmp_path / "doc.md"
+    doc.write_text("[proto](<//example.com/foo>)\n", encoding="utf-8")
+    errs: list[str] = []
+    validate.check_markdown_links(doc, errs, root=tmp_path)
+    assert errs == []
 
 
 def test_validate_repo_in_process_does_not_mutate_root_and_catches_aa_failure(
@@ -1090,43 +1142,50 @@ def test_validate_repo_in_process_does_not_mutate_root_and_catches_aa_failure(
 
 
 def test_check_installer_validates_both_harnesses_and_lib(tmp_path: Path) -> None:
-    repo = copy_repo(tmp_path)
-    assert_validation_passes(repo)
+    repo = tmp_path / "repo"
+    shutil.copytree(REPO_ROOT / "install", repo / "install")
+
+    def check_install() -> list[str]:
+        errs: list[str] = []
+        validate.check_installer(errs, root=repo)
+        return errs
+
+    assert check_install() == []
 
     # Missing, symlinked, and non-executable entrypoints fail for both harnesses.
     for name in ("antigravity.sh", "opencode.sh"):
         script = repo / "install" / name
         other = repo / "install" / ("opencode.sh" if name == "antigravity.sh" else "antigravity.sh")
         script.unlink()
-        assert_validation_fails(repo, f"install/{name}: missing")
+        assert any(f"install/{name}: missing" in e for e in check_install())
 
         script.symlink_to(other)
-        assert_validation_fails(repo, f"install/{name}: symlinked installer script")
+        assert any(f"install/{name}: symlinked installer script" in e for e in check_install())
 
         script.unlink()
         shutil.copy2(REPO_ROOT / "install" / name, script)
         script.chmod(0o644)
-        assert_validation_fails(repo, f"install/{name}: not executable")
+        assert any(f"install/{name}: not executable" in e for e in check_install())
         script.chmod(0o755)
 
     # Missing, symlinked, and syntax-broken install/lib.sh fail.
     lib = repo / "install" / "lib.sh"
     lib_text = lib.read_text(encoding="utf-8")
     lib.write_text(lib_text + "\nif then\n", encoding="utf-8")
-    assert_validation_fails(repo, "install/lib.sh: bash syntax error")
+    assert any("install/lib.sh: bash syntax error" in e for e in check_install())
 
     lib.unlink()
-    assert_validation_fails(repo, "install/lib.sh: missing")
+    assert any("install/lib.sh: missing" in e for e in check_install())
 
     lib.symlink_to(repo / "install" / "opencode.sh")
-    assert_validation_fails(repo, "install/lib.sh: symlinked installer script")
+    assert any("install/lib.sh: symlinked installer script" in e for e in check_install())
 
     # Symlinked install/ directory itself fails.
     real_install = tmp_path / "real-install"
     shutil.copytree(REPO_ROOT / "install", real_install)
     shutil.rmtree(repo / "install")
     (repo / "install").symlink_to(real_install)
-    assert_validation_fails(repo, "install: symlinked installer directory")
+    assert any("install: symlinked installer directory" in e for e in check_install())
 
 
 def test_aud46_css_tokens_fail_closed_nested_var_and_no_duplicate_missing_error(
@@ -1500,9 +1559,29 @@ def test_aud49_markdownlint_ignores_private_dirs_and_shared_blockquote_fence(
     assert "ignored.md" not in links
 
     # 2. .markdownlint-cli2.jsonc ignores private/ignored dirs while still linting real files.
-    mdlint = REPO_ROOT / "node_modules" / ".bin" / "markdownlint-cli2"
-    if not mdlint.is_file():
-        pytest.fail("markdownlint-cli2 binary is required")
+    cfg_raw = (REPO_ROOT / ".markdownlint-cli2.jsonc").read_text(encoding="utf-8")
+    cfg_json = re.sub(r"(?m)^\s*//.*$", "", cfg_raw)
+    cfg = json.loads(cfg_json)
+    expected_ignores = {
+        "**/node_modules",
+        "**/.venv",
+        "**/venv",
+        "**/.playwright-cli",
+        "**/.gemini",
+        "**/.opencode",
+        "**/.claude",
+        "**/.agents",
+        "**/secrets",
+    }
+    assert expected_ignores <= set(cfg.get("ignores", []))
+
+    mdlint_local = REPO_ROOT / "node_modules" / ".bin" / "markdownlint-cli2"
+    mdlint_bin = str(mdlint_local) if mdlint_local.is_file() else shutil.which("markdownlint-cli2")
+    if mdlint_bin is None:
+        if os.environ.get("CI") or (REPO_ROOT / "node_modules").is_dir():
+            pytest.fail("markdownlint-cli2 binary is required")
+        return
+
     shutil.copy2(REPO_ROOT / ".markdownlint-cli2.jsonc", tmp_path / ".markdownlint-cli2.jsonc")
     (tmp_path / "good.md").write_text("# Good\n", encoding="utf-8")
     for ignored_dir in (
@@ -1523,7 +1602,7 @@ def test_aud49_markdownlint_ignores_private_dirs_and_shared_blockquote_fence(
         (d / "bad.md").write_text("#Bad   \n\n\n\n* a\n+ b", encoding="utf-8")
 
     ok = subprocess.run(
-        [str(mdlint), "**/*.md"],
+        [mdlint_bin, "**/*.md"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -1535,7 +1614,7 @@ def test_aud49_markdownlint_ignores_private_dirs_and_shared_blockquote_fence(
     # Confirm a real violation at root is still caught.
     (tmp_path / "bad.md").write_text("* a\n+ b\n", encoding="utf-8")
     bad = subprocess.run(
-        [str(mdlint), "**/*.md"],
+        [mdlint_bin, "**/*.md"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -1543,3 +1622,54 @@ def test_aud49_markdownlint_ignores_private_dirs_and_shared_blockquote_fence(
         check=False,
     )
     assert bad.returncode != 0
+
+
+def test_aud47_cli_root_exit_two_placeholders_and_invalid_yaml(tmp_path: Path) -> None:
+    # 1. --root CLI flag validates repository root and returns exit 2 on missing/empty skills/.
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        rc_ok = validate.main(["--root", str(REPO_ROOT)])
+    assert rc_ok == 0, err.getvalue()
+    assert "All checks passed." in out.getvalue()
+
+    missing_skills = tmp_path / "no-skills"
+    missing_skills.mkdir()
+    res_missing = run_validate(REPO_ROOT, "--root", str(missing_skills))
+    assert res_missing.returncode == 2
+    assert "skills/ directory not found" in res_missing.stderr
+
+    empty_skills = tmp_path / "empty-skills"
+    (empty_skills / "skills").mkdir(parents=True)
+    err = io.StringIO()
+    with redirect_stderr(err):
+        rc_empty = validate.main(["--root", str(empty_skills)])
+    assert rc_empty == 2
+    assert "no skills found" in err.getvalue()
+
+    # 2. Placeholder markers (TODO, TBD, FIXME) are caught in SKILL.md and skill assets/scripts.
+    skill = write_simple_skill(
+        tmp_path,
+        skill_id="placeholder-skill",
+        body="# Placeholder\n\nTODO: replace this text.\n",
+    )
+    (skill / "assets").mkdir()
+    (skill / "assets" / "sample.css").write_text("/* TBD */\n", encoding="utf-8")
+    (skill / "scripts").mkdir()
+    (skill / "scripts" / "tool.py").write_text("# FIXME: remove\n", encoding="utf-8")
+    assert_skill_fails(
+        tmp_path,
+        "contains placeholder marker TODO",
+        "contains placeholder marker TBD",
+        "contains placeholder marker FIXME",
+        skill_id="placeholder-skill",
+    )
+
+    # 3. check_yaml reports invalid YAML syntax cleanly.
+    bad_yaml_root = tmp_path / "bad-yaml"
+    (bad_yaml_root / ".github").mkdir(parents=True)
+    (bad_yaml_root / ".github" / "dependabot.yml").write_text(
+        "version: [unterminated\n", encoding="utf-8"
+    )
+    yml_errs: list[str] = []
+    validate.check_yaml(yml_errs, root=bad_yaml_root)
+    assert any("invalid YAML" in e for e in yml_errs), yml_errs

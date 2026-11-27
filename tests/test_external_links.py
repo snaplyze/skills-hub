@@ -24,6 +24,7 @@ class Handler(BaseHTTPRequestHandler):
     in_flight_lock = threading.Lock()
     in_flight = 0
     peak_in_flight = 0
+    trickle_get_hits = 0
 
     def do_HEAD(self) -> None:  # noqa: N802 - http.server API
         if self.path == "/head405":
@@ -34,12 +35,18 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(501)
             self.end_headers()
             return
+        if self.path == "/redirect-trickle":
+            # Force probe() to fall back to GET so _SafeRedirectHandler must avoid reading
+            # the trickled 302 response body.
+            self.send_response(405)
+            self.end_headers()
+            return
         if self.path == "/slow-head":
             time.sleep(0.35)
             self.send_response(200)
             self.end_headers()
             return
-        if self.path == "/bad-status":
+        if self.path in ("/bad-status", "/head-error-get-ok"):
             self.wfile.write(b"NOT_HTTP_GARBAGE\r\n\r\n")
             return
         self._respond(head=True)
@@ -66,7 +73,7 @@ class Handler(BaseHTTPRequestHandler):
                     Handler.in_flight -= 1
             return
 
-        if self.path in ("/ok", "/head405", "/head501", "/wiki/Foo_(bar)"):
+        if self.path in ("/ok", "/head405", "/head501", "/head-error-get-ok", "/wiki/Foo_(bar)"):
             self.send_response(200)
             self.end_headers()
             if not head:
@@ -75,7 +82,14 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(302)
             self.send_header("Location", "/ok")
             self.end_headers()
+        elif self.path == "/redirect-loop":
+            self.send_response(302)
+            self.send_header("Location", "/redirect-loop")
+            self.end_headers()
         elif self.path == "/redirect-trickle":
+            if not head:
+                with Handler.in_flight_lock:
+                    Handler.trickle_get_hits += 1
             self.send_response(302)
             self.send_header("Location", "/ok")
             self.send_header("Content-Length", "5")
@@ -151,10 +165,14 @@ def test_probe_ok_redirect_and_head_fallback(server: tuple[str, int]) -> None:
 
 def test_probe_redirect_does_not_hang_reading_trickle_body(server: tuple[str, int]) -> None:
     base, _ = server
+    with Handler.in_flight_lock:
+        Handler.trickle_get_hits = 0
     t0 = time.monotonic()
-    state, status, _ = probe(f"{base}/redirect-trickle", 1.5, allow_local=True)
+    state, status, detail = probe(f"{base}/redirect-trickle", 1.5, allow_local=True)
     elapsed = time.monotonic() - t0
     assert (state, status) == ("ok", 200)
+    assert detail.startswith("GET "), detail
+    assert Handler.trickle_get_hits == 1
     assert elapsed < 0.3
 
 
@@ -236,30 +254,29 @@ def test_probe_end_to_end_blocks_redirects_to_loopback_without_allow_local(
     """Exercise _SafeRedirectHandler end-to-end against real 302/307/308 redirects to loopback."""
     _, port = server
     real_getaddrinfo = socket.getaddrinfo
-    real_is_global = cel._is_global_ip
+    real_connect = socket.socket.connect
+    synthetic_public_ip = "93.184.216.34"
 
-    # Route synthetic host "public-origin.example" to the local test server and allow ONLY that
-    # synthetic connect target, while 127.0.0.1 and ::1 remain strictly non-global on redirects.
+    # Resolve synthetic host "public-origin.example" to a real global IP so real _is_global_ip
+    # stays unmocked, and reroute ONLY that synthetic (ip, port) connect to the local server.
     def fake_getaddrinfo(host: str, p: int, *args: object, **kwargs: object) -> list:
         if host == "public-origin.example":
-            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", p))]
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (synthetic_public_ip, p))]
         return real_getaddrinfo(host, p, *args, **kwargs)
 
-    # First two validations are for public-origin.example (pre-check + connect); subsequent calls
-    # validate redirect targets with real _is_global_ip.
-    calls = {"count": 0}
+    origin_connected = {"count": 0}
 
-    def scoped_is_global(addr: str) -> bool:
-        calls["count"] += 1
-        if calls["count"] <= 2 and addr == "127.0.0.1":
-            return True
-        return real_is_global(addr)
+    def routed_connect(self: socket.socket, address: object) -> None:
+        if address == (synthetic_public_ip, port):
+            origin_connected["count"] += 1
+            return real_connect(self, ("127.0.0.1", port))
+        return real_connect(self, address)
 
     monkeypatch.setattr(cel.socket, "getaddrinfo", fake_getaddrinfo)
-    monkeypatch.setattr(cel, "_is_global_ip", scoped_is_global)
+    monkeypatch.setattr(socket.socket, "connect", routed_connect)
 
     state, status, detail = probe(f"http://public-origin.example:{port}{redirect_path}", 2)
-    assert calls["count"] >= 3, "redirect target was never checked by _SafeRedirectHandler"
+    assert origin_connected["count"] == 1, "initial request never connected to the local server"
     assert state == "failed"
     assert status is None
     assert "blocked" in detail
@@ -397,7 +414,7 @@ def test_per_host_concurrency_cap_and_total_timeout(
         ]
     )
     assert rc == 0
-    assert Handler.peak_in_flight <= 2
+    assert 1 <= Handler.peak_in_flight <= 2
 
     t0 = time.monotonic()
     state, status, _ = probe(f"{base}/slow-head", 0.15, allow_local=True)
@@ -405,6 +422,40 @@ def test_per_host_concurrency_cap_and_total_timeout(
     assert state == "failed"
     assert status is None
     assert elapsed < 0.6
+
+
+def test_aud47_max_redirects_head_error_fallback_template_urls_and_cli_args(
+    tmp_path: Path, server: tuple[str, int], capsys: pytest.CaptureFixture[str]
+) -> None:
+    base, _ = server
+
+    # Exceeding MAX_REDIRECTS fails closed instead of looping forever.
+    state, status, _ = probe(f"{base}/redirect-loop", 2, allow_local=True)
+    assert (state, status) == ("failed", 302)
+
+    # Transport/protocol failure on HEAD falls back to GET while time remains.
+    state, status, detail = probe(f"{base}/head-error-get-ok", 2, allow_local=True)
+    assert (state, status, detail) == ("ok", 200, "GET 200")
+
+    # Template URLs with $, {, or } placeholders are ignored; empty root exits 0 cleanly.
+    (tmp_path / "templates.md").write_text(
+        "https://example.com/${VAR}\nhttps://example.com/{id}/docs\nhttps://example.com/$slug\n",
+        encoding="utf-8",
+    )
+    assert external_urls(tmp_path) == []
+    assert main(["--root", str(tmp_path)]) == 0
+    assert "No external links found." in capsys.readouterr().out
+
+    # Invalid positive-int / positive-float CLI arguments fail argparse with exit 2.
+    for bad_args in (
+        ["--workers", "0"],
+        ["--max-per-host", "0"],
+        ["--timeout", "0"],
+        ["--timeout", "nan"],
+    ):
+        with pytest.raises(SystemExit) as exc:
+            main(bad_args)
+        assert exc.value.code == 2
 
 
 def test_aud49_shared_markdown_masking_and_private_dir_pruning(tmp_path: Path) -> None:

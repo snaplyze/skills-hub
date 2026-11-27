@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import shlex
 import shutil
 import subprocess
 import tomllib
@@ -11,6 +10,12 @@ from pathlib import Path
 
 import pytest
 import yaml
+
+from tests._helpers import (
+    ISOLATED_GIT_CONFIG_ARGS,
+    active_shell_commands,
+    isolated_git_env,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SECRET_SCAN_WORKFLOW = ROOT / ".github" / "workflows" / "secret-scan.yml"
@@ -44,36 +49,6 @@ EXISTING_IGNORED = [
     ".playwright-cli/trace.zip",
     "__pycache__/module.pyc",
 ]
-
-
-def _active_shell_commands(script: str) -> list[list[str]]:
-    """Strip shell comments, join backslash continuations, and split commands into tokens."""
-    logical_lines: list[str] = []
-    current = ""
-    for raw_line in script.splitlines():
-        stripped = raw_line.strip()
-        if not stripped or stripped.startswith("#"):
-            if current:
-                logical_lines.append(current)
-                current = ""
-            continue
-        if stripped.endswith("\\"):
-            current += stripped[:-1].rstrip() + " "
-        else:
-            current += stripped
-            logical_lines.append(current)
-            current = ""
-    if current:
-        logical_lines.append(current)
-    commands: list[list[str]] = []
-    for line in logical_lines:
-        try:
-            tokens = shlex.split(line, comments=True)
-        except ValueError:
-            tokens = line.split()
-        if tokens:
-            commands.append(tokens)
-    return commands
 
 
 def _flag_value(cmd: list[str], flag: str) -> str:
@@ -110,17 +85,32 @@ def _assert_secret_scan_contract(workflow_text: str) -> None:
     assert isinstance(steps, list) and steps
 
     names = [step.get("name", "") for step in steps if isinstance(step, dict)]
+    checkout_idx = names.index("Checkout")
     install_idx = names.index("Install gitleaks")
     pin_idx = names.index("Pin trusted scan configuration")
     scan_idx = names.index("Scan repository history")
-    assert install_idx < pin_idx < scan_idx, f"unexpected step order: {names}"
+    assert checkout_idx < install_idx < pin_idx < scan_idx, f"unexpected step order: {names}"
 
     steps_by_name = {step.get("name"): step for step in steps if isinstance(step, dict)}
 
+    checkout_step = steps_by_name["Checkout"]
+    assert str(checkout_step.get("uses", "")).startswith("actions/checkout@")
+    checkout_with = checkout_step.get("with", {})
+    assert isinstance(checkout_with, dict)
+    fetch_depth = checkout_with.get("fetch-depth")
+    assert not isinstance(fetch_depth, bool) and fetch_depth == 0, (
+        "Checkout must set fetch-depth: 0"
+    )
+    assert checkout_with.get("persist-credentials") is False, (
+        "Checkout must set persist-credentials: false"
+    )
+
     install_step = steps_by_name["Install gitleaks"]
     assert isinstance(install_step.get("run"), str)
-    install_commands = _active_shell_commands(install_step["run"])
-    assert any("sha256sum" in cmd and "--check" in cmd for cmd in install_commands)
+    install_commands = active_shell_commands(install_step["run"])
+    assert any(
+        cmd[0] == "sha256sum" and "--check" in cmd and "--strict" in cmd for cmd in install_commands
+    ), "Install gitleaks must verify tarball with sha256sum --check --strict"
 
     pin_step = steps_by_name["Pin trusted scan configuration"]
     assert isinstance(pin_step.get("run"), str)
@@ -129,12 +119,12 @@ def _assert_secret_scan_contract(workflow_text: str) -> None:
     assert parsed_toml.get("extend", {}).get("useDefault") is True, (
         "pinned gitleaks.toml must enable extend.useDefault = true"
     )
-    pin_commands = _active_shell_commands(pin_step["run"])
+    pin_commands = active_shell_commands(pin_step["run"])
     assert any("$RUNNER_TEMP/gitleaks.ignore" in " ".join(cmd) for cmd in pin_commands)
 
     scan_step = steps_by_name["Scan repository history"]
     assert isinstance(scan_step.get("run"), str)
-    commands = _active_shell_commands(scan_step["run"])
+    commands = active_shell_commands(scan_step["run"])
     detect_cmd = next(
         (cmd for cmd in commands if len(cmd) >= 2 and "gitleaks" in cmd[0] and cmd[1] == "detect"),
         None,
@@ -146,23 +136,39 @@ def _assert_secret_scan_contract(workflow_text: str) -> None:
         "gitleaks detect must pass --ignore-gitleaks-allow"
     )
     assert "--redact" in detect_cmd, "gitleaks detect must pass --redact"
+    assert _flag_value(detect_cmd, "--exit-code") == "1", "gitleaks detect must pass --exit-code 1"
 
 
 @pytest.fixture(scope="module")
 def ignored_set(tmp_path_factory: pytest.TempPathFactory) -> set[str]:
     """Batch-query git check-ignore once for every candidate path in a module repo."""
-    repo = tmp_path_factory.mktemp("ignore-repo")
+    base = tmp_path_factory.mktemp("ignore-repo")
+    repo = base / "repo"
+    repo.mkdir()
+    home = base / "home"
+    home.mkdir()
+    env = isolated_git_env(home=home)
     shutil.copyfile(ROOT / ".gitignore", repo / ".gitignore")
     subprocess.run(
-        ["git", "init", "--quiet", str(repo)],
+        ["git", *ISOLATED_GIT_CONFIG_ARGS, "init", "--quiet", str(repo)],
+        env=env,
         check=True,
         capture_output=True,
         text=True,
     )
     candidates = [*REQUIRED_IGNORED, *EXISTING_IGNORED, ".env.example"]
     result = subprocess.run(
-        ["git", "-C", str(repo), "check-ignore", "--no-index", "--stdin"],
+        [
+            "git",
+            "-C",
+            str(repo),
+            *ISOLATED_GIT_CONFIG_ARGS,
+            "check-ignore",
+            "--no-index",
+            "--stdin",
+        ],
         input="\n".join(candidates) + "\n",
+        env=env,
         capture_output=True,
         text=True,
         check=False,
@@ -173,16 +179,22 @@ def ignored_set(tmp_path_factory: pytest.TempPathFactory) -> set[str]:
 
 
 @pytest.fixture()
-def temp_repo(tmp_path: Path) -> Path:
-    """Create a throwaway repository with this project's .gitignore."""
-    shutil.copyfile(ROOT / ".gitignore", tmp_path / ".gitignore")
+def temp_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
+    """Create a throwaway repository with this project's .gitignore and isolated Git env."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
+    env = isolated_git_env(home=home)
+    shutil.copyfile(ROOT / ".gitignore", repo / ".gitignore")
     subprocess.run(
-        ["git", "init", "--quiet", str(tmp_path)],
+        ["git", *ISOLATED_GIT_CONFIG_ARGS, "init", "--quiet", str(repo)],
+        env=env,
         check=True,
         capture_output=True,
         text=True,
     )
-    return tmp_path
+    return repo, env
 
 
 def create_placeholder(repo: Path, path: str) -> None:
@@ -205,21 +217,24 @@ def test_env_example_is_allowed(ignored_set: set[str]) -> None:
     assert ".env.example" not in ignored_set
 
 
-def test_git_add_does_not_stage_secret_files(temp_repo: Path) -> None:
+def test_git_add_does_not_stage_secret_files(temp_repo: tuple[Path, dict[str, str]]) -> None:
+    repo, env = temp_repo
     for path in REQUIRED_IGNORED:
-        create_placeholder(temp_repo, path)
-    create_placeholder(temp_repo, ".env.example")
-    create_placeholder(temp_repo, "safe.txt")
+        create_placeholder(repo, path)
+    create_placeholder(repo, ".env.example")
+    create_placeholder(repo, "safe.txt")
 
     subprocess.run(
-        ["git", "-C", str(temp_repo), "add", "--all"],
+        ["git", "-C", str(repo), *ISOLATED_GIT_CONFIG_ARGS, "add", "--all"],
+        env=env,
         check=True,
         capture_output=True,
         text=True,
     )
     staged = set(
         subprocess.run(
-            ["git", "-C", str(temp_repo), "diff", "--cached", "--name-only"],
+            ["git", "-C", str(repo), *ISOLATED_GIT_CONFIG_ARGS, "diff", "--cached", "--name-only"],
+            env=env,
             check=True,
             capture_output=True,
             text=True,
@@ -254,3 +269,19 @@ def test_secret_scan_commented_flags_and_untrusted_config_fail() -> None:
     pr_config = text.replace('"$RUNNER_TEMP/gitleaks.toml"', '".gitleaks.toml"')
     with pytest.raises(AssertionError):
         _assert_secret_scan_contract(pr_config)
+
+    # 4. Dropping fetch-depth: 0, --strict on sha256sum, or --exit-code 1 must fail.
+    no_depth = text.replace("          fetch-depth: 0\n", "")
+    assert no_depth != text
+    with pytest.raises(AssertionError, match="fetch-depth: 0"):
+        _assert_secret_scan_contract(no_depth)
+
+    no_strict = text.replace("sha256sum --check --strict", "sha256sum --check")
+    assert no_strict != text
+    with pytest.raises(AssertionError, match="--strict"):
+        _assert_secret_scan_contract(no_strict)
+
+    no_exit_code = text.replace("            --exit-code 1 \\\n", "")
+    assert no_exit_code != text
+    with pytest.raises(AssertionError, match="--exit-code"):
+        _assert_secret_scan_contract(no_exit_code)

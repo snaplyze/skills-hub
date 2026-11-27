@@ -3,27 +3,21 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import shutil
 import subprocess
 import tarfile
 from pathlib import Path
 
+from tests._helpers import ISOLATED_GIT_CONFIG_ARGS, isolated_git_env
+
 ROOT = Path(__file__).resolve().parents[1]
 INSTALL_DIR = ROOT / "install"
 
 
-def _isolated_git_env() -> dict[str, str]:
-    env = os.environ.copy()
-    env["GIT_CONFIG_GLOBAL"] = os.devnull
-    env["GIT_CONFIG_NOSYSTEM"] = "1"
-    return env
-
-
-def git(repo: Path, *args: str) -> None:
+def git(repo: Path, *args: str, home: Path | None = None) -> None:
     result = subprocess.run(
-        ["git", "-C", str(repo), *args],
-        env=_isolated_git_env(),
+        ["git", "-C", str(repo), *ISOLATED_GIT_CONFIG_ARGS, *args],
+        env=isolated_git_env(home=home),
         capture_output=True,
         text=True,
         check=False,
@@ -34,8 +28,8 @@ def git(repo: Path, *args: str) -> None:
 def is_git_worktree(path: Path) -> bool:
     """Return True only when path itself is the root of a git worktree (never a parent repo)."""
     result = subprocess.run(
-        ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
-        env=_isolated_git_env(),
+        ["git", "-C", str(path), *ISOLATED_GIT_CONFIG_ARGS, "rev-parse", "--show-toplevel"],
+        env=isolated_git_env(),
         capture_output=True,
         text=True,
         check=False,
@@ -92,6 +86,7 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
             "git",
             "-C",
             str(repo),
+            *ISOLATED_GIT_CONFIG_ARGS,
             "archive",
             "--format=tar.gz",
             "--prefix=skills-hub-v1.2.3/",
@@ -99,7 +94,7 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
             str(archive),
             "HEAD",
         ],
-        env=_isolated_git_env(),
+        env=isolated_git_env(),
         check=True,
     )
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
@@ -131,9 +126,7 @@ def test_release_archive_checksum_and_copy_install(tmp_path: Path) -> None:
         bundle.extractall(extracted, filter="data")
     home = tmp_path / "home"
     home.mkdir()
-    env = os.environ.copy()
-    env["HOME"] = str(home)
-    env.pop("XDG_CONFIG_HOME", None)
+    env = isolated_git_env(home=home)
     for installer_name in ("antigravity.sh", "opencode.sh"):
         target = tmp_path / f"target-{installer_name}"
         result = subprocess.run(
@@ -185,6 +178,7 @@ def test_current_tree_archive_contains_all_skills(tmp_path: Path) -> None:
             "git",
             "-C",
             str(source_repo),
+            *ISOLATED_GIT_CONFIG_ARGS,
             "archive",
             "--format=tar.gz",
             "--prefix=skills-hub-test/",
@@ -192,7 +186,7 @@ def test_current_tree_archive_contains_all_skills(tmp_path: Path) -> None:
             str(archive),
             "HEAD",
         ],
-        env=_isolated_git_env(),
+        env=isolated_git_env(),
         capture_output=True,
         text=True,
         check=False,

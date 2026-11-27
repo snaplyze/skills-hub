@@ -13,9 +13,12 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests._helpers import ISOLATED_GIT_CONFIG_ARGS, isolated_git_env
+
 ROOT = Path(__file__).resolve().parents[1]
 INSTALL_DIR = ROOT / "install"
-_GIT_TEMPLATES: dict[str, Path] = {}
+_BASE_GIT_TEMPLATE: Path | None = None
+_TAGGED_DEFAULT_TEMPLATE: Path | None = None
 
 FRONTEND_SKILL = """---
 name: frontend-design
@@ -56,9 +59,7 @@ def make_workspace(tmp_path: Path) -> SimpleNamespace:
     write_skill(repo, "other-skill", OTHER_SKILL)
     home = tmp_path / "home"
     home.mkdir()
-    env = os.environ.copy()
-    env["HOME"] = str(home)
-    env.pop("XDG_CONFIG_HOME", None)
+    env = isolated_git_env(home=home)
     return SimpleNamespace(
         tmp_path=tmp_path,
         repo=repo,
@@ -94,7 +95,7 @@ def run_installer(
 
 def run_git(workspace: SimpleNamespace, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["git", "-C", str(workspace.repo), *args],
+        ["git", "-C", str(workspace.repo), *ISOLATED_GIT_CONFIG_ARGS, *args],
         cwd=workspace.repo,
         env=workspace.env,
         capture_output=True,
@@ -117,11 +118,14 @@ def tree_snapshot(root: Path) -> dict[str, tuple[str, str]]:
     return snapshot
 
 
-def make_git_checkout(workspace: SimpleNamespace, tag: str = "v1.2.3") -> None:
-    if tag not in _GIT_TEMPLATES:
-        tpl_root = Path(tempfile.mkdtemp(prefix=f"skills-hub-git-tpl-{tag}-"))
+def _base_git_template() -> Path:
+    """Build one cached committed git repo (with .gitignore, no tags) reused across tests."""
+    global _BASE_GIT_TEMPLATE
+    if _BASE_GIT_TEMPLATE is None:
+        tpl_root = Path(tempfile.mkdtemp(prefix="skills-hub-git-base-"))
         atexit.register(shutil.rmtree, tpl_root, True)
         tpl_ws = make_workspace(tpl_root)
+        shutil.copyfile(ROOT / ".gitignore", tpl_ws.repo / ".gitignore")
         assert run_git(tpl_ws, "init", "-q").returncode == 0
         assert run_git(tpl_ws, "add", "-A").returncode == 0
         commit = run_git(
@@ -135,8 +139,47 @@ def make_git_checkout(workspace: SimpleNamespace, tag: str = "v1.2.3") -> None:
             "initial",
         )
         assert commit.returncode == 0, commit.stderr
+        _BASE_GIT_TEMPLATE = tpl_ws.repo
+    return _BASE_GIT_TEMPLATE
+
+
+def _tagged_default_template() -> Path:
+    """Cache the default v1.2.3 tagged checkout derived from the single base git template."""
+    global _TAGGED_DEFAULT_TEMPLATE
+    if _TAGGED_DEFAULT_TEMPLATE is None:
+        tpl_root = Path(tempfile.mkdtemp(prefix="skills-hub-git-v1.2.3-"))
+        atexit.register(shutil.rmtree, tpl_root, True)
+        home = tpl_root / "home"
+        home.mkdir()
+        repo = tpl_root / "repo"
+        shutil.copytree(_base_git_template(), repo)
+        tpl_ws = SimpleNamespace(repo=repo, env=isolated_git_env(home=home))
         tagged = run_git(
             tpl_ws,
+            "-c",
+            "user.name=Installer Test",
+            "-c",
+            "user.email=installer@example.test",
+            "tag",
+            "-a",
+            "v1.2.3",
+            "-m",
+            "v1.2.3",
+        )
+        assert tagged.returncode == 0, tagged.stderr
+        _TAGGED_DEFAULT_TEMPLATE = repo
+    return _TAGGED_DEFAULT_TEMPLATE
+
+
+def make_git_checkout(workspace: SimpleNamespace, tag: str | None = "v1.2.3") -> None:
+    shutil.rmtree(workspace.repo)
+    if tag == "v1.2.3":
+        shutil.copytree(_tagged_default_template(), workspace.repo)
+        return
+    shutil.copytree(_base_git_template(), workspace.repo)
+    if tag is not None:
+        tagged = run_git(
+            workspace,
             "-c",
             "user.name=Installer Test",
             "-c",
@@ -148,9 +191,6 @@ def make_git_checkout(workspace: SimpleNamespace, tag: str = "v1.2.3") -> None:
             tag,
         )
         assert tagged.returncode == 0, tagged.stderr
-        _GIT_TEMPLATES[tag] = tpl_ws.repo
-    shutil.rmtree(workspace.repo)
-    shutil.copytree(_GIT_TEMPLATES[tag], workspace.repo)
 
 
 def test_refuses_unsafe_target_matrix(workspace: SimpleNamespace, tmp_path: Path) -> None:
@@ -195,10 +235,9 @@ def test_refuses_symlinked_source_root(tmp_path: Path) -> None:
     (skill_dir / "SKILL.md").write_text(FRONTEND_SKILL, encoding="utf-8")
     (repo / "skills").symlink_to(real_skills)
 
-    env = os.environ.copy()
-    env["HOME"] = str(tmp_path / "home")
-    (tmp_path / "home").mkdir()
-    env.pop("XDG_CONFIG_HOME", None)
+    home = tmp_path / "home"
+    home.mkdir()
+    env = isolated_git_env(home=home)
 
     for installer_name in ("antigravity.sh", "opencode.sh"):
         result = subprocess.run(
@@ -545,19 +584,7 @@ def test_verify_rejects_missing_tag(workspace: SimpleNamespace) -> None:
 def test_verify_without_ref_requires_an_exact_release_tag(
     workspace: SimpleNamespace,
 ) -> None:
-    assert run_git(workspace, "init", "-q").returncode == 0
-    assert run_git(workspace, "add", "-A").returncode == 0
-    commit = run_git(
-        workspace,
-        "-c",
-        "user.name=Installer Test",
-        "-c",
-        "user.email=installer@example.test",
-        "commit",
-        "-qm",
-        "initial",
-    )
-    assert commit.returncode == 0, commit.stderr
+    make_git_checkout(workspace, tag=None)
 
     result = run_installer(
         workspace,
@@ -670,37 +697,7 @@ def test_copy_excludes_secret_files_but_keeps_env_example(workspace: SimpleNames
 
 
 def test_verify_rejects_gitignored_secret_file_inside_skills(workspace: SimpleNamespace) -> None:
-    shutil.copyfile(ROOT / ".gitignore", workspace.repo / ".gitignore")
-    assert run_git(workspace, "init", "-q").returncode == 0
-    assert run_git(workspace, "add", "-A").returncode == 0
-    assert (
-        run_git(
-            workspace,
-            "-c",
-            "user.name=T",
-            "-c",
-            "user.email=t@example.test",
-            "commit",
-            "-qm",
-            "init",
-        ).returncode
-        == 0
-    )
-    assert (
-        run_git(
-            workspace,
-            "-c",
-            "user.name=T",
-            "-c",
-            "user.email=t@example.test",
-            "tag",
-            "-a",
-            "v1.2.3",
-            "-m",
-            "v1.2.3",
-        ).returncode
-        == 0
-    )
+    make_git_checkout(workspace)
     (workspace.repo / "skills" / "frontend-design" / ".env").write_text(
         "SECRET=1\n", encoding="utf-8"
     )
@@ -860,37 +857,7 @@ def test_copy_handles_dash_filename_and_extended_secret_exclusions(
 def test_verify_rejects_tracked_symlink_and_ignores_benign_pycache_in_copy(
     workspace: SimpleNamespace, tmp_path: Path
 ) -> None:
-    shutil.copyfile(ROOT / ".gitignore", workspace.repo / ".gitignore")
-    assert run_git(workspace, "init", "-q").returncode == 0
-    assert run_git(workspace, "add", "-A").returncode == 0
-    assert (
-        run_git(
-            workspace,
-            "-c",
-            "user.name=T",
-            "-c",
-            "user.email=t@example.test",
-            "commit",
-            "-qm",
-            "init",
-        ).returncode
-        == 0
-    )
-    assert (
-        run_git(
-            workspace,
-            "-c",
-            "user.name=T",
-            "-c",
-            "user.email=t@example.test",
-            "tag",
-            "-a",
-            "v1.2.3",
-            "-m",
-            "v1.2.3",
-        ).returncode
-        == 0
-    )
+    make_git_checkout(workspace)
 
     # Benign __pycache__ in skills/ is tolerated in --verify --copy and never copied to target.
     cache_dir = workspace.repo / "skills" / "frontend-design" / "__pycache__"
