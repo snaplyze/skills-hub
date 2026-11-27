@@ -50,54 +50,56 @@ def valid_runs() -> list[dict[str, object]]:
     ]
 
 
+def with_run_override(name: str, **overrides: object) -> list[dict[str, object]]:
+    return [
+        {**entry, **overrides} if entry["name"] == name else dict(entry) for entry in valid_runs()
+    ]
+
+
+def test_expected_workflows_contract() -> None:
+    assert EXPECTED_WORKFLOWS == {
+        "validate": ".github/workflows/ci.yml",
+        "Analyze (python)": ".github/workflows/codeql.yml",
+        "Analyze (actions)": ".github/workflows/codeql.yml",
+        "gitleaks": ".github/workflows/secret-scan.yml",
+    }
+
+
 def test_valid_runs_pass() -> None:
     assert check_run_errors(valid_runs(), COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO) == []
 
 
 def test_missing_failed_or_spoofed_runs_fail() -> None:
-    assert "missing" in " ".join(
-        check_run_errors([run("validate", 1)], COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
+    missing_errors = check_run_errors(
+        [run("validate", 1)], COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO
     )
-    failed = [
-        run("validate", 1, conclusion="failure"),
-        run("Analyze (python)", 2),
-        run("gitleaks", 3),
-    ]
-    assert any(
-        "not successful" in error
-        for error in check_run_errors(failed, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
-    )
-    in_progress = [
-        run("validate", 1, status="in_progress", conclusion=None),
-        run("Analyze (python)", 2),
-        run("gitleaks", 3),
-    ]
-    assert any(
-        "not successful" in error
-        for error in check_run_errors(in_progress, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
-    )
-    spoofed = [
-        run("validate", 1, app={"slug": "evil"}),
-        run("Analyze (python)", 2),
-        run("gitleaks", 3),
-    ]
-    assert any(
-        "not created by GitHub Actions" in error
-        for error in check_run_errors(spoofed, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
-    )
-    app_none = [run("validate", 1, app=None), run("Analyze (python)", 2), run("gitleaks", 3)]
-    assert any(
-        "not created by GitHub Actions" in error
-        for error in check_run_errors(app_none, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
-    )
+    assert len(missing_errors) == 3
+    for name in ("Analyze (python)", "Analyze (actions)", "gitleaks"):
+        assert any(f"missing required check-run: {name}" in err for err in missing_errors)
+
+    failed = with_run_override("validate", conclusion="failure")
+    failed_errors = check_run_errors(failed, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
+    assert len(failed_errors) == 1
+    assert "not successful" in failed_errors[0]
+
+    in_progress = with_run_override("validate", status="in_progress", conclusion=None)
+    in_progress_errors = check_run_errors(in_progress, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
+    assert len(in_progress_errors) == 1
+    assert "not successful" in in_progress_errors[0]
+
+    spoofed = with_run_override("validate", app={"slug": "evil"})
+    spoofed_errors = check_run_errors(spoofed, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
+    assert len(spoofed_errors) == 1
+    assert "not created by GitHub Actions" in spoofed_errors[0]
+
+    app_none = with_run_override("validate", app=None)
+    app_none_errors = check_run_errors(app_none, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
+    assert len(app_none_errors) == 1
+    assert "not created by GitHub Actions" in app_none_errors[0]
 
 
 def test_wrong_commit_url_or_workflow_fails() -> None:
-    wrong_commit = [
-        run("validate", 1, head_sha="b" * 40),
-        run("Analyze (python)", 2),
-        run("gitleaks", 3),
-    ]
+    wrong_commit = with_run_override("validate", head_sha="b" * 40)
     called: list[str] = []
 
     def tracking_paths(run_id: str) -> tuple[str | None, str | None]:
@@ -105,19 +107,19 @@ def test_wrong_commit_url_or_workflow_fails() -> None:
         return paths(run_id)
 
     errors = check_run_errors(wrong_commit, COMMIT, EXPECTED_WORKFLOWS, tracking_paths, repo=REPO)
-    assert any("ran on" in error for error in errors)
+    assert len(errors) == 1
+    assert "ran on" in errors[0]
     # Must NOT query workflow API for a run that already failed head_sha.
     assert "1" not in called
 
-    wrong_repo_url = [
-        run("validate", 1, details_url="https://github.com/other/repo/actions/runs/1/job/1"),
-        run("Analyze (python)", 2),
-        run("gitleaks", 3),
-    ]
-    assert any(
-        "no Actions run URL" in error
-        for error in check_run_errors(wrong_repo_url, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
+    wrong_repo_url = with_run_override(
+        "validate", details_url="https://github.com/other/repo/actions/runs/1/job/1"
     )
+    wrong_url_errors = check_run_errors(
+        wrong_repo_url, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO
+    )
+    assert len(wrong_url_errors) == 1
+    assert "no Actions run URL" in wrong_url_errors[0]
 
     wrong_wf_sha = check_run_errors(
         valid_runs(),
@@ -126,17 +128,30 @@ def test_wrong_commit_url_or_workflow_fails() -> None:
         lambda rid: (".github/workflows/ci.yml", "b" * 40) if rid == "1" else paths(rid),
         repo=REPO,
     )
-    assert any("workflow run targeted" in error for error in wrong_wf_sha)
+    assert len(wrong_wf_sha) == 1
+    assert "workflow run targeted" in wrong_wf_sha[0]
+
+    wrong_single_path = check_run_errors(
+        valid_runs(),
+        COMMIT,
+        EXPECTED_WORKFLOWS,
+        lambda rid: (".github/workflows/other.yml", COMMIT) if rid == "1" else paths(rid),
+        repo=REPO,
+    )
+    assert len(wrong_single_path) == 1
+    assert "expected" in wrong_single_path[0]
 
     wrong_path = check_run_errors(
         valid_runs(), COMMIT, EXPECTED_WORKFLOWS, lambda _run_id: "other.yml", repo=REPO
     )
-    assert any("expected" in error for error in wrong_path)
+    assert len(wrong_path) == 4
+    assert all("expected" in error for error in wrong_path)
 
     unreadable = check_run_errors(
         valid_runs(), COMMIT, EXPECTED_WORKFLOWS, lambda _run_id: None, repo=REPO
     )
-    assert any("unreadable workflow" in error for error in unreadable)
+    assert len(unreadable) == 4
+    assert all("unreadable workflow" in error for error in unreadable)
 
 
 def test_third_party_or_cancelled_run_does_not_shadow_valid_check() -> None:
@@ -347,6 +362,40 @@ def test_main_jsonl_handling_and_gh_workflow_info(
     assert release_checks.main(["--runs-file", str(good), "--commit", COMMIT, "--repo", REPO]) == 0
     assert "required check-runs OK" in capsys.readouterr().out
 
+    # Valid JSONL with failing check_run_errors exits 1 and reports ::error::.
+    missing_checks = tmp_path / "missing.jsonl"
+    missing_checks.write_text(json.dumps(run("validate", 1)) + "\n", encoding="utf-8")
+    assert (
+        release_checks.main(
+            ["--runs-file", str(missing_checks), "--commit", COMMIT, "--repo", REPO]
+        )
+        == 1
+    )
+    out = capsys.readouterr().out
+    assert "::error::missing required check-run: Analyze (actions)" in out
+
+
+def test_fallback_cancelled_and_wf_cache() -> None:
+    # Only a cancelled run exists for validate -> fails closed as not successful.
+    only_cancelled = with_run_override("validate", conclusion="cancelled")
+    errors = check_run_errors(only_cancelled, COMMIT, EXPECTED_WORKFLOWS, paths, repo=REPO)
+    assert len(errors) == 1
+    assert "validate is not successful" in errors[0]
+    assert "conclusion=cancelled" in errors[0]
+
+    # Shared workflow run_id ("2" for Analyze python + actions) is looked up only once via wf_cache.
+    lookups: list[str] = []
+
+    def counting_paths(run_id: str) -> tuple[str | None, str | None]:
+        lookups.append(run_id)
+        return paths(run_id)
+
+    assert (
+        check_run_errors(valid_runs(), COMMIT, EXPECTED_WORKFLOWS, counting_paths, repo=REPO) == []
+    )
+    assert lookups.count("2") == 1
+    assert sorted(lookups) == ["1", "2", "3"]
+
 
 def test_gh_workflow_info_handles_success_failure_and_timeout(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -369,6 +418,28 @@ def test_gh_workflow_info_handles_success_failure_and_timeout(
     )
     assert release_checks.gh_workflow_info(REPO, "1") == (None, None)
     assert "rate limited" in capsys.readouterr().err
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_a, **_kw: SimpleNamespace(returncode=0, stdout="{bad-json\n", stderr=""),
+    )
+    assert release_checks.gh_workflow_info(REPO, "1") == (None, None)
+    assert "invalid JSON" in capsys.readouterr().err
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_a, **_kw: SimpleNamespace(returncode=0, stdout="[1, 2]\n", stderr=""),
+    )
+    assert release_checks.gh_workflow_info(REPO, "1") == (None, None)
+
+    def raise_oserror(*_a: object, **_kw: object) -> None:
+        raise OSError("gh binary not found")
+
+    monkeypatch.setattr(subprocess, "run", raise_oserror)
+    assert release_checks.gh_workflow_info(REPO, "1") == (None, None)
+    assert "gh api failed" in capsys.readouterr().err
 
     def raise_timeout(*_a: object, **_kw: object) -> None:
         raise subprocess.TimeoutExpired(cmd="gh", timeout=30)

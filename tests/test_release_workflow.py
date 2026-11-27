@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import copy
-import shlex
 from pathlib import Path
 
 import pytest
 import yaml
+
+from tests._helpers import active_shell_text as _active_shell_text
+from tests._helpers import active_shell_tokens as _active_shell_tokens
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
@@ -17,61 +19,6 @@ def load_workflow() -> dict:
     data = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     assert isinstance(data, dict)
     return data
-
-
-def _strip_shell_comments(line: str) -> str:
-    """Remove full-line and inline shell comments while respecting single/double quotes."""
-    in_single = False
-    in_double = False
-    escaped = False
-    for idx, ch in enumerate(line):
-        if escaped:
-            escaped = False
-            continue
-        if ch == "\\" and not in_single:
-            escaped = True
-            continue
-        if ch == "'" and not in_double:
-            in_single = not in_single
-        elif ch == '"' and not in_single:
-            in_double = not in_double
-        elif (
-            ch == "#" and not in_single and not in_double and (idx == 0 or line[idx - 1].isspace())
-        ):
-            return line[:idx].rstrip()
-    return line.rstrip()
-
-
-def _active_shell_text(script: str) -> str:
-    """Return active (comment-stripped) shell text joined across backslash continuations."""
-    logical_lines: list[str] = []
-    current = ""
-    for raw_line in script.splitlines():
-        cleaned = _strip_shell_comments(raw_line).strip()
-        if not cleaned:
-            if current:
-                logical_lines.append(current)
-                current = ""
-            continue
-        if cleaned.endswith("\\"):
-            current += cleaned[:-1].rstrip() + " "
-        else:
-            current += cleaned
-            logical_lines.append(current)
-            current = ""
-    if current:
-        logical_lines.append(current)
-    return "\n".join(logical_lines)
-
-
-def _active_shell_tokens(script: str) -> list[str]:
-    tokens: list[str] = []
-    for line in _active_shell_text(script).splitlines():
-        try:
-            tokens.extend(shlex.split(line, comments=True))
-        except ValueError:
-            tokens.extend(line.split())
-    return tokens
 
 
 def _step_by_name(data: dict, name: str) -> dict:

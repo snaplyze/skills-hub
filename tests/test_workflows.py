@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import io
+import re
 import shutil
 import subprocess
 import sys
@@ -11,8 +13,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 from scripts import check_workflows
+from tests._helpers import active_shell_commands, active_shell_text
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKER = ROOT / "scripts" / "check_workflows.py"
@@ -296,6 +300,8 @@ def test_yaml_workflow_extension_is_checked(tmp_path: Path) -> None:
     result = write_workflow(tmp_path, text, name="ci.yaml")
 
     assert result.returncode == 1
+    assert "ci.yaml" in result.stderr
+    assert "40-character commit SHA" in result.stderr
 
 
 def check_in_process(tmp_path: Path, text: str, name: str = "ci.yml") -> list[tuple[str, int, str]]:
@@ -597,10 +603,117 @@ def test_pull_request_allows_safe_review_write_scopes(tmp_path: Path, scope: str
     assert check_in_process(tmp_path, text) == []
 
 
+_ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _extract_pip_args(cmd: list[str]) -> list[str] | None:
+    """Return pip subcommand args if simple command invokes pip (directly, via python -m, env, or xargs)."""
+    tokens = list(cmd)
+    idx = 0
+    while idx < len(tokens):
+        tok = tokens[idx]
+        if _ENV_ASSIGN_RE.match(tok):
+            idx += 1
+            continue
+        base = Path(tok).name
+        if base == "env":
+            idx += 1
+            while idx < len(tokens) and (
+                tokens[idx].startswith("-") or _ENV_ASSIGN_RE.match(tokens[idx])
+            ):
+                if tokens[idx] in ("-u", "-C", "-S") and idx + 1 < len(tokens):
+                    idx += 2
+                else:
+                    idx += 1
+            continue
+        if base == "xargs":
+            idx += 1
+            while idx < len(tokens) and tokens[idx].startswith("-"):
+                if tokens[idx] in ("-I", "-L", "-n", "-P", "-d", "-E", "-s") and idx + 1 < len(
+                    tokens
+                ):
+                    idx += 2
+                else:
+                    idx += 1
+            continue
+        break
+    if idx >= len(tokens):
+        return None
+    head = Path(tokens[idx]).name
+    if head.startswith("pip"):
+        return tokens[idx + 1 :]
+    if head.startswith("python"):
+        # Scan interpreter options until -m <module> (stop at -c or script positional arg).
+        pos = idx + 1
+        while pos < len(tokens):
+            arg = tokens[pos]
+            if arg == "-m" and pos + 1 < len(tokens):
+                if tokens[pos + 1] == "pip":
+                    return tokens[pos + 2 :]
+                return None
+            if arg in ("-c", "--"):
+                return None
+            if arg in ("-W", "-X") and pos + 1 < len(tokens):
+                pos += 2
+                continue
+            if arg.startswith("-"):
+                pos += 1
+                continue
+            return None
+    return None
+
+
+def _assert_ci_pip_install_contract(ci_data: dict) -> None:
+    assert isinstance(ci_data, dict)
+    jobs = ci_data.get("jobs", {})
+    assert isinstance(jobs, dict) and jobs
+
+    found_hashed_dev_install = False
+    for job in jobs.values():
+        if not isinstance(job, dict):
+            continue
+        for step in job.get("steps", []):
+            if not isinstance(step, dict) or not isinstance(step.get("run"), str):
+                continue
+            for cmd in active_shell_commands(step["run"]):
+                pip_args = _extract_pip_args(cmd)
+                if pip_args is None or "install" not in pip_args:
+                    continue
+                assert "--upgrade" not in pip_args and "-U" not in pip_args, cmd
+                assert "--require-hashes" in pip_args, cmd
+                if "-r" in pip_args and "requirements-dev.txt" in pip_args:
+                    found_hashed_dev_install = True
+
+    assert found_hashed_dev_install, (
+        "ci.yml must install requirements-dev.txt with --require-hashes"
+    )
+
+
 def test_ci_workflow_has_no_unhashed_pip_upgrade() -> None:
-    ci_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert "pip install --upgrade" not in ci_text
-    assert "--require-hashes -r requirements-dev.txt" in ci_text
+    ci_data = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    )
+    _assert_ci_pip_install_contract(ci_data)
+
+    # Verify active_shell_text / active_shell_commands preserve mid-word # and avoid false continuations.
+    assert active_shell_commands("echo ${TAG#v} --strict") == [["echo", "${TAG#v}", "--strict"]]
+    assert active_shell_text("echo ok \\\\\nnext_cmd") == "echo ok \\\\\nnext_cmd"
+    assert active_shell_text("echo ok \\ # comment\nnext_cmd") == "echo ok \\\nnext_cmd"
+
+    # Negative mutations: chained, env-prefixed, -I-flagged, xargs, or unhashed pip installs fail.
+    for bad_run in (
+        "python -m pip install --require-hashes -r requirements-dev.txt && pip install unhashed-pkg",
+        "echo ok && pip install --upgrade pip",
+        "true;pip install -U pip",
+        "PIP_NO_CACHE_DIR=1 python -m pip install --upgrade pip",
+        "python -I -m pip install --upgrade pip",
+        "echo pkg | xargs pip install --upgrade",
+        "python -m pip install -r requirements-dev.txt",
+    ):
+        mutated = copy.deepcopy(ci_data)
+        mutated["jobs"]["validate"]["steps"].append({"name": "Bad pip", "run": bad_run})
+        with pytest.raises(AssertionError):
+            _assert_ci_pip_install_contract(mutated)
 
 
 def test_aud50_case_insensitive_keys_step_xor_and_symlinks_fail(tmp_path: Path) -> None:
@@ -700,8 +813,6 @@ def test_aud50_case_insensitive_keys_step_xor_and_symlinks_fail(tmp_path: Path) 
 
 
 def test_aud50_workflow_concurrency_and_secret_scan_retries() -> None:
-    import yaml
-
     wf_dir = ROOT / ".github" / "workflows"
     for name in ("ci.yml", "codeql.yml", "secret-scan.yml"):
         data = yaml.safe_load((wf_dir / name).read_text(encoding="utf-8"))
