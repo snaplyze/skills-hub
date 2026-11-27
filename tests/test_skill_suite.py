@@ -432,3 +432,59 @@ def test_docs_test_paths_exist() -> None:
         text = path.read_text(encoding="utf-8")
         for relative in set(re.findall(r"`(tests/[^`\s]+\.py)`", text)):
             assert (ROOT / relative).is_file(), (path.relative_to(ROOT), relative)
+
+
+def test_aud51_skills_paths_tokens_guardrails_and_portability() -> None:
+    # 1. No skill markdown may use `../` backtick paths that bypass LOCAL_REF_RE.
+    for md_file in sorted(SKILLS.rglob("*.md")):
+        text = md_file.read_text(encoding="utf-8")
+        assert not re.search(r"`\.\./", text), f"{md_file.relative_to(ROOT)} uses `../` path"
+
+    # 2. design-system.md layout tokens and contrast summary must match assets/tokens.css.
+    tokens_css = (SKILLS / "frontend-design" / "assets" / "tokens.css").read_text(encoding="utf-8")
+    design_sys = (SKILLS / "frontend-design" / "references" / "design-system.md").read_text(
+        encoding="utf-8"
+    )
+    for prop in ("--container-2xl", "--gutter", "--measure", "--header-height"):
+        css_match = re.search(rf"{re.escape(prop)}:\s*([^;]+);", tokens_css)
+        assert css_match, f"missing {prop} in tokens.css"
+        expected_val = css_match.group(1).strip()
+        doc_matches = re.findall(rf"{re.escape(prop)}:\s*([^;]+);", design_sys)
+        assert doc_matches, f"missing {prop} in design-system.md"
+        for found in doc_matches:
+            assert found.strip() == expected_val, (prop, found.strip(), expected_val)
+    assert "64 light/dark pairs and 27 semantic combinations" in design_sys
+
+    # 3. responsive-mobile.md TOC includes Mobile checklist.
+    mobile_doc = (SKILLS / "frontend-design" / "references" / "responsive-mobile.md").read_text(
+        encoding="utf-8"
+    )
+    assert "- [Mobile checklist](#mobile-checklist)" in mobile_doc
+
+    # 4. Untrusted-data guardrails & code-review secret-redaction rule.
+    for skill_id in ("frontend-design", "orchestration", "code-review"):
+        assert "untrusted data" in skill_text(skill_id).casefold(), skill_id
+    review_text = skill_text("code-review")
+    review_order = review_text.split("## Review order", 1)[1].split("## Five axes", 1)[0]
+    receiving_fb = review_text.split("## Receiving feedback", 1)[1].split("## Red flags", 1)[0]
+    assert "untrusted data" in review_order.casefold()
+    assert "untrusted data" in receiving_fb.casefold()
+    assert "`file:line`" in review_order
+    assert "without echoing secret values" in review_order
+
+    # 5. Portable orchestration wording & autonomous-execution field sync.
+    orch_text = skill_text("orchestration")
+    assert "user-global harness configuration" in orch_text
+    assert "user-global Antigravity configuration" not in orch_text
+    assert "native equivalents" in orch_text
+
+    auto_text = skill_text("autonomous-execution")
+    isolation_sec = auto_text.split("## Isolation", 1)[1].split("## Review gate", 1)[0]
+    subagents_sec = auto_text.split("## Subagents and parallelism", 1)[1].split(
+        "## Stop conditions", 1
+    )[0]
+    assert "native equivalents" in isolation_sec
+    assert "native equivalents" in subagents_sec
+    assert "owner/session" in auto_text
+    assert "deferred items" in auto_text
+    assert "workspace mode (`inherit` | `share` | `branch`)" in auto_text

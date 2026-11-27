@@ -236,8 +236,8 @@ CSS custom properties cannot be used in media queries. Document the values in a 
 Starter sheet tokens (`assets/tokens.css`):
 
 ```css
---container-2xl: 80rem;
---gutter: clamp(1rem, 2.5vw, 2rem);
+--container-2xl: 90rem;
+--gutter: clamp(1rem, 4vw, 2.5rem);
 --measure: 65ch;
 --header-height: 4rem;
 ```
@@ -476,7 +476,7 @@ For design-to-code handoff:
 
 ## Starter token sheet
 
-`assets/tokens.css` contains a starting point with primitive hex scales, semantic light/dark tokens, the fluid type scale, 4/8 px spacing, containers and breakpoints in comments, radii, borders, shadows, z-index, motion, and base reset/focus styles. Use it as a reference, not a drop-in theme. Replace the brand hue, neutrals, and type families with values that fit the subject. `assets/token-contrast-pairs.json` contains 64 light/dark pairs covering the starter semantics; run it with:
+`assets/tokens.css` contains a starting point with primitive hex scales, semantic light/dark tokens, the fluid type scale, 4/8 px spacing, containers and breakpoints in comments, radii, borders, shadows, z-index, motion, and base reset/focus styles. Use it as a reference, not a drop-in theme. Replace the brand hue, neutrals, and type families with values that fit the subject. `assets/token-contrast-pairs.json` contains 64 light/dark pairs and 27 semantic combinations covering the starter semantics; run it with:
 
 ```bash
 python3 scripts/contrast.py --pairs assets/token-contrast-pairs.json --check
