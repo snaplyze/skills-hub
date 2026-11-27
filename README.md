@@ -71,8 +71,12 @@ The Antigravity installer copies skills into `$HOME/.gemini/config/skills` by de
 
 #### Install from a release (Antigravity)
 
+> Note: `install/antigravity.sh` and unified Antigravity support were added after `v1.3.0` and will be included starting with the next signed release (`v1.4.0+`). Until that release is published, use [Install from main (Antigravity)](#install-from-main-antigravity) below.
+
+Once a release containing `install/antigravity.sh` is published, clone the signed tag, verify its signature, and install with `--verify --ref`:
+
 ```bash
-VERSION=vX.Y.Z  # replace with a signed release tag
+VERSION=vX.Y.Z  # replace with a signed release tag (>= v1.4.0)
 git clone --branch "$VERSION" --depth 1 https://github.com/snaplyze/skills-hub.git
 cd skills-hub
 git -c gpg.format=ssh \
@@ -81,10 +85,10 @@ git -c gpg.format=ssh \
 ./install/antigravity.sh --verify --ref "$VERSION"
 ```
 
-Or install from a checksum-verified release archive:
+Or install from a checksum-verified release archive (verify provenance with `gh attestation verify "skills-hub-$VERSION.tar.gz" --repo snaplyze/skills-hub`):
 
 ```bash
-VERSION=vX.Y.Z  # replace with a signed release tag
+VERSION=vX.Y.Z  # replace with a signed release tag (>= v1.4.0)
 curl -fsSLO "https://github.com/snaplyze/skills-hub/releases/download/$VERSION/skills-hub-$VERSION.tar.gz"
 curl -fsSLO "https://github.com/snaplyze/skills-hub/releases/download/$VERSION/SHA256SUMS"
 sha256sum -c SHA256SUMS
@@ -290,7 +294,7 @@ It supports hex, `rgb()`, `hsl()`, alpha compositing, text/large-text/UI thresho
 1. **Progressive disclosure.** `SKILL.md` is the entry point; references are loaded only when the task needs them.
 2. **Deterministic where possible.** Scripts handle measurable checks; the model handles judgment.
 3. **Evidence over claims.** Skills require verification and report gaps.
-4. **Portable content.** Unified Agent Skills Markdown, relative paths, no harness-locked runtime APIs in the skill body.
+4. **Portable content.** Unified Agent Skills Markdown with relative paths, no plugins or hooks, and no OpenCode-only runtime instructions inside `skills/`; operational guidance maps cleanly onto standard Antigravity and Agent Skills capabilities.
 5. **No vendor lock-in.** Skills do not install packages, modify the OS, or authorize unrelated changes.
 6. **Attribution.** Sources and licenses are recorded; adapted text is not copied wholesale.
 
@@ -352,7 +356,7 @@ See [GOVERNANCE.md](GOVERNANCE.md) for the decision and review model, and [SECUR
 1. Create `skills/<skill-id>/SKILL.md` with YAML frontmatter (`name` matching `<skill-id>` in lowercase kebab-case, `description`, `license`, optional `compatibility`, `allowed-tools`, `metadata`, `disable-model-invocation`).
 2. Keep the description trigger-rich and scoped: what it does and when to use it.
 3. Put detailed material in `references/`, templates in `assets/`, deterministic helpers in `scripts/`.
-4. Use relative paths from the skill directory and keep instructions harness-neutral.
+4. Use relative paths from the skill directory, avoid plugins/hooks and OpenCode-only runtime prose, and keep instructions mapped cleanly onto standard Agent Skills / Antigravity capabilities.
 5. Document the skill in the README Skills section; update the harness status table if it adds a new client.
 6. Validate links, scripts, and installers (`make check`).
 

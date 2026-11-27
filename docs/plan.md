@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-27; этапы 01–10; веха #10 «10 — Antigravity support»: `AGY-01` #99 (`DONE`, PR #104), `AGY-02` #100 (`DONE`, PR #104), `AGY-03` #101 (`DONE`, PR #105), `AGY-04` #102 и `AGY-05` #103 (закрываются PR 3 с последующим закрытием вехи #10); закрытые этапы 01–09: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63, #68–#82, #84. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-27; этапы 01–10; веха #10 «10 — Antigravity support»: `AGY-01` #99 (`DONE`, PR #104), `AGY-02` #100 (`DONE`, PR #104), `AGY-03` #101 (`DONE`, PR #105), `AGY-04` #102 и `AGY-05` #103 (закрываются PR #106 с последующим закрытием вехи #10); закрытые этапы 01–09: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63, #68–#82, #84. Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -8,16 +8,16 @@
 |---|---|---|
 | `AGENTS.md` | сведения о проекте и стартовый контекст | 48 / 8 485 |
 | `docs/plan.md` | единый реестр плана (обновляется на месте) | — |
-| `README.md` | вход, установка (Antigravity + OpenCode), защиты | 373 / 23 495 |
-| `docs/antigravity-orchestration.md` | архитектура нативной оркестрации Antigravity | 108 / 8 915 |
+| `README.md` | вход, установка (Antigravity + OpenCode), защиты | 377 / 24 276 |
+| `docs/antigravity-orchestration.md` | архитектура нативной оркестрации Antigravity | 108 / 8 948 |
 | `docs/opencode-orchestration.md` | архитектура native orchestration OpenCode | 81 / 5 307 |
 | `docs/release-process.md` | релизный гейт и owner setup | 283 / 13 152 |
 | `docs/repository-settings.md` | settings evidence (сверено 2026-11-26) | 75 / 5 000 |
 | `docs/release-signing/` | публичный SSH trust и ротация | 44 / 1 965 |
-| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила, безопасность, история релизов | 511 / 23 331 |
+| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила, безопасность, история релизов | 511 / 23 472 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция workflow-навыков и указатель `sources.md` | 53 / 3 444 |
 | `docs/plans/2026-11-16-skill-suite-v2.md` | завершённый детальный план этапа 08 | 281 / 10 726 |
-| `docs/plans/2026-11-27-antigravity-support.md` | детальный план этапа 10 (поддержка Antigravity) | 153 / 11 594 |
+| `docs/plans/2026-11-27-antigravity-support.md` | детальный план этапа 10 (поддержка Antigravity) | 153 / 11 923 |
 
 План не входит в бюджет загружаемых инструкций 32 KiB.
 
@@ -36,19 +36,19 @@
 | 07 | `07 — Audit 2026-11-15` (#7) | closed | `AUD-22`–`AUD-29` (#41–#48) |
 | 08 | `08 — Skill suite v2` (#8) | closed | `SKL2-01`–`SKL2-04` (#58–#61), closeout #63 |
 | 09 | `Аудит 2026-11-26` (#9) | closed | 0 OPEN, 15 DONE (`AUD-30` #69–`AUD-43` #82, `AUD-44` #84) |
-| 10 | `10 — Antigravity support` (#10) | closing | `AGY-01` #99 (`DONE`), `AGY-02` #100 (`DONE`), `AGY-03` #101 (`DONE`), `AGY-04` #102 (PR 3), `AGY-05` #103 (PR 3) |
+| 10 | `10 — Antigravity support` (#10) | closing | `AGY-01` #99 (`DONE`), `AGY-02` #100 (`DONE`), `AGY-03` #101 (`DONE`), `AGY-04` #102 (PR #106), `AGY-05` #103 (PR #106) |
 
 ## Этап 10 — Поддержка Google Antigravity (2026-11-27)
 
 - **Основание и источники:** поручение владельца (добавить поддержку Google Antigravity наряду с OpenCode, убрать OpenCode-специфичные описания из `skills/` и унифицировать их под стандарт Agent Skills, задействовать нативную оркестрацию Antigravity); официальная документация `antigravity.google/docs/*` (`skills`, `rules`, `customization-discovery`, `subagents`, `dynamic-workflows`, `swarm`, `teamwork`, `plan`, `browser`, `plugins`, `build-plugins`, `cli/headless`, `cli/modes`, `cli/reference`), стандарт `agentskills.io/specification` и живая проверка через `agy 1.5.18` (`agy plugin validate --json`).
 - **Детальный план и журнал исполнения:** [`docs/plans/2026-11-27-antigravity-support.md`](plans/2026-11-27-antigravity-support.md).
-- **Порядок исполнения (DAG):** Волна 1 (`AGY-01` #99 + `AGY-02` #100, PR #104 `67c14fa`) → Волна 2 (`AGY-03` #101, PR #105 `f6277cc`) → Волна 3 (`AGY-04` #102 + `AGY-05` #103, PR 3).
+- **Порядок исполнения (DAG):** Волна 1 (`AGY-01` #99 + `AGY-02` #100, PR #104 `67c14fa`) → Волна 2 (`AGY-03` #101, PR #105 `f6277cc`) → Волна 3 (`AGY-04` #102 + `AGY-05` #103, PR #106).
 - **Задачи этапа 10:**
   - `AGY-01` ([#99](https://github.com/snaplyze/skills-hub/issues/99), `DONE`, PR #104 `67c14fa`): строгий `name == skill_dir.name` (lowercase kebab-case, 1–64 символа), единая `compatibility: agentskills` (≤ 500 символов), `allowed-tools` и `dict[str, str]`-проверка `metadata` с сохранением OpenCode V2 `metadata.opencode/autoinvoke` в `scripts/validate.py` и `tests/test_validation.py`; эмпирически проверено `agy plugin validate --json` — 11/11 навыков, 0 ошибок и 0 предупреждений.
   - `AGY-02` ([#100](https://github.com/snaplyze/skills-hub/issues/100), `DONE`, PR #104 `67c14fa`): удалены все OpenCode-специфичные термины из `skills/**/*.md`, все 11 навыков унифицированы и адаптированы под нативную оркестрацию Antigravity (`invoke_subagent`, `define_subagent` с учётом no-shell при `EnableWriteTools: false`, `send_message`, `manage_subagents`, встроенные `research`/`browser`/`self`, изоляция `branch`/`share`, `run_workflow`, пользовательские `/swarm`/`/boost`/`/teamwork`, `/browser`, `/diff`, `/compact`, `/boost`, headless `agy -p ... --output-format json`), добавлен `docs/antigravity-orchestration.md` рядом с `docs/opencode-orchestration.md`, расширены регрессионные проверки `tests/test_skill_suite.py`; независимое ревью `readonly-reviewer` (2 P1 + 3 P2 исправлены, перепроверка `ZERO FINDINGS`).
-  - `AGY-03` ([#101](https://github.com/snaplyze/skills-hub/issues/101), `DONE`, PR #105 `f6277cc`): добавлен `install/antigravity.sh` (`$HOME/.gemini/config/skills`, игнорирует `XDG_CONFIG_HOME`, подсказка `/skills reload`) рядом с `install/opencode.sh`, общее ядро вынесено в `install/lib.sh` с проверкой симлинков; добавлены `.gemini/` в `.gitignore`, исключение `.gemini` в обоих установщиках, запрет симлинков каталога `install/` в `scripts/validate.py`, двойные `shellcheck -x` / `dry-run` в `Makefile` и расширенные тесты (`test_installer.py`, `test_release_assets.py`, `test_secrets.py`, `test_validation.py`); независимое ревью `readonly-reviewer` (0 P0/P1, 3 кодовых P2 исправлены в PR #105, P2-4 по `CONTRIBUTING.md` — в PR 3).
-  - `AGY-04` ([#102](https://github.com/snaplyze/skills-hub/issues/102), PR 3): обновлены `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `THIRD_PARTY_NOTICES.md`, `docs/release-process.md`, `CHANGELOG.md` (`## [Unreleased]`), `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/PULL_REQUEST_TEMPLATE.md` и `docs/antigravity-orchestration.md` под совместную поддержку Antigravity и OpenCode.
-  - `AGY-05` ([#103](https://github.com/snaplyze/skills-hub/issues/103), PR 3): синхронизация `docs/plan.md` и `docs/plans/2026-11-27-antigravity-support.md`, сквозная проверка `make check`, `make links` и `agy plugin validate --json`, закрытие вехи #10 после слияния PR 3. Релизный тег не создаётся без отдельного поручения владельца.
+  - `AGY-03` ([#101](https://github.com/snaplyze/skills-hub/issues/101), `DONE`, PR #105 `f6277cc`): добавлен `install/antigravity.sh` (`$HOME/.gemini/config/skills`, игнорирует `XDG_CONFIG_HOME`, подсказка `/skills reload`) рядом с `install/opencode.sh`, общее ядро вынесено в `install/lib.sh` с проверкой симлинков; добавлены `.gemini/` в `.gitignore`, исключение `.gemini` в обоих установщиках, запрет симлинков каталога `install/` в `scripts/validate.py`, двойные `shellcheck -x` / `dry-run` в `Makefile` и расширенные тесты (`test_installer.py`, `test_release_assets.py`, `test_secrets.py`, `test_validation.py`); независимое ревью `readonly-reviewer` (0 P0/P1, 3 кодовых P2 исправлены в PR #105, P2-4 по `CONTRIBUTING.md` — в PR #106).
+  - `AGY-04` ([#102](https://github.com/snaplyze/skills-hub/issues/102), PR #106): обновлены `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `THIRD_PARTY_NOTICES.md`, `docs/release-process.md`, `CHANGELOG.md` (`## [Unreleased]`), `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/PULL_REQUEST_TEMPLATE.md` и `docs/antigravity-orchestration.md` под совместную поддержку Antigravity и OpenCode; независимое ревью `readonly-reviewer` (1 P1 + 3 P2 исправлены).
+  - `AGY-05` ([#103](https://github.com/snaplyze/skills-hub/issues/103), PR #106): синхронизация `docs/plan.md` и `docs/plans/2026-11-27-antigravity-support.md`, сквозная проверка `make check` PASS (343 теста) и `agy plugin validate --json` PASS (11/11, 0 ошибок/предупреждений); `make links` `NOT_TESTED` локально из-за fake-IP `198.18.0.0/15` (подмена: `curl` HTTP 200 на все 3 новых URL; `Link Audit` работает на hosted CI); закрытие вехи #10 после слияния PR #106. Релизный тег не создаётся без отдельного поручения владельца.
 
 ## Аудит 2026-11-26
 

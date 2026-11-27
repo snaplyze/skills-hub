@@ -73,7 +73,7 @@ Rules:
 - The directory name is the skill ID: lowercase kebab-case, 1–64 characters.
 - `SKILL.md` starts with YAML frontmatter containing `name` (lowercase kebab-case matching the directory name; exposed as `/<name>` in Antigravity), `description`, and `license` (optional: `compatibility`, `allowed-tools`, `metadata`, `disable-model-invocation`).
 - The description must explain what the skill does and when to use it. It is the primary trigger; Antigravity and OpenCode also list the skill ID/name before loading the skill.
-- Keep skill text unified and portable across harnesses (no OpenCode-only or harness-locked runtime instructions inside `skills/`).
+- Keep skill text unified under the Agent Skills standard (no plugins, hooks, or OpenCode-specific runtime descriptions inside `skills/`; map orchestration cleanly onto standard Antigravity/Agent Skills capabilities so all supported harnesses interpret them consistently).
 - Keep `SKILL.md` focused on the workflow. Put depth in `references/` and tell the model when to read each file.
 - Use relative paths such as `references/design-direction.md`.
 - Use real, tested scripts for measurable checks; do not fake deterministic results.
