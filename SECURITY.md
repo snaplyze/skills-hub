@@ -40,7 +40,7 @@ details in a public issue.
 In scope:
 
 - skill instructions that could cause unsafe or destructive behavior;
-- the OpenCode installer and any future harness installers;
+- the Antigravity and OpenCode installers (`install/antigravity.sh`, `install/opencode.sh`, `install/lib.sh`) and any future harness installers;
 - validation and CI scripts;
 - GitHub Actions workflows and repository configuration;
 - documentation that gives unsafe guidance.

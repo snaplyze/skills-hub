@@ -24,7 +24,7 @@ Requirements:
 - Bash;
 - Node.js 22+ for the pinned Markdown and CSS tools; `make deps` installs the
   hash-locked Python and npm development tools;
-- OpenCode (only if you want to test discovery locally).
+- Antigravity (`agy`) or OpenCode (only if you want to test discovery locally).
 
 ```bash
 make deps
@@ -48,9 +48,10 @@ Or run the commands individually:
 ```bash
 python3 scripts/validate.py
 ruff check .
-node_modules/.bin/markdownlint-cli2 "**/*.md" "#node_modules"
+node_modules/.bin/markdownlint-cli2 "**/*.md" "#node_modules" "#.venv" "#.playwright-cli"
 python3 -m pytest -q
-shellcheck install/opencode.sh
+shellcheck -x install/antigravity.sh install/opencode.sh install/lib.sh
+./install/antigravity.sh --dry-run --target /tmp/antigravity/skills-hub-check
 ./install/opencode.sh --dry-run --target /tmp/opencode/skills-hub-check
 node_modules/.bin/csstree-validator skills/frontend-design/assets/tokens.css
 python3 scripts/check_workflows.py --strict
@@ -70,8 +71,9 @@ skills/<skill-id>/
 Rules:
 
 - The directory name is the skill ID: lowercase kebab-case, 1–64 characters.
-- `SKILL.md` starts with YAML frontmatter containing `name`, `description`, and `license` (optional: `compatibility`, `metadata`, `disable-model-invocation`).
-- The description must explain what the skill does and when to use it. It is the primary trigger; OpenCode also lists the skill ID and name before loading the skill.
+- `SKILL.md` starts with YAML frontmatter containing `name` (lowercase kebab-case matching the directory name; exposed as `/<name>` in Antigravity), `description`, and `license` (optional: `compatibility`, `allowed-tools`, `metadata`, `disable-model-invocation`).
+- The description must explain what the skill does and when to use it. It is the primary trigger; Antigravity and OpenCode also list the skill ID/name before loading the skill.
+- Keep skill text unified and portable across harnesses (no OpenCode-only or harness-locked runtime instructions inside `skills/`).
 - Keep `SKILL.md` focused on the workflow. Put depth in `references/` and tell the model when to read each file.
 - Use relative paths such as `references/design-direction.md`.
 - Use real, tested scripts for measurable checks; do not fake deterministic results.
@@ -97,7 +99,7 @@ Use Conventional Commits where practical:
 ```text
 feat: add mobile-design skill
 fix: correct WCAG target-size guidance
-docs: clarify OpenCode installation
+docs: clarify Antigravity and OpenCode installation
 chore: update pinned actions
 ```
 

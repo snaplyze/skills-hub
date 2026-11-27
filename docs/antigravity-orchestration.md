@@ -42,7 +42,13 @@ The goal is not to rebuild Antigravity's built-in orchestrators in Markdown. It 
 
 ## Zero-config use
 
-Install the skills into Antigravity's global personal skills directory (`~/.gemini/config/skills/`, shared across Antigravity App, CLI, and IDE), or point `~/.gemini/config/skills.json` at your clone's `skills/` directory.
+Install the skills into Antigravity's global personal skills directory (`~/.gemini/config/skills/`, shared across Antigravity App, CLI, and IDE):
+
+```bash
+./install/antigravity.sh --copy
+```
+
+Alternatively, point `~/.gemini/config/skills.json` at your clone's `skills/` directory for a zero-copy setup.
 
 Then describe complex work in plain language or invoke `/orchestration` directly. Antigravity loads the skill progressively from its `description`, and native subagent / workflow tools handle delegation without plugins, hooks, or project-local agent definitions.
 
