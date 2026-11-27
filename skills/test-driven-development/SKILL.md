@@ -1,8 +1,8 @@
 ---
-name: Test-Driven Development
+name: test-driven-development
 description: "Use when implementing a feature, behavior change, or bugfix that can be expressed as a failing test. Requires red-green-refactor: write a behavioral test, watch it fail for the right reason, write the minimal implementation, then refactor with the suite green. Not for diagnosing unknown-cause bugs before locating root cause (use systematic-debugging), documentation-only, or purely visual changes that cannot be asserted meaningfully."
 license: MIT
-compatibility: opencode
+compatibility: agentskills
 ---
 
 # Test-Driven Development

@@ -1,8 +1,8 @@
 ---
-name: Specification
+name: specification
 description: Use before non-trivial feature work, redesigns, or ambiguous requests to turn the request into a short, testable specification. Covers users, outcomes, non-goals, constraints, acceptance criteria, assumptions, and open questions. Not for tiny, obvious fixes where the requirement is already concrete.
 license: MIT
-compatibility: opencode
+compatibility: agentskills
 ---
 
 # Specification

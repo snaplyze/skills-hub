@@ -1,8 +1,8 @@
 ---
-name: Implementation Planning
+name: implementation-planning
 description: Use after a specification or a clear multi-step request to produce an execution plan with small tasks, exact files and interfaces, tests, dependencies, risks, and verification. Use before coding when another engineer or subagent must execute without guessing. Not for a trivial one-step edit.
 license: MIT
-compatibility: opencode
+compatibility: agentskills
 ---
 
 # Implementation Planning

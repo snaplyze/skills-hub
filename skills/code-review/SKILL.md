@@ -1,8 +1,8 @@
 ---
-name: Code Review
+name: code-review
 description: Use before merging or after completing a task to request a fresh-context review and to evaluate review feedback rigorously. Covers correctness, edge cases, security, tests, compatibility, performance, and scope, with P0/P1/P2 findings and evidence. Not for UI/visual design audits (use frontend-design), performative agreement, or reviewing your own work as an independent approval.
 license: MIT
-compatibility: opencode
+compatibility: agentskills
 ---
 
 # Code Review
@@ -25,7 +25,7 @@ Known risks / not tested:
 Specific questions:
 ```
 
-If the harness has subagents, dispatch a fresh read-only reviewer (new child session, using `general` or a dedicated reviewer agent) with this brief and the exact diff range; do not let it edit or take over the branch. If no separate reviewer is available, do a structured self-review using the same checklist and state that it is not independent. After fixes, send the fix delta (or the new diff) for a scoped re-review (continuing the same reviewer session or starting a fresh one) before merge.
+If the harness has subagents, dispatch a fresh read-only reviewer (new child subagent via `invoke_subagent` using `define_subagent` with `EnableWriteTools: false`, `research`, or a dedicated read-only reviewer agent) with this brief and the exact diff range; do not let it edit or take over the branch. If no separate reviewer is available, do a structured self-review using the same checklist and state that it is not independent. After fixes, send the fix delta (or the new diff) for a scoped re-review (continuing the reviewer via `send_message` or starting a fresh reviewer) before merge. Where available, users can also inspect diffs inline with the Review pane or `/diff`.
 
 ## Review order
 

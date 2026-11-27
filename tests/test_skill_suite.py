@@ -1,4 +1,4 @@
-"""Contract tests for the portable OpenCode skill suite."""
+"""Contract tests for the portable Antigravity and OpenCode skill suite."""
 
 from __future__ import annotations
 
@@ -42,6 +42,7 @@ HANDOFF_HEADING_RE = re.compile(r"^## (Handoff|Output|Final gate)", re.M)
 DOCS_WITH_TEST_REFERENCES = (
     ROOT / "README.md",
     ROOT / "AGENTS.md",
+    ROOT / "docs" / "antigravity-orchestration.md",
     ROOT / "docs" / "opencode-orchestration.md",
     ROOT / "docs" / "release-process.md",
     ROOT / "docs" / "repository-settings.md",
@@ -85,11 +86,11 @@ TRIGGER_MATRIX = {
         "negative_terms": ("new feature", "correctness", "cosmetic"),
     },
     "skill-authoring": {
-        "positive": "create an OpenCode skill with trigger description, progressive disclosure, baseline-vs-skill evaluation, and pressure tests",
+        "positive": "create a portable agent skill for Antigravity with trigger description, progressive disclosure, baseline-vs-skill evaluation, and pressure tests",
         "negative_terms": ("application documentation", "general agent rules"),
     },
     "orchestration": {
-        "positive": "route complex cross-cutting coding work by deciding whether to delegate or run parallel read-only investigation with native OpenCode subagents",
+        "positive": "route complex cross-cutting coding work by deciding whether to delegate bounded subagents, run a dynamic workflow, or recommend a built-in Antigravity orchestrator",
         "negative_terms": ("small sequential", "single obvious file"),
     },
 }
@@ -171,7 +172,8 @@ def test_suite_skills_and_frontmatter() -> None:
     assert discovered >= WORKFLOW_SKILLS | {"frontend-design"}
     for skill_id in ALL_SKILLS:
         data = frontmatter(skill_text(skill_id))
-        assert data["compatibility"] == "opencode"
+        assert data["name"] == skill_id
+        assert data["compatibility"] == "agentskills"
         assert data["license"] == "MIT"
         description = data["description"]
         assert 40 <= len(description) <= 1024
@@ -220,6 +222,10 @@ def test_empty_workflow_body_is_rejected() -> None:
 
 def test_suite_is_portable_markdown() -> None:
     forbidden = (
+        "opencode",
+        "sessionid",
+        "session.move",
+        "worktree_remove",
         "plugin install",
         "bootstrap",
         "session-start",
@@ -231,9 +237,30 @@ def test_suite_is_portable_markdown() -> None:
     )
     for skill_id in ALL_SKILLS:
         text = skill_text(skill_id)
+        lowered = text.casefold()
         for phrase in forbidden:
-            assert phrase not in text, f"{skill_id} contains {phrase}"
+            assert phrase not in lowered, f"{skill_id} contains forbidden phrase {phrase!r}"
         assert "Not for" in frontmatter(text)["description"], skill_id
+
+
+def test_antigravity_orchestration_contract() -> None:
+    text = skill_text("orchestration")
+    for required in (
+        "invoke_subagent",
+        "define_subagent",
+        "send_message",
+        "manage_subagents",
+        "run_workflow",
+        "`research`",
+        "`browser`",
+        "`self`",
+        "/swarm",
+        "/boost",
+        "/teamwork",
+    ):
+        assert required in text, f"orchestration missing Antigravity primitive {required!r}"
+    for legacy_agent in ("`explore`", "`general`"):
+        assert legacy_agent not in text, f"orchestration still names {legacy_agent}"
 
 
 def test_suite_trigger_matrix_and_cross_skill_isolation() -> None:
