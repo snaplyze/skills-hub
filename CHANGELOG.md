@@ -227,3 +227,11 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   workflows.
 - Contribution guide, code of conduct, security policy, governance, issue
   templates, and pull request template.
+
+[Unreleased]: https://github.com/snaplyze/skills-hub/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/snaplyze/skills-hub/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/snaplyze/skills-hub/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/snaplyze/skills-hub/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/snaplyze/skills-hub/compare/v1.0.1...v1.1.0
+[1.0.1]: https://github.com/snaplyze/skills-hub/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/snaplyze/skills-hub/releases/tag/v1.0.0

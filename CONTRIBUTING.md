@@ -48,6 +48,7 @@ Or run the commands individually:
 ```bash
 python3 scripts/validate.py
 ruff check .
+ruff format --check .
 node_modules/.bin/markdownlint-cli2 "**/*.md"
 python3 -m pytest -q
 shellcheck -x install/antigravity.sh install/opencode.sh install/lib.sh
