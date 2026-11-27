@@ -63,7 +63,7 @@ No hooks, plugin bootstrap, or session injection are required. Trigger quality c
 
 Both global installers share [`install/lib.sh`](install/lib.sh) and use copy mode by default (snapshotting content without writing into this checkout). Use `--link` only when you want live symlinks to the clone. They require Bash and GNU coreutils/findutils/tar (`realpath -m`, `sort -z`, `mv -T`, `find -printf`, GNU `tar`); on systems without those tools, use the minimal manual copy below.
 
-Release `v1.3.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do not treat them as signed releases. The protected `release` environment, tag-signature trust, tag rules, and immutable-release setup are recorded in [docs/repository-settings.md](docs/repository-settings.md) and [docs/release-process.md](docs/release-process.md).
+Release `v1.4.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do not treat them as signed releases. The protected `release` environment, tag-signature trust, tag rules, and immutable-release setup are recorded in [docs/repository-settings.md](docs/repository-settings.md) and [docs/release-process.md](docs/release-process.md).
 
 ### Google Antigravity
 
@@ -71,12 +71,10 @@ The Antigravity installer copies skills into `$HOME/.gemini/config/skills` by de
 
 #### Install from a release (Antigravity)
 
-> Note: `install/antigravity.sh` and unified Antigravity support were added after `v1.3.0` and will be included starting with the next signed release (`v1.4.0+`). Until that release is published, use [Install from main (Antigravity)](#install-from-main-antigravity) below.
-
-Once a release containing `install/antigravity.sh` is published, clone the signed tag, verify its signature, and install with `--verify --ref`:
+Clone a signed release tag (`v1.4.0` or later), verify its signature, and install with `--verify --ref`:
 
 ```bash
-VERSION=vX.Y.Z  # replace with a signed release tag (>= v1.4.0)
+VERSION=vX.Y.Z  # replace with a signed release tag (v1.4.0+)
 git clone --branch "$VERSION" --depth 1 https://github.com/snaplyze/skills-hub.git
 cd skills-hub
 git -c gpg.format=ssh \
@@ -88,7 +86,7 @@ git -c gpg.format=ssh \
 Or install from a checksum-verified release archive (verify provenance with `gh attestation verify "skills-hub-$VERSION.tar.gz" --repo snaplyze/skills-hub`):
 
 ```bash
-VERSION=vX.Y.Z  # replace with a signed release tag (>= v1.4.0)
+VERSION=vX.Y.Z  # replace with a signed release tag (v1.4.0+)
 curl -fsSLO "https://github.com/snaplyze/skills-hub/releases/download/$VERSION/skills-hub-$VERSION.tar.gz"
 curl -fsSLO "https://github.com/snaplyze/skills-hub/releases/download/$VERSION/SHA256SUMS"
 sha256sum -c SHA256SUMS

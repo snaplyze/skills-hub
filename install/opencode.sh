@@ -6,7 +6,7 @@
 #   ./install/opencode.sh                      # copy all skills (safe default)
 #   ./install/opencode.sh frontend-design      # copy one skill
 #   ./install/opencode.sh --link --all         # symlink all skills
-#   ./install/opencode.sh --verify --ref v1.3.0
+#   ./install/opencode.sh --verify --ref v1.4.0
 #   ./install/opencode.sh --dry-run            # show what would happen
 #   ./install/opencode.sh --list               # list available skills
 #
