@@ -1,6 +1,6 @@
 # Repository settings evidence
 
-Verified 2026-11-27 from the GitHub API and repository files. Recheck after any
+Verified 2026-11-28 from the GitHub API and repository files. Recheck after any
 settings change; this file records the state, not a claim that a setting cannot
 regress.
 
@@ -56,7 +56,7 @@ fork code on it, and keep fork approval enabled.
 | Dependabot alerts/updates | Enabled | Security settings | Maintainer |
 | Private vulnerability reporting | Enabled | Security settings | Maintainer |
 | Immutable releases | Enabled | Releases settings | Maintainer |
-| Release tag signatures | Required by ruleset; trust variable `RELEASE_TAG_ALLOWED_SIGNERS` is set; `v1.1.0`, `v1.2.0`, `v1.3.0`, and `v1.4.0` signed/immutable; `v1.0.0`/`v1.0.1` predate the rule | Tag ruleset and repository variables | Maintainer |
+| Release tag signatures | Required by ruleset; trust variable `RELEASE_TAG_ALLOWED_SIGNERS` is set; `v1.1.0`, `v1.2.0`, `v1.3.0`, `v1.4.0`, and `v1.5.0` signed/immutable; `v1.0.0`/`v1.0.1` predate the rule | Tag ruleset and repository variables | Maintainer |
 
 ## Claim-to-evidence map
 
