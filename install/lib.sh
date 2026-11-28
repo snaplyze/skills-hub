@@ -57,7 +57,7 @@ Options:
   --all           Install every skill in skills/
   --force         Replace existing installations after backing them up
   --verify        Require a clean tracked git checkout at an exact release tag
-  --ref TAG       Exact tag required with --verify (for example v1.4.0)
+  --ref TAG       Exact tag required with --verify (for example v1.5.0)
   --dry-run       Print actions without writing
   --list          List available skills
   --target DIR    Override the target skills directory

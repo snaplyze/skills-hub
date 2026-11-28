@@ -7,6 +7,81 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-28
+
+### Added
+
+- Shared CommonMark Markdown preprocessing module (`scripts/_markdown.py`)
+  reused across `scripts/validate.py`, `scripts/check_external_links.py`, and
+  `scripts/release_notes.py` (compatible with `python3 -I` isolated mode).
+- Eight additional WCAG 2.2 AA semantic token combinations in
+  `skills/frontend-design/assets/token-contrast-pairs.json`
+  (`accent-hover / canvas`, `text / accent-subtle`, `accent / accent-subtle` in
+  both themes, `light: accent / surface-sunken`, and
+  `dark: border-strong / surface-raised (ui)` — 64 light/dark pairs and 35
+  semantic combinations total).
+- Reserved built-in slash-command name enforcement (`RESERVED_SKILL_IDS`, 27
+  IDs synchronized with `skills/skill-authoring/SKILL.md`) and `theme:` prefix
+  enforcement on contrast combinations in `scripts/validate.py`.
+- `[tool.ruff.format]` (`ruff format --check .`) enforcement in `Makefile`
+  (`lint:` / `make check`), lazy `RUFF` alignment with `$(PYTHON) -m ruff`,
+  Keep a Changelog 1.1.0 footer reference links in `CHANGELOG.md`, and
+  Dependabot supply-chain `cooldown` rules across `github-actions`, `pip`, and
+  `npm`.
+
+### Changed
+
+- Linearize inline Markdown link scanning in `scripts/validate.py`
+  (`O(n + K log K)` via sweep-line heap; `243×` faster at `K=3000`), add
+  YAML 1.2 boolean handling on `UniqueKeySafeLoader`, enforce stricter
+  `allowed-tools`/`reading-sets.json`/`MARKDOWN_SUFFIXES` rules, and remove 9
+  dead or redundant symbols.
+- Batch filesystem, `tar`, and `git` operations, defer write-tool probes, and
+  replace YAML subshells in `install/lib.sh` (`2.5–2.9×` faster `copy` and
+  `2.1–2.3×` faster `--list` across 11–61 skills; `2.1–2.6×` faster `--verify`
+  across 11–31 skills).
+- Synchronize `frontend-design` layout tokens (`--container-2xl`, `--gutter`),
+  relative asset paths (`visual-craft.md`), mobile checklist TOC
+  (`responsive-mobile.md`), portable orchestration wording, and
+  `autonomous-execution` ledger/brief fields across `skills/`.
+- Extract shared `tests/_helpers.py` (host-immune Git isolation and
+  operator-aware active shell command parser), remove global `validate.ROOT`
+  mutations, consolidate installer git templates, and move targeted validator
+  unit mutations off full repository copies (`pytest` `2.03×` faster,
+  `test_validation.py` `4.14×` faster).
+
+### Fixed
+
+- Tighten `skills/frontend-design/scripts/contrast.py` CSS Color 4 parsing:
+  enforce strict ASCII `<number>` and hue regexes, reject 4-argument space
+  syntax without `/` and mixed legacy comma units, round `Color.hex()` alpha
+  byte (`a=0.999` → `#000000`), and clamp both inputs in `flatten()`.
+- Fix Markdown masking edge cases in `scripts/check_external_links.py` and
+  `scripts/release_notes.py`, add private-directory ignores to
+  `.markdownlint-cli2.jsonc` and `SKIP_DIRS`, and eliminate false-green
+  regression tests across external links, release checks, secrets, workflows,
+  and validator suites.
+- Align `install/lib.sh` `read_description` YAML parsing with `validate.py`,
+  warn on `--dry-run` conflicts, and reject empty `--ref ""` and relative
+  `XDG_CONFIG_HOME`/`HOME`.
+
+### Security
+
+- Harden `.github/workflows/release.yml` and `scripts/release_checks.py`:
+  `python3 -I` on all gate invocations, `gate/` pinned to `${{ github.sha }}`,
+  embedded `%(tag)` and `type commit` header binding, `+build` SemVer
+  rejection, fail-closed handling for invalid check-run IDs and missing
+  workflow `head_sha`, and case-insensitive repository URL matching.
+- Fail closed on all semantic `--color-*` tokens and nested/cyclic `var()`
+  declarations, and enforce symlink containment before `load_contrast_module`
+  (`exec_module`) and across `skills/`, `docs/`, `.github/`, `install/lib.sh`
+  (`--list`/`--list --verify`/pre-flight), and `scripts/check_workflows.py`.
+- Protect `main` push check-runs from `cancel-in-progress`, add concurrency to
+  `dependency-review.yml`, add `curl` retries in `secret-scan.yml`, enforce
+  step `uses`/`run` XOR and expanded untrusted write-restricted events in
+  `scripts/check_workflows.py`, and add untrusted-data and secret-redaction
+  guardrails to `frontend-design`, `orchestration`, and `code-review`.
+
 ## [1.4.0] - 2026-11-27
 
 ### Added
@@ -228,7 +303,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Contribution guide, code of conduct, security policy, governance, issue
   templates, and pull request template.
 
-[Unreleased]: https://github.com/snaplyze/skills-hub/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/snaplyze/skills-hub/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/snaplyze/skills-hub/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/snaplyze/skills-hub/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/snaplyze/skills-hub/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/snaplyze/skills-hub/compare/v1.1.0...v1.2.0

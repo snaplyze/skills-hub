@@ -119,7 +119,7 @@ One portable [`orchestration`](skills/orchestration/SKILL.md) skill routes compl
 
 Both global installers share [`install/lib.sh`](install/lib.sh) and use copy mode by default (snapshotting content without writing into this checkout). Use `--link` only when you want live symlinks to the clone. They require Bash and GNU coreutils/findutils/tar (`realpath -m`, `sort -z`, `mv -T`, `find -printf`, GNU `tar`); on systems without those tools, use the minimal manual copy below.
 
-Release `v1.4.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do not treat them as signed releases. The protected `release` environment, tag-signature trust, tag rules, and immutable-release setup are recorded in [docs/repository-settings.md](docs/repository-settings.md) and [docs/release-process.md](docs/release-process.md).
+Release `v1.5.0` is signed and immutable; the public trust file is [`docs/release-signing/allowed_signers`](docs/release-signing/allowed_signers). Tags published before the release gate (`v1.0.1` and earlier) are unsigned and have no source-archive assets; do not treat them as signed releases. The protected `release` environment, tag-signature trust, tag rules, and immutable-release setup are recorded in [docs/repository-settings.md](docs/repository-settings.md) and [docs/release-process.md](docs/release-process.md).
 
 ### Google Antigravity
 

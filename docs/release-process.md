@@ -42,9 +42,11 @@ created. The workflow fails closed with an `::error::` message.
 
 1. Add user-facing changes under `## [Unreleased]` and open a pull request.
 2. Before cutting the release, open a pull request that moves the entries into
-   `## [X.Y.Z] - YYYY-MM-DD`, leaves an empty `## [Unreleased]`, and uses the
-   same version as the future tag. Confirm that `skills/` contains every skill
-   listed in the README and that the current-HEAD archive test passes. Merge it.
+   `## [X.Y.Z] - YYYY-MM-DD`, leaves an empty `## [Unreleased]`, updates the
+   `[Unreleased]` and `[X.Y.Z]` footer reference links at the bottom of
+   `CHANGELOG.md`, and uses the same version as the future tag. Confirm that
+   `skills/` contains every skill listed in the README and that the
+   current-HEAD archive test passes. Merge it.
 3. Wait for `validate`, `Analyze (python)`, `Analyze (actions)`, and `gitleaks`
    on `main`, and for `dependency-review` on the pull request. Do not bypass
    branch protection.
@@ -234,7 +236,7 @@ an ancestor of `origin/main` fails even if the tag itself is valid.
 Download all assets from the release into one directory:
 
 ```bash
-VERSION=v1.4.0  # replace with a signed release tag (v1.4.0+)
+VERSION=v1.5.0  # replace with a signed release tag (v1.4.0+)
 gh release download "$VERSION" --repo snaplyze/skills-hub \
   --pattern 'skills-hub-*.tar.gz' \
   --pattern 'SHA256SUMS' \

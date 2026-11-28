@@ -6,7 +6,7 @@
 #   ./install/antigravity.sh                      # copy all skills (safe default)
 #   ./install/antigravity.sh frontend-design      # copy one skill
 #   ./install/antigravity.sh --link --all         # symlink all skills
-#   ./install/antigravity.sh --verify --ref v1.4.0
+#   ./install/antigravity.sh --verify --ref v1.5.0
 #   ./install/antigravity.sh --dry-run            # show what would happen
 #   ./install/antigravity.sh --list               # list available skills
 #

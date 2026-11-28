@@ -842,3 +842,35 @@ def test_aud50_workflow_concurrency_and_secret_scan_retries() -> None:
     assert "--retry 3" in active_script
     assert "--retry-delay 2" in active_script
     assert "--max-time 60" in active_script
+
+
+def test_dependabot_configures_supply_chain_cooldown() -> None:
+    dep = yaml.safe_load((ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8"))
+    assert isinstance(dep, dict) and dep.get("version") == 2
+    updates = dep["updates"]
+    by_eco = {entry["package-ecosystem"]: entry for entry in updates}
+    assert len(updates) == len(by_eco), "duplicate package-ecosystem entry in dependabot.yml"
+    assert set(by_eco) == {"github-actions", "pip", "npm"}
+
+    base_keys = {"default-days", "include", "exclude"}
+    semver_keys = {"semver-major-days", "semver-minor-days", "semver-patch-days"}
+
+    def _valid_days(value: object, *, minimum: int) -> bool:
+        return isinstance(value, int) and not isinstance(value, bool) and minimum <= value <= 90
+
+    for eco, entry in by_eco.items():
+        cooldown = entry.get("cooldown")
+        assert isinstance(cooldown, dict), eco
+        allowed = base_keys if eco == "github-actions" else base_keys | semver_keys
+        assert set(cooldown) <= allowed, (eco, set(cooldown) - allowed)
+        assert _valid_days(cooldown.get("default-days"), minimum=3), (eco, cooldown)
+
+    for eco in ("pip", "npm"):
+        cooldown = by_eco[eco]["cooldown"]
+        for key in semver_keys:
+            assert _valid_days(cooldown.get(key), minimum=1), (eco, key, cooldown)
+        assert (
+            cooldown["semver-major-days"]
+            >= cooldown["semver-minor-days"]
+            >= cooldown["semver-patch-days"]
+        )

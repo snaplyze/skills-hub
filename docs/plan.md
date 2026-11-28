@@ -11,10 +11,10 @@
 | `README.md` | вход, quick start, установка (Antigravity + OpenCode), оркестрация, защиты | 457 / 28 199 |
 | `docs/antigravity-orchestration.md` | архитектура нативной оркестрации Antigravity | 123 / 9 691 |
 | `docs/opencode-orchestration.md` | архитектура нативной оркестрации OpenCode | 83 / 5 761 |
-| `docs/release-process.md` | релизный гейт и owner setup | 285 / 13 260 |
+| `docs/release-process.md` | релизный гейт и owner setup | 291 / 13 644 |
 | `docs/repository-settings.md` | settings evidence и метаданные репозитория (сверено 2026-11-27) | 84 / 5 834 |
 | `docs/release-signing/` | публичный SSH trust и ротация | 44 / 1 965 |
-| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила, безопасность, история релизов | 518 / 23 840 |
+| `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила, безопасность, история релизов | 603 / 28 628 |
 | `CODE_OF_CONDUCT.md`, `.github/PULL_REQUEST_TEMPLATE.md` | кодекс поведения и шаблон PR | 168 / 6 681 |
 | `THIRD_PARTY_NOTICES.md` | атрибуция workflow-навыков и указатель `sources.md` | 53 / 3 444 |
 | `docs/plans/2026-11-16-skill-suite-v2.md` | завершённый детальный план этапа 08 | 281 / 10 726 |
@@ -63,7 +63,8 @@
 ## Решения и исключения владельца
 
 - **CI:** hosted (`ubuntu-24.04`) по умолчанию; self-hosted сейчас нет (при добавлении — только для подходящих заданий); fork approval `all_external_contributors`; обязательные проверки `validate`, `Analyze (python)`, `Analyze (actions)`, `dependency-review`, `gitleaks`; CodeQL — обязательный code-scanning gate.
-- **Бюджет проверок:** `make validate` ≤1 s, `make check` ≤30 s на hosted runner.
+- **Бюджет проверок:** `make validate` ≤0.5 s (по факту ~0.15 s CLI / ~0.11 s in-process), `pytest` ≤12 s локально (по факту `7.35 s`), `make check` ≤30 s на hosted runner (≤20 s локально), установщик `copy` на 11 навыках ≤300 ms (по факту `141.5 ms`).
+- **Dependabot:** `cooldown` включён на всех 3 экосистемах (`github-actions`: `default-days: 7`; `pip` и `npm`: `default-days: 7`, `semver-major-days: 14`, `semver-minor-days: 7`, `semver-patch-days: 3`; security updates автоматически обходят cooldown).
 - **Релизы:** только владелец; signed annotated tags (`v*`), ancestry `main`, required checks, protected `release` environment (solo-исключение: `prevent_self_review: false`, owner bypass в `tag-protection`), immutable releases, draft + manual promotion, notes только из `CHANGELOG.md`.
 - **Main:** 0 approvals пока solo; CODEOWNERS advisory; при втором maintainer — `approvals=1`, code-owner review, `prevent_self_review=true`, signed commits/tags, emergency path.
 - **Навыки:** 10 workflow skills + `frontend-design` (единый стандарт Agent Skills, `name == dir`, `compatibility: agentskills`, без OpenCode-специфики в `skills/`); оркестрация нативная для Antigravity (`research`/`browser`/`self`, `invoke_subagent`/`define_subagent`/`run_workflow`, пользовательские `/swarm`/`/boost`/`/teamwork`) и OpenCode (`explore`/`general`); без plugin/hooks/background-scheduler/TUI/model profiles; 32 KiB reading budget; WCAG 2.2 AA (24×24 px минимум, 44×44 px таргет, контраст 4.5:1 / 3:1, 64 пары + 35 комбинаций).
@@ -103,7 +104,7 @@
 - **Окружение пользователя:** глобальные skills/MCP существуют только локально у владельца; Claude Code/Codex не установлены и не проверялись.
 - **Ruleset & Scorecard:** `gitleaks` и `Analyze (actions)` в ruleset #27259237 и `scripts/release_checks.py`; потолок Scorecard (`7.0/10`) при solo-maintainer ограничен структурными нулями (`Maintained` <90 дней, `Code-Review`, `Contributors`, `Fuzzing`, `CII-Best-Practices`) — для approvals/code-owner review нужен второй maintainer.
 - **Инфраструктурный горизонт:** Node.js 22 EOL `2027-04-30` (миграция на Node.js 24 LTS); `gitleaks` в `secret-scan.yml` отслеживается вручную; `ossf/scorecard-action` внутри `action.yaml` использует Docker-тег `v2.6.0`, а не digest.
-- **Продуктовые решения:** (а) выделять ли `accessibility-engineering` в отдельный навык или оставить в `frontend-design/references/accessibility.md`; (б) добавлять ли опциональный headless behavioral eval runner (`agy -p ... --output-format json` / `opencode run --standalone --archived --format json`); (в) подтвердить политику «только идеи» для `sickn33` (`taste-skill` MIT и `anthropics/skills/skills/skill-creator` Apache-2.0 уже подтверждены); (г) задать ли целевые пороги perf ниже `make validate ≤1 s` / `make check ≤30 s` для `AUD-46`, `AUD-47`, `AUD-48`; (д) добавлять ли `cooldown` в `.github/dependabot.yml` (в `AUD-53` оставлено без изменений до решения владельца).
+- **Продуктовые решения:** (а) выделять ли `accessibility-engineering` в отдельный навык или оставить в `frontend-design/references/accessibility.md`; (б) добавлять ли опциональный headless behavioral eval runner (`agy -p ... --output-format json` / `opencode run --standalone --archived --format json`); (в) подтвердить политику «только идеи» для `sickn33` (`taste-skill` MIT и `anthropics/skills/skills/skill-creator` Apache-2.0 уже подтверждены). *(Закрытые решения владельца 2026-11-28: включён `cooldown` в `.github/dependabot.yml`, уточнены пороги perf выше, готовится signed immutable релиз `v1.5.0`.)*
 - **Защищённая история:** `CHANGELOG.md` (`v1.1.0`) не упоминал возврат загрузки SARIF Scorecard из `6bec3ee` после отключения в `1.0.1` — задним числом не переписывалось.
 
 ## Завершено (этапы 01–11)
