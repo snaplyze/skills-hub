@@ -1,6 +1,6 @@
 # План
 
-Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-27T19:20:43Z; веха #11 «Аудит 2026-11-27» (0 OPEN; 10 DONE: `AUD-45` #110–`AUD-54` #119; закрыт issue аудита #109); закрытые этапы 01–10: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63, #68–#82, #84, #99–#103 (вехи #1–#10 закрыты; `v1.4.0` опубликован на `f3465d0`, run `45992777582`). Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
+Трекер: https://github.com/snaplyze/skills-hub/issues; сверено 2026-11-28T05:18:00Z; веха #11 «Аудит 2026-11-27» закрыта (0 OPEN; 10 DONE: `AUD-45` #110–`AUD-54` #119; закрыт issue аудита #109); закрытые этапы 01–10: #14–#20, #27–#35, #38, #41–#48, #54, #58–#61, #63, #68–#82, #84, #99–#103 (вехи #1–#11 закрыты; [`v1.5.0`](https://github.com/snaplyze/skills-hub/releases/tag/v1.5.0) опубликован на `10bfb3f`, run `46111360626`, hosted `Link Audit` `46111363793` `66/66 PASS`). Реестр — этот файл; owner-facing, на русском, не загружается как инструкции агентов.
 
 ## Документы и стартовый контекст
 
@@ -12,7 +12,7 @@
 | `docs/antigravity-orchestration.md` | архитектура нативной оркестрации Antigravity | 123 / 9 691 |
 | `docs/opencode-orchestration.md` | архитектура нативной оркестрации OpenCode | 83 / 5 761 |
 | `docs/release-process.md` | релизный гейт и owner setup | 291 / 13 644 |
-| `docs/repository-settings.md` | settings evidence и метаданные репозитория (сверено 2026-11-27) | 84 / 5 834 |
+| `docs/repository-settings.md` | settings evidence и метаданные репозитория (сверено 2026-11-28) | 84 / 5 844 |
 | `docs/release-signing/` | публичный SSH trust и ротация | 44 / 1 965 |
 | `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md`, `CHANGELOG.md` | правила, безопасность, история релизов | 603 / 28 628 |
 | `CODE_OF_CONDUCT.md`, `.github/PULL_REQUEST_TEMPLATE.md` | кодекс поведения и шаблон PR | 168 / 6 681 |
@@ -104,7 +104,7 @@
 - **Окружение пользователя:** глобальные skills/MCP существуют только локально у владельца; Claude Code/Codex не установлены и не проверялись.
 - **Ruleset & Scorecard:** `gitleaks` и `Analyze (actions)` в ruleset #27259237 и `scripts/release_checks.py`; потолок Scorecard (`7.0/10`) при solo-maintainer ограничен структурными нулями (`Maintained` <90 дней, `Code-Review`, `Contributors`, `Fuzzing`, `CII-Best-Practices`) — для approvals/code-owner review нужен второй maintainer.
 - **Инфраструктурный горизонт:** Node.js 22 EOL `2027-04-30` (миграция на Node.js 24 LTS); `gitleaks` в `secret-scan.yml` отслеживается вручную; `ossf/scorecard-action` внутри `action.yaml` использует Docker-тег `v2.6.0`, а не digest.
-- **Продуктовые решения:** (а) выделять ли `accessibility-engineering` в отдельный навык или оставить в `frontend-design/references/accessibility.md`; (б) добавлять ли опциональный headless behavioral eval runner (`agy -p ... --output-format json` / `opencode run --standalone --archived --format json`); (в) подтвердить политику «только идеи» для `sickn33` (`taste-skill` MIT и `anthropics/skills/skills/skill-creator` Apache-2.0 уже подтверждены). *(Закрытые решения владельца 2026-11-28: включён `cooldown` в `.github/dependabot.yml`, уточнены пороги perf выше, готовится signed immutable релиз `v1.5.0`.)*
+- **Продуктовые решения:** (а) выделять ли `accessibility-engineering` в отдельный навык или оставить в `frontend-design/references/accessibility.md`; (б) добавлять ли опциональный headless behavioral eval runner (`agy -p ... --output-format json` / `opencode run --standalone --archived --format json`); (в) подтвердить политику «только идеи» для `sickn33` (`taste-skill` MIT и `anthropics/skills/skills/skill-creator` Apache-2.0 уже подтверждены). *(Закрытые решения владельца 2026-11-28: включён `cooldown` в `.github/dependabot.yml`, уточнены пороги perf выше, опубликован signed immutable релиз [`v1.5.0`](https://github.com/snaplyze/skills-hub/releases/tag/v1.5.0) на `10bfb3f` / run `46111360626` и обновлены глобальные установки Antigravity и OpenCode.)*
 - **Защищённая история:** `CHANGELOG.md` (`v1.1.0`) не упоминал возврат загрузки SARIF Scorecard из `6bec3ee` после отключения в `1.0.1` — задним числом не переписывалось.
 
 ## Завершено (этапы 01–11)
